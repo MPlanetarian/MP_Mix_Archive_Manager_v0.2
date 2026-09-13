@@ -15,7 +15,7 @@ NC='\033[0m'
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 echo -e "${BOLD}${MAGENTA}======================================================================${NC}"
-echo -e "${BOLD}${MAGENTA}          STREAM OF FREQUENCY - MIX ARCHIVE MANAGER INSTALLER        ${NC}"
+echo -e "${BOLD}${MAGENTA}        Mix Archive Manager Installer (MP_Mix_Manager_v0.1)           ${NC}"
 echo -e "${BOLD}${MAGENTA}                   Tailored for Bazzite Linux / SteamOS               ${NC}"
 echo -e "${BOLD}${MAGENTA}======================================================================${NC}"
 echo ""

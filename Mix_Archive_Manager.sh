@@ -1880,9 +1880,9 @@ burn_iso_to_usb() {
 
 while true; do
     clear
-    echo -e "${BOLD}${MAGENTA}==================================================${NC}"
-    echo -e "${BOLD}${MAGENTA}       STREAM OF FREQUENCY MIX ARCHIVE MANAGER     ${NC}"
-    echo -e "${BOLD}${MAGENTA}==================================================${NC}"
+    echo -e "${BOLD}${MAGENTA}====================================================${NC}"
+    echo -e "${BOLD}${MAGENTA}      Mix Archive Manager (MP_Mix_Manager_v0.1)     ${NC}"
+    echo -e "${BOLD}${MAGENTA}====================================================${NC}"
     echo ""
     
     show_stats
