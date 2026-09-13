@@ -122,7 +122,7 @@ Clone or copy the codebase into your home directory under `MP_Mix_Manager_v0.1`:
 
 ```bash
 cd ~
-git clone https://github.com/<your-username>/MP_Mix_Manager_v0.1.git
+git clone https://github.com/MPlanetarian/MP_Mix_Manager_v0.1.git
 # OR copy directory to:
 # /var/home/<username>/MP_Mix_Manager_v0.1
 ```
