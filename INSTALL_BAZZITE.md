@@ -75,6 +75,7 @@ brew install \
 | **`wmctrl`** | Window management engine for Option 23 ("Close All Desktop Applications") to close external windows while safeguarding the active manager terminal. |
 | **`btop`** | Advanced CPU/RAM/Drive live monitoring (Option 19). |
 | **`nvtop`** | Real-time GPU utilization, VRAM, and temperature monitoring (Option 18). |
+| **`cliamp`** | *Pre-bundled* in `bin/cliamp`. No installation required; automatically symlinked to `~/.local/bin/cliamp` by `install.sh`. |
 
 ---
 
