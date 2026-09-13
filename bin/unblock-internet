@@ -1,0 +1,22 @@
+#!/bin/bash
+# Undo block-internet: remove the lanonly nftables table.
+set -euo pipefail
+
+TABLE=inet
+TNAME=lanonly
+
+if [[ ${EUID} -ne 0 ]]; then
+  exec sudo -- "$0" "$@"
+fi
+
+if ! command -v nft >/dev/null; then
+  echo "nftables (nft) is required." >&2
+  exit 1
+fi
+
+if nft list table "$TABLE" "$TNAME" >/dev/null 2>&1; then
+  nft delete table "$TABLE" "$TNAME"
+  echo "Internet restored (removed nft table $TABLE $TNAME)."
+else
+  echo "Nothing to undo: $TABLE $TNAME is not loaded."
+fi

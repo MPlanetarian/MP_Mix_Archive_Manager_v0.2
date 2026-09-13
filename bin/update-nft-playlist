@@ -1,0 +1,66 @@
+#!/usr/bin/env python3
+import os, sys, urllib.parse, xml.sax.saxutils
+
+DATA_DIR = "/run/media/mplanetarian/DATA/NFT_VIDEOS"
+DESKTOP_DIR = os.path.expanduser("~/Desktop/DESKTOP")
+if not os.path.isdir(DESKTOP_DIR):
+    DESKTOP_DIR = os.path.expanduser("~/Desktop")
+M3U_PATH = os.path.join(DESKTOP_DIR, "NFT_VIDEOS.m3u")
+XSPF_PATH = os.path.join(DESKTOP_DIR, "NFT_VIDEOS.xspf")
+
+VIDEO_EXTS = {".mp4", ".mkv", ".avi", ".mov", ".webm"}
+
+def generate_playlists():
+    if not os.path.isdir(DATA_DIR):
+        print(f"Error: Directory '{DATA_DIR}' does not exist!")
+        return 0
+
+    files = []
+    for f in sorted(os.listdir(DATA_DIR)):
+        if f.endswith(".part"):
+            continue
+        ext = os.path.splitext(f)[1].lower()
+        if ext in VIDEO_EXTS:
+            files.append(f)
+
+    if not files:
+        print(f"No completed video files found in '{DATA_DIR}'.")
+        return 0
+
+    # 1. Write M3U
+    with open(M3U_PATH, "w", encoding="utf-8") as f:
+        f.write("#EXTM3U\n")
+        for item in files:
+            full_path = os.path.join(DATA_DIR, item)
+            f.write(f"#EXTINF:-1,{item}\n")
+            f.write(f"{full_path}\n")
+
+    # 2. Write XSPF
+    with open(XSPF_PATH, "w", encoding="utf-8") as f:
+        f.write('<?xml version="1.0" encoding="UTF-8"?>\n')
+        f.write('<playlist version="1" xmlns="http://xspf.org/ns/0/">\n')
+        f.write('  <title>NFT Videos (DATA)</title>\n')
+        f.write('  <trackList>\n')
+        for item in files:
+            full_path = os.path.join(DATA_DIR, item)
+            file_url = "file://" + urllib.parse.quote(full_path)
+            title_esc = xml.sax.saxutils.escape(item)
+            f.write("    <track>\n")
+            f.write(f"      <location>{file_url}</location>\n")
+            f.write(f"      <title>{title_esc}</title>\n")
+            f.write("    </track>\n")
+        f.write("  </trackList>\n")
+        f.write("</playlist>\n")
+
+    print(f"Successfully generated playlist with {len(files)} videos:")
+    print(f"  - {M3U_PATH}")
+    print(f"  - {XSPF_PATH}")
+    return len(files)
+
+if __name__ == "__main__":
+    count = generate_playlists()
+    if "--quiet" not in sys.argv:
+        try:
+            os.system(f'notify-send -a "Mix Archive Manager" "NFT Videos Playlist Updated" "Generated playlist with {count} videos in {DESKTOP_DIR}." 2>/dev/null')
+        except:
+            pass

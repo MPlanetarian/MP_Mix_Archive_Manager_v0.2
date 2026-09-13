@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+# ==============================================================================
+# Helper: launch-manager-fullscreen
+# Purpose: Launch Mix Archive Manager in a full-screen dedicated Konsole window
+# ==============================================================================
+CODEBASE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+LAUNCHER="$CODEBASE_DIR/bin/mix-archive-manager"
+
+if [ ! -x "$LAUNCHER" ]; then
+    LAUNCHER="$CODEBASE_DIR/Mix_Archive_Manager.sh"
+fi
+
+exec /usr/bin/konsole --fullscreen --separate --workdir "$CODEBASE_DIR" -p tabtitle="Mix Archive Manager" -e "$LAUNCHER" "$@"

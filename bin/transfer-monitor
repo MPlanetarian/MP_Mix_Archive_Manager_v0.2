@@ -1,0 +1,172 @@
+#!/usr/bin/env python3
+import os, sys, time
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+try:
+    import chrome_upload_monitor
+except ImportError:
+    chrome_upload_monitor = None
+
+def get_active_writes():
+    # Find all open write destinations
+    writers = {}
+    pids = [p for p in os.listdir('/proc') if p.isdigit()]
+    for p in pids:
+        fddir = f'/proc/{p}/fd'
+        if not os.path.exists(fddir): continue
+        try:
+            for fd in os.listdir(fddir):
+                try:
+                    target = os.readlink(f'{fddir}/{fd}')
+                    if '/run/media/' in target or '/var/home/' in target:
+                        with open(f'/proc/{p}/fdinfo/{fd}', 'r') as info:
+                            for line in info:
+                                if line.startswith('flags:'):
+                                    flags = int(line.split()[1], 8)
+                                    acc = flags & os.O_ACCMODE
+                                    if acc in (os.O_WRONLY, os.O_RDWR):
+                                        writers[os.path.basename(target)] = (p, target)
+                except Exception:
+                    pass
+        except Exception:
+            pass
+    return writers
+
+def get_transfers():
+    writers = get_active_writes()
+    transfers = {}
+    pids = [p for p in os.listdir('/proc') if p.isdigit()]
+    for p in pids:
+        fddir = f'/proc/{p}/fd'
+        if not os.path.exists(fddir): continue
+        try:
+            for fd in os.listdir(fddir):
+                try:
+                    target = os.readlink(f'{fddir}/{fd}')
+                    fname = os.path.basename(target)
+                    # If this file matches an active write destination (or known large transfer)
+                    if fname in writers:
+                        pos = 0
+                        with open(f'/proc/{p}/fdinfo/{fd}', 'r') as info:
+                            for line in info:
+                                if line.startswith('flags:'):
+                                    flags = int(line.split()[1], 8)
+                                    if (flags & os.O_ACCMODE) != os.O_RDONLY:
+                                        pos = -1 # skip write end
+                                elif line.startswith('pos:'):
+                                    if pos != -1:
+                                        pos = int(line.split()[1])
+                        if pos > 0 and os.path.isfile(target):
+                            size = os.path.getsize(target)
+                            dest_pid, dest_path = writers[fname]
+                            transfers[target] = {
+                                'pid': p,
+                                'pos': pos,
+                                'size': size,
+                                'dest': dest_path
+                            }
+                except Exception:
+                    pass
+        except Exception:
+            pass
+    return transfers
+
+def fmt_size(b):
+    for u in ['B', 'KB', 'MB', 'GB', 'TB']:
+        if b < 1024.0:
+            return f"{b:.1f} {u}"
+        b /= 1024.0
+    return f"{b:.1f} PB"
+
+def main():
+    loop = '--watch' in sys.argv or '-w' in sys.argv or len(sys.argv) == 1
+    prev = {}
+    last_time = time.time()
+    chrome_tracker = chrome_upload_monitor.UploadTracker() if chrome_upload_monitor else None
+
+    try:
+        while True:
+            t0 = time.time()
+            if chrome_tracker:
+                chrome_tracker.scan_burst(duration=0.5, interval=0.03)
+
+            current = get_transfers()
+            dt = t0 - last_time
+            if dt <= 0: dt = 1.0
+
+            os.system('clear')
+            print("=" * 80)
+            print(" LIVE CONSOLE FILE TRANSFER & UPLOAD MONITOR (Ctrl+C to exit) ".center(80, "="))
+            print("=" * 80)
+
+            has_output = False
+
+            # 1. Local transfers
+            if current:
+                has_output = True
+                print("\n  📂 LOCAL FILE COPIES / TRANSFERS:")
+                for idx, (src, data) in enumerate(current.items(), 1):
+                    pos = data['pos']
+                    size = data['size']
+                    pct = (pos / size * 100.0) if size > 0 else 0
+                    
+                    speed_str = ""
+                    eta_str = ""
+                    if src in prev and dt > 0:
+                        bytes_diff = pos - prev[src]['pos']
+                        if bytes_diff >= 0:
+                            speed = bytes_diff / dt
+                            speed_str = f"  |  ⚡ {fmt_size(speed)}/s"
+                            remaining = size - pos
+                            if speed > 0:
+                                eta_secs = int(remaining / speed)
+                                mins, secs = divmod(eta_secs, 60)
+                                hrs, mins = divmod(mins, 60)
+                                eta_str = f"  |  ⏳ ETA: {hrs:02d}:{mins:02d}:{secs:02d}"
+
+                    bar_len = 28
+                    filled = int(bar_len * pct / 100)
+                    bar = "█" * filled + "░" * (bar_len - filled)
+
+                    filename = os.path.basename(src)
+                    src_dir = os.path.basename(os.path.dirname(src))
+                    dest_dir = os.path.basename(os.path.dirname(data['dest']))
+
+                    print(f"\n  [{idx}] 📦 {src_dir}/{filename}")
+                    print(f"      From: {src}")
+                    print(f"      To:   {data['dest']}")
+                    print(f"      [{bar}] {pct:5.1f}%  ({fmt_size(pos)} / {fmt_size(size)}){speed_str}{eta_str}")
+
+            # 2. Chrome / Browser uploads
+            if chrome_tracker and chrome_tracker.transfers:
+                has_output = True
+                print("\n  🌐 BROWSER / CHROME UPLOADS (Podcast Connect / Web):")
+                for idx, (key, t) in enumerate(chrome_tracker.transfers.items(), 1):
+                    pos = t['current_pos']
+                    size = t['size']
+                    pct = (pos / size * 100.0) if size > 0 else 0
+                    bar_len = 28
+                    filled = int(bar_len * pct / 100)
+                    bar = "█" * filled + "░" * (bar_len - filled)
+
+                    speed_str = f"  |  ⚡ {fmt_size(t['speed'])}/s" if t['speed'] > 0 else ""
+                    eta_str = f"  |  ⏳ ETA: {chrome_upload_monitor.fmt_duration(t['eta'])}" if t['eta'] is not None else ""
+
+                    print(f"\n  [{idx}] 🌐 {t['basename']}")
+                    print(f"      Source: {t['real_path']}")
+                    print(f"      [{bar}] {pct:5.1f}%  ({fmt_size(pos)} / {fmt_size(size)}){speed_str}{eta_str}")
+
+            if not has_output:
+                print("\n  No active file copy/move operations or Chrome uploads detected right now.\n")
+
+            print("\n" + "=" * 80)
+            if '--once' in sys.argv:
+                break
+            prev = current
+            last_time = t0
+            time.sleep(1.5)
+    except KeyboardInterrupt:
+        print("\nMonitor closed.")
+
+if __name__ == '__main__':
+    main()

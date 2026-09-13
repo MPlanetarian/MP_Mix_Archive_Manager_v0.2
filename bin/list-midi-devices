@@ -1,0 +1,235 @@
+#!/usr/bin/env python3
+"""
+list-midi-devices
+A utility to detect and inspect all connected USB MIDI devices on Linux.
+Identifies hardware details, USB IDs, ALSA card numbers, RawMIDI device nodes, and ALSA Sequencer ports.
+"""
+
+import os
+import sys
+import glob
+import re
+import json
+import argparse
+import time
+
+# ANSI colors
+CYAN = "\033[1;36m"
+GREEN = "\033[1;32m"
+YELLOW = "\033[1;33m"
+MAGENTA = "\033[1;35m"
+BLUE = "\033[1;34m"
+RED = "\033[1;31m"
+BOLD = "\033[1m"
+DIM = "\033[2m"
+RESET = "\033[0m"
+
+
+def get_alsa_seq_clients():
+    """Parse /proc/asound/seq/clients to map card numbers and names to sequencer client IDs."""
+    seq_map = {}
+    clients_file = "/proc/asound/seq/clients"
+    if os.path.exists(clients_file):
+        try:
+            with open(clients_file, "r") as f:
+                content = f.read()
+            client_blocks = content.split("Client ")
+            for block in client_blocks[1:]:
+                lines = block.strip().splitlines()
+                if not lines:
+                    continue
+                header = lines[0]
+                m = re.match(r"^\s*(\d+)\s*:\s*\"([^\"]+)\"", header)
+                if m:
+                    cid = int(m.group(1))
+                    cname = m.group(2)
+                    ports = []
+                    for line in lines[1:]:
+                        pm = re.match(r"^\s*Port\s+(\d+)\s*:\s*\"([^\"]+)\"", line)
+                        if pm:
+                            ports.append({"port": int(pm.group(1)), "name": pm.group(2).strip()})
+                    seq_map[cname.lower()] = {"client_id": cid, "client_name": cname, "ports": ports}
+        except Exception:
+            pass
+    return seq_map
+
+
+def classify_device(name, manufacturer):
+    """Categorize the device (Keyboard, DJ Controller, Synthesizer, etc.)."""
+    full = f"{manufacturer} {name}".lower()
+    if "traktor" in full:
+        return "DJ Controller / Audio Interface"
+    elif any(k in full for k in ["minilab", "mpk", "keystation", "launchkey", "keyboard", "piano", "keys"]):
+        return "MIDI Keyboard Controller"
+    elif any(k in full for k in ["pad", "launchpad", "maschine", "akai force", "mpc"]):
+        return "Drum Pad / Groove Controller"
+    elif any(k in full for k in ["fader", "nano", "kontrol", "mixer", "bcf"]):
+        return "Control Surface / Mixer"
+    return "USB MIDI Device"
+
+
+def get_usb_midi_devices():
+    """Inspect sysfs for all USB sound cards with MIDI interfaces."""
+    seq_clients = get_alsa_seq_clients()
+    devices = []
+
+    for card_dir in sorted(glob.glob("/sys/class/sound/card[0-9]*"), key=lambda x: int(re.search(r'\d+', os.path.basename(x)).group())):
+        card_name = os.path.basename(card_dir)
+        card_num = int(re.search(r'\d+', card_name).group())
+
+        # Check for RawMIDI nodes
+        midi_nodes = sorted(glob.glob(os.path.join(card_dir, "midi*")))
+        if not midi_nodes:
+            continue
+
+        rawmidi_devs = []
+        for mn in midi_nodes:
+            m = re.search(r'midiC(\d+)D(\d+)', os.path.basename(mn))
+            if m:
+                c, d = m.groups()
+                dev_path = f"/dev/snd/midiC{c}D{d}"
+                rawmidi_devs.append({
+                    "device": f"hw:{c},{d}",
+                    "dev_node": dev_path,
+                    "exists": os.path.exists(dev_path)
+                })
+
+        # Locate USB device directory
+        dev_link = os.path.join(card_dir, "device")
+        if not os.path.islink(dev_link):
+            continue
+
+        target = os.path.realpath(dev_link)
+        usb_dir = target
+        while usb_dir and usb_dir != "/" and not os.path.exists(os.path.join(usb_dir, "idVendor")):
+            usb_dir = os.path.dirname(usb_dir)
+
+        if not os.path.exists(os.path.join(usb_dir, "idVendor")):
+            continue
+
+        def read_sysfs(filename, default=""):
+            p = os.path.join(usb_dir, filename)
+            if os.path.exists(p):
+                try:
+                    with open(p) as f:
+                        return f.read().strip()
+                except Exception:
+                    pass
+            return default
+
+        vendor_id = read_sysfs("idVendor")
+        product_id = read_sysfs("idProduct")
+        mfg = read_sysfs("manufacturer")
+        prod = read_sysfs("product")
+        busnum = read_sysfs("busnum")
+        devnum = read_sysfs("devnum")
+        speed = read_sysfs("speed")
+
+        card_id = ""
+        id_path = os.path.join(card_dir, "id")
+        if os.path.exists(id_path):
+            try:
+                with open(id_path) as f:
+                    card_id = f.read().strip()
+            except Exception:
+                pass
+
+        driver = "snd-usb-audio"
+        if os.path.exists("/proc/asound/cards"):
+            try:
+                with open("/proc/asound/cards") as f:
+                    proc_cards = f.read()
+                dm = re.search(rf"^\s*{card_num}\s+\[[^\]]+\]:\s+(.+?)\s+-", proc_cards, re.MULTILINE)
+                if dm:
+                    driver = dm.group(1).strip()
+            except Exception:
+                pass
+
+        seq_info = None
+        for key, sdata in seq_clients.items():
+            if (prod and key in prod.lower()) or (card_id and key in card_id.lower()) or (key in (prod or "").lower()):
+                seq_info = sdata
+                break
+
+        classification = classify_device(prod, mfg)
+
+        devices.append({
+            "name": prod or card_id,
+            "manufacturer": mfg,
+            "category": classification,
+            "usb_id": f"{vendor_id}:{product_id}",
+            "usb_bus": busnum,
+            "usb_device": devnum,
+            "usb_speed": f"{speed} Mbps" if speed else "Unknown",
+            "alsa_card": card_num,
+            "alsa_card_id": card_id,
+            "alsa_driver": driver,
+            "rawmidi_devices": rawmidi_devs,
+            "sequencer": seq_info
+        })
+
+    return devices
+
+
+def print_devices(devices):
+    if not devices:
+        print(f"{YELLOW}No USB MIDI devices found.{RESET}")
+        return
+
+    keyboards = [d for d in devices if "Keyboard" in d["category"]]
+    traktors = [d for d in devices if "DJ Controller" in d["category"] or "traktor" in d["name"].lower()]
+
+    print(f"\n{BOLD}{CYAN}=== Connected USB MIDI Devices ({len(devices)} Found) ==={RESET}\n")
+
+    for i, dev in enumerate(devices, 1):
+        cat_color = GREEN if "Keyboard" in dev["category"] else (MAGENTA if "DJ" in dev["category"] else CYAN)
+        print(f"{BOLD}{i}. {dev['manufacturer']} {dev['name']}{RESET}")
+        print(f"   Category:        {cat_color}{dev['category']}{RESET}")
+        print(f"   USB Hardware:    {dev['usb_id']} (Bus {dev['usb_bus']} Device {dev['usb_device']}, Speed: {dev['usb_speed']})")
+        print(f"   ALSA Card:       Card {dev['alsa_card']} [{dev['alsa_card_id']}] (Driver: {dev['alsa_driver']})")
+
+        raw_list = ", ".join(r["device"] + (f" ({r['dev_node']})" if r["exists"] else "") for r in dev["rawmidi_devices"])
+        print(f"   RawMIDI Ports:   {raw_list if raw_list else 'None'}")
+
+        if dev["sequencer"]:
+            ports_str = ", ".join(f"Port {p['port']}: '{p['name']}'" for p in dev["sequencer"]["ports"])
+            print(f"   ALSA Sequencer:  Client {dev['sequencer']['client_id']} ({ports_str})")
+        else:
+            print(f"   ALSA Sequencer:  Not mapped")
+        print()
+
+    print(f"{DIM}{'─' * 60}{RESET}")
+    print(f"{BOLD}Summary:{RESET} Found {GREEN}{len(keyboards)} Keyboard(s){RESET} and {MAGENTA}{len(traktors)} DJ/Traktor Controller(s){RESET}")
+    print(f"{DIM}{'─' * 60}{RESET}\n")
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Show all connected USB MIDI devices.")
+    parser.add_argument("--json", action="store_true", help="Output results in JSON format")
+    parser.add_argument("-w", "--watch", action="store_true", help="Continuously monitor for MIDI device changes")
+    args = parser.parse_args()
+
+    if args.watch:
+        prev_devs = None
+        print(f"{CYAN}Monitoring USB MIDI devices (Press Ctrl+C to exit)...{RESET}")
+        try:
+            while True:
+                devs = get_usb_midi_devices()
+                curr_ids = [d["usb_id"] + str(d["alsa_card"]) for d in devs]
+                if curr_ids != prev_devs:
+                    os.system("clear" if os.name == "posix" else "cls")
+                    print_devices(devs)
+                    prev_devs = curr_ids
+                time.sleep(1)
+        except KeyboardInterrupt:
+            print(f"\n{YELLOW}Monitoring stopped.{RESET}")
+    else:
+        devs = get_usb_midi_devices()
+        if args.json:
+            print(json.dumps(devs, indent=2))
+        else:
+            print_devices(devs)
+
+
+if __name__ == "__main__":
+    main()

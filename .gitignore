@@ -1,0 +1,70 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# Sensitive / Local Configuration
+config.env
+.env
+*.creds
+
+# Media Archives & High-Res Content (Preserve directory structure via .gitkeep)
+FLAC_CONVERTED_OUTPUTS/*
+!FLAC_CONVERTED_OUTPUTS/.gitkeep
+CONVERTED_WAV_FILES/*
+!CONVERTED_WAV_FILES/.gitkeep
+SPEK_OUTPUTS/*
+!SPEK_OUTPUTS/.gitkeep
+BACKUP_LOGS/*
+!BACKUP_LOGS/.gitkeep
+VERIFY_LOGS/*
+!VERIFY_LOGS/.gitkeep
+IMPORT_LOGS/*
+!IMPORT_LOGS/.gitkeep
+COVERS/*
+!COVERS/.gitkeep
+!assets/Cover.png
+!Cover.png
+
+# Media files
+*.wav
+*.WAV
+*.flac
+*.FLAC
+*.mp3
+*.MP3
+*.m4a
+*.ogg
+*.wma
+*.mp4
+*.mkv
+*.avi
+*.mov
+*.webm
+*.part
+
+# Disk Images and Backups
+*.img
+*.iso
+*.squashfs
+*.zip
+*.tar
+*.tar.gz
+*.tar.xz
+*.7z
+*.bak*
+
+# Execution Logs
+*.log
+
+# OS & Editor artifacts
+.directory
+.DS_Store
+Thumbs.db
+*~
+*.swp

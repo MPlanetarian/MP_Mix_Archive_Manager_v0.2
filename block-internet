@@ -1,0 +1,93 @@
+#!/bin/bash
+# Block WAN (internet) while allowing LAN, localhost, and link-local.
+# Uses an isolated nftables table so it is easy to undo.
+set -euo pipefail
+
+TABLE=inet
+TNAME=lanonly
+NEED_ROOT=1
+
+if [[ ${EUID} -ne 0 ]]; then
+  exec sudo -- "$0" "$@"
+fi
+
+if ! command -v nft >/dev/null; then
+  echo "nftables (nft) is required." >&2
+  exit 1
+fi
+
+collect_v4() {
+  ip -4 route show proto kernel | awk 'NF && $1 ~ /\// {print $1}'
+  ip -4 -o addr show scope global | awk '{print $4}'
+}
+
+collect_v6() {
+  ip -6 route show | awk 'NF && $1 ~ /\// && $1 != "default" {print $1}'
+  ip -6 -o addr show scope global | awk '{print $4}'
+}
+
+# Always-allow ranges
+V4_ALLOW=(
+  127.0.0.0/8
+  224.0.0.0/4
+  255.255.255.255/32
+)
+V6_ALLOW=(
+  ::1/128
+  fe80::/10
+  ff00::/8
+)
+
+while read -r cidr; do
+  [[ -n "$cidr" ]] && V4_ALLOW+=("$cidr")
+done < <(collect_v4)
+
+while read -r cidr; do
+  [[ -n "$cidr" ]] && V6_ALLOW+=("$cidr")
+done < <(collect_v6)
+
+# De-dupe
+mapfile -t V4_ALLOW < <(printf '%s\n' "${V4_ALLOW[@]}" | awk 'NF && !seen[$0]++')
+mapfile -t V6_ALLOW < <(printf '%s\n' "${V6_ALLOW[@]}" | awk 'NF && !seen[$0]++')
+
+nft delete table "$TABLE" "$TNAME" 2>/dev/null || true
+
+{
+  echo "table $TABLE $TNAME {"
+  echo "  chain input {"
+  echo "    type filter hook input priority -150; policy accept;"
+  echo "    iifname \"lo\" accept"
+  echo "    ct state invalid drop"
+  for c in "${V4_ALLOW[@]}"; do
+    echo "    ip saddr $c accept"
+  done
+  for c in "${V6_ALLOW[@]}"; do
+    echo "    ip6 saddr $c accept"
+  done
+  echo "    icmp type echo-request accept"
+  echo "    icmpv6 type { nd-router-advert, nd-neighbor-solicit, nd-neighbor-advert, nd-router-solicit, mld-listener-query } accept"
+  echo "    reject"
+  echo "  }"
+  echo "  chain output {"
+  echo "    type filter hook output priority -150; policy accept;"
+  echo "    oifname \"lo\" accept"
+  for c in "${V4_ALLOW[@]}"; do
+    echo "    ip daddr $c accept"
+  done
+  for c in "${V6_ALLOW[@]}"; do
+    echo "    ip6 daddr $c accept"
+  done
+  echo "    icmp type echo-request accept"
+  echo "    icmpv6 type { nd-router-advert, nd-neighbor-solicit, nd-neighbor-advert, nd-router-solicit, mld-listener-query } accept"
+  echo "    reject"
+  echo "  }"
+  echo "  chain forward {"
+  echo "    type filter hook forward priority -150; policy drop;"
+  echo "  }"
+  echo "}"
+} | nft -f -
+
+echo "Internet blocked. LAN still allowed:"
+printf '  IPv4: %s\n' "${V4_ALLOW[@]}"
+printf '  IPv6: %s\n' "${V6_ALLOW[@]}"
+echo "Undo with: unblock-internet"

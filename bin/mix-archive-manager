@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+# ==============================================================================
+# Helper: mix-archive-manager
+# Purpose: Launch Mix Archive Manager cleanly from codebase or archive directory
+# ==============================================================================
+CODEBASE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+# Load configuration if available
+if [ -f "$CODEBASE_DIR/config.env" ]; then
+    # shellcheck source=/dev/null
+    source "$CODEBASE_DIR/config.env"
+fi
+
+TARGET_DIR="${MIX_ARCHIVE_DIR:-$CODEBASE_DIR}"
+SCRIPT="$CODEBASE_DIR/Mix_Archive_Manager.sh"
+
+# If an external drive was specified in config, wait briefly for mount
+if [ -n "${MIX_ARCHIVE_DIR:-}" ] && [ ! -d "$MIX_ARCHIVE_DIR" ]; then
+    echo "Waiting for archive storage to mount..."
+    for i in {1..15}; do
+        if [ -d "$MIX_ARCHIVE_DIR" ]; then
+            break
+        fi
+        sleep 1
+    done
+fi
+
+if [ -f "$SCRIPT" ]; then
+    cd "$TARGET_DIR" && exec bash "$SCRIPT" "$@"
+else
+    echo "Error: Mix Archive Manager main script not found at '$SCRIPT'."
+    read -rp "Press Enter to exit..."
+    exit 1
+fi
