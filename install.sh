@@ -76,7 +76,7 @@ echo ""
 echo -e "${BOLD}${BLUE}[2/7] Configuring Script & Binary Permissions...${NC}"
 chmod +x "$SCRIPT_DIR"/*.sh "$SCRIPT_DIR"/*.command "$SCRIPT_DIR"/bin/* 2>/dev/null || true
 if [ -d "$SCRIPT_DIR/scripts" ]; then
-    chmod +x "$SCRIPT_DIR"/scripts/*.sh 2>/dev/null || true
+    chmod +x "$SCRIPT_DIR"/scripts/*.sh "$SCRIPT_DIR"/scripts/*.py 2>/dev/null || true
 fi
 chmod +x "$SCRIPT_DIR"/bin/cliamp 2>/dev/null || true
 echo -e "${GREEN}      ✓ Executable permissions granted across all scripts and tools.${NC}"

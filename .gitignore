@@ -72,3 +72,4 @@ exported_configs/*
 Thumbs.db
 *~
 *.swp
+assets/weather_cache.txt

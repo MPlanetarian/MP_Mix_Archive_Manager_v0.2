@@ -11,9 +11,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 🚀 Major Highlights & New Features
 
-- **Dual-Window Startup Mix Experience & Dedicated Borderless Console Tracklist Viewer**:
-  - Automatically loads and displays the playing mix's cover art in an image viewer window (`xdg-open` / Gwenview / Preview / Photos) **and** spawns the complete mix tracklist in a dedicated window on the operating system's default console.
-  - **Entirely Borderless on Bazzite Linux**: Seamlessly leverages KDE Plasma 6 KWin rules (`noborder=true`, `noborderrule=2`) and Konsole flags (`--hide-menubar`, `--hide-tabbar`, `-p TerminalMargin=0`) to present tracklists in a clean, frameless, titlebar-free floating HUD window.
+- **Centered & Vertically Aligned Cover Art & Borderless Tracklist HUD**:
+  - Positions the Cover Art Viewer and Tracklist Console side-by-side in the middle of the screen floating directly on top of the manager window (`keepAbove = true`).
+  - Seamlessly integrates with KDE Plasma 6 KWin Scripting DBus API on Bazzite Linux Wayland (`scripts/align_mix_windows.py`), with automatic fallbacks for X11 (`wmctrl`/`xdotool`) and macOS AppleScript.
+  - Zero window overlap: cover art positioned on the left and tracklist console on the right with matching vertical alignment and identical height.
+  - Automatically loads and displays the playing mix's cover art in an image viewer window (`open_cover_art_window` via Gwenview / Loupe / Preview / Photos) **and** spawns the complete mix tracklist in a dedicated window on the operating system's default console.
+  - **Entirely Borderless on Bazzite Linux**: Seamlessly leverages KDE Plasma 6 KWin rules (`noborder=true`, `noborderrule=2`, `above=true`, `aboverule=2`) and Konsole flags (`--hide-menubar`, `--hide-tabbar`, `-p TerminalMargin=0`) to present tracklists in a clean, frameless, titlebar-free floating HUD window.
   - Interactive console viewer (`scripts/view_tracklist_console.sh` & `bin/view-tracklist`):
     - Syntax-highlighted track entries with artist, title, remix/version tags, and metadata headers.
     - Hotkey controls: `[Q]` close/exit, `[C]` copy tracklist to system clipboard (`wl-copy` / `xclip` / `pbcopy`), `[S]` full interactive paging via `less`, and `[R]` reload tracklist from disk.
@@ -21,6 +24,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Automated KWin rule injection during `./install.sh` and runtime fallback via `ensure_bazzite_borderless_kwin_rule`.
   - Added archive-wide deep discovery (`find_mix_tracklist` & `find_mix_cover`) locating episode tracklists and cover artwork even within nested series subdirectories (e.g., `Stream of Frequency/070/`).
   - Enhanced startup autoplay sorting to select the true newest mix by modification time (`mtime`) rather than alphabetical sorting.
+
+- **Live Meteorological Weather Display**:
+  - Displays live weather conditions below the main startup banner (`scripts/get_weather.sh`).
+  - Default configured location: **Swansea, UK**.
+  - Meteorological cache with 20-minute TTL (`assets/weather_cache.txt`) ensures 0ms latency during banner startup renders.
+  - Complete configuration menu (`manage_weather_menu`) to toggle weather display, change location, force live refresh, or clear location and disable completely.
+
+- **Go Shopping for New Music (Option 20)**:
+  - Added `scripts/shop_music.sh` to quickly launch browser tabs for **Beatport** (`https://www.beatport.com`), **Apple Music** (`https://music.apple.com`), and **Bandcamp** (`https://bandcamp.com`).
+  - Native browser tab integration with Flatpak Google Chrome / Firefox, native browsers, or `xdg-open` / `open` / `cmd.exe`.
+
+- **Dedicated Video Player Launcher & Video Dispatcher (Option 39)**:
+  - Added `scripts/launch_specific_video.sh` to launch specific mix videos or streams in user's default video player (VLC default, mpv, Haruna, Kodi).
+  - Allows selecting from archive videos, NFT video library, custom file paths, or streaming/YouTube URLs.
+
+- **Startup Custom YouTube Video URL Autoplay**:
+  - Automatically plays custom YouTube video URL on manager start **only if a mix is playing already** in a music player.
+  - Configurable via `config.env` (`DEFAULT_VIDEO_PLAYER="vlc"`, `AUTO_PLAY_YOUTUBE_ON_STARTUP="false"`, `STARTUP_YOUTUBE_URL=""`) and interactive settings menu (Option 26 > 18 & 19).
 
 - **Mix Publishing Schedule Calendar & Multi-Platform Syndication**:
   - Added `publish_calendar_scheduler.py` and `publish_calendar_scheduler.sh` (Option 19).

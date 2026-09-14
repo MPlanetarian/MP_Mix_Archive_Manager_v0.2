@@ -195,7 +195,7 @@ open_path() {
     fi
 }
 
-# Ensure KWin rules for Borderless Terminal Window exist on Bazzite / KDE Plasma
+# Ensure KWin rules for Borderless & Keep-Above Windows exist on Bazzite / KDE Plasma
 ensure_bazzite_borderless_kwin_rule() {
     [ ! -d "$HOME/.config" ] && return 0
     local rc_path="$HOME/.config/kwinrulesrc"
@@ -213,17 +213,20 @@ if not os.path.exists(rc_path):
 cp = configparser.ConfigParser()
 cp.read(rc_path)
 
-rule_desc = 'Mix Tracklist Viewer (Borderless)'
-found = False
+# Rule 1: Mix Tracklist Viewer (Borderless & Keep Above on top of manager)
+rule_tl_desc = 'Mix Tracklist Viewer (Borderless)'
+tl_found = False
 for sec in cp.sections():
-    if cp.has_option(sec, 'description') and cp.get(sec, 'description') == rule_desc:
-        found = True
+    if cp.has_option(sec, 'description') and cp.get(sec, 'description') == rule_tl_desc:
+        tl_found = True
+        cp.set(sec, 'above', 'true')
+        cp.set(sec, 'aboverule', '2')
         break
 
-if not found:
+if not tl_found:
     new_uuid = str(uuid.uuid4())
     cp.add_section(new_uuid)
-    cp.set(new_uuid, 'description', rule_desc)
+    cp.set(new_uuid, 'description', rule_tl_desc)
     cp.set(new_uuid, 'wmclass', 'konsole')
     cp.set(new_uuid, 'wmclassmatch', '1')
     cp.set(new_uuid, 'title', 'Mix Tracklist Viewer')
@@ -231,6 +234,8 @@ if not found:
     cp.set(new_uuid, 'types', '1')
     cp.set(new_uuid, 'noborder', 'true')
     cp.set(new_uuid, 'noborderrule', '2')
+    cp.set(new_uuid, 'above', 'true')
+    cp.set(new_uuid, 'aboverule', '2')
 
     if not cp.has_section('General'):
         cp.add_section('General')
@@ -241,13 +246,111 @@ if not found:
     rules_list.append(new_uuid)
     cp.set('General', 'rules', ','.join(rules_list))
 
-    with open(rc_path, 'w') as f:
-        cp.write(f)
+# Rule 2: Mix Cover Art Viewer (Keep Above on top of manager)
+rule_cov_desc = 'Mix Cover Art Viewer (Keep Above)'
+cov_found = False
+for sec in cp.sections():
+    if cp.has_option(sec, 'description') and cp.get(sec, 'description') == rule_cov_desc:
+        cov_found = True
+        break
 
-    if os.path.exists('/usr/bin/qdbus'):
-        subprocess.run(['/usr/bin/qdbus', 'org.kde.KWin', '/KWin', 'reconfigure'], capture_output=True)
+if not cov_found:
+    new_uuid2 = str(uuid.uuid4())
+    cp.add_section(new_uuid2)
+    cp.set(new_uuid2, 'description', rule_cov_desc)
+    cp.set(new_uuid2, 'wmclass', 'gwenview')
+    cp.set(new_uuid2, 'wmclassmatch', '2')
+    cp.set(new_uuid2, 'title', 'Cover')
+    cp.set(new_uuid2, 'titlematch', '2')
+    cp.set(new_uuid2, 'types', '1')
+    cp.set(new_uuid2, 'above', 'true')
+    cp.set(new_uuid2, 'aboverule', '2')
+
+    if not cp.has_section('General'):
+        cp.add_section('General')
+    count = int(cp.get('General', 'count', fallback='0')) + 1
+    cp.set('General', 'count', str(count))
+    existing_rules = cp.get('General', 'rules', fallback='')
+    rules_list = [r.strip() for r in existing_rules.split(',') if r.strip()]
+    rules_list.append(new_uuid2)
+    cp.set('General', 'rules', ','.join(rules_list))
+
+with open(rc_path, 'w') as f:
+    cp.write(f)
+
+if os.path.exists('/usr/bin/qdbus'):
+    subprocess.run(['/usr/bin/qdbus', 'org.kde.KWin', '/KWin', 'reconfigure'], capture_output=True)
 " 2>/dev/null || true
     fi
+}
+
+align_mix_windows_on_screen() {
+    local align_sh="$SCRIPT_DIR/scripts/align_mix_windows.py"
+    [ ! -f "$align_sh" ] && align_sh="$PWD/scripts/align_mix_windows.py"
+    if [ -f "$align_sh" ] && command -v python3 >/dev/null 2>&1; then
+        (sleep 0.15; python3 "$align_sh" >/dev/null 2>&1 || true) &
+    fi
+}
+
+# Cross-Platform Open Cover Art in Dedicated Viewer (Centered on top of manager)
+open_cover_art_window() {
+    local target="$1"
+    [ -z "$target" ] || [ ! -f "$target" ] && return 1
+
+    local cover_title="Mix Cover Art Viewer"
+
+    # 1. Linux & FreeBSD
+    if [ "$OS_TYPE" = "linux" ] || [ "$OS_TYPE" = "freebsd" ]; then
+        ensure_bazzite_borderless_kwin_rule
+        if command -v flatpak >/dev/null 2>&1 && flatpak list 2>/dev/null | grep -q "org.kde.gwenview"; then
+            flatpak run org.kde.gwenview --qwindowtitle "$cover_title" "$target" >/dev/null 2>&1 &
+            (sleep 0.15; command -v xprop >/dev/null 2>&1 && xprop -name "$cover_title" -f _NET_WM_STATE 32a -set _NET_WM_STATE _NET_WM_STATE_ABOVE 2>/dev/null || true) &
+            align_mix_windows_on_screen
+            return 0
+        elif command -v gwenview >/dev/null 2>&1; then
+            gwenview --qwindowtitle "$cover_title" "$target" >/dev/null 2>&1 &
+            align_mix_windows_on_screen
+            return 0
+        elif command -v loupe >/dev/null 2>&1; then
+            loupe "$target" >/dev/null 2>&1 &
+            align_mix_windows_on_screen
+            return 0
+        elif command -v eog >/dev/null 2>&1; then
+            eog "$target" >/dev/null 2>&1 &
+            align_mix_windows_on_screen
+            return 0
+        elif command -v feh >/dev/null 2>&1; then
+            feh --title "$cover_title" --geometry 700x700 "$target" >/dev/null 2>&1 &
+            align_mix_windows_on_screen
+            return 0
+        elif command -v xdg-open >/dev/null 2>&1; then
+            xdg-open "$target" >/dev/null 2>&1 &
+            align_mix_windows_on_screen
+            return 0
+        fi
+    fi
+
+    # 2. macOS
+    if [ "$OS_TYPE" = "macos" ]; then
+        open -a Preview "$target" >/dev/null 2>&1 &
+        align_mix_windows_on_screen
+        return 0
+    fi
+
+    # 3. Windows / WSL
+    if [ "$OS_TYPE" = "windows" ]; then
+        cmd.exe /c start "" "$target" >/dev/null 2>&1 &
+        return 0
+    elif [ "$OS_TYPE" = "wsl" ]; then
+        if command -v wslview >/dev/null 2>&1; then
+            wslview "$target" >/dev/null 2>&1 &
+        elif command -v explorer.exe >/dev/null 2>&1; then
+            explorer.exe "$(wslpath -w "$target" 2>/dev/null || echo "$target")" >/dev/null 2>&1 &
+        fi
+        return 0
+    fi
+
+    open_path "$target"
 }
 
 # Cross-Platform Open Tracklist in the Default Console (Borderless on Bazzite Linux)
@@ -696,6 +799,11 @@ AUTO_SHOW_COVER_ON_STARTUP="${AUTO_SHOW_COVER_ON_STARTUP:-true}"
 AUTO_SHOW_TRACKLIST_ON_STARTUP="${AUTO_SHOW_TRACKLIST_ON_STARTUP:-true}"
 TRACKLIST_VIEWER="${TRACKLIST_VIEWER:-console}"
 AUTO_PLAY_MIX_SELECTION="${AUTO_PLAY_MIX_SELECTION:-latest}"
+DEFAULT_VIDEO_PLAYER="${DEFAULT_VIDEO_PLAYER:-vlc}"
+AUTO_PLAY_YOUTUBE_ON_STARTUP="${AUTO_PLAY_YOUTUBE_ON_STARTUP:-false}"
+STARTUP_YOUTUBE_URL="${STARTUP_YOUTUBE_URL:-}"
+WEATHER_ENABLED="${WEATHER_ENABLED:-true}"
+WEATHER_LOCATION="${WEATHER_LOCATION:-Swansea, UK}"
 STARTUP_AUTOPLAY_EXECUTED=0
 
 save_config_setting() {
@@ -4123,22 +4231,32 @@ if files:
     local player="${DEFAULT_AUDIO_PLAYER:-cliamp}"
     play_audio_file "$player" "$selected_mix"
 
-    # 2. Open cover art in image viewer window if enabled
+    # 2. Open cover art in dedicated image viewer window if enabled
     local found_cover=""
     if [ "${AUTO_SHOW_COVER_ON_STARTUP:-true}" = "true" ]; then
         found_cover=$(find_mix_cover "$selected_mix" 2>/dev/null)
         if [ -n "$found_cover" ] && [ -f "$found_cover" ]; then
-            open_path "$found_cover"
+            open_cover_art_window "$found_cover"
         fi
     fi
 
-    # 3. Find matching tracklist and open in dedicated new text editor window
+    # 3. Find matching tracklist and open in dedicated new console window
     local found_tl=""
     if [ "${AUTO_SHOW_TRACKLIST_ON_STARTUP:-true}" = "true" ]; then
         found_tl=$(find_mix_tracklist "$selected_mix" 2>/dev/null)
         if [ -n "$found_tl" ] && [ -f "$found_tl" ]; then
             open_tracklist_window "$found_tl"
         fi
+    fi
+
+    # Center and vertically align cover and tracklist on top of the manager window
+    if [ -n "$found_cover" ] || [ -n "$found_tl" ]; then
+        align_mix_windows_on_screen
+    fi
+
+    # 4. Custom YouTube video URL on startup (only if mix audio is playing!)
+    if [ "${AUTO_PLAY_YOUTUBE_ON_STARTUP:-false}" = "true" ] && [ -n "${STARTUP_YOUTUBE_URL:-}" ]; then
+        (sleep 0.6; open_video_url "$STARTUP_YOUTUBE_URL" >/dev/null 2>&1 || true) &
     fi
 
     clear
@@ -4221,6 +4339,18 @@ configure_audio_player_and_startup() {
         echo -e "  • Tracklist Window Viewer:       ${BOLD}${CYAN}${TRACKLIST_VIEWER:-console}${NC} (Dedicated Window)"
 
         echo -e "  • Startup Mix Selection Mode:    ${BOLD}${CYAN}${AUTO_PLAY_MIX_SELECTION:-latest}${NC} (Latest Episode or Random)"
+        echo -e "  • Default Video Player:          ${BOLD}${GREEN}${DEFAULT_VIDEO_PLAYER:-vlc}${NC}"
+
+        local yt_badge="${RED}DISABLED${NC}"
+        [ "${AUTO_PLAY_YOUTUBE_ON_STARTUP:-false}" = "true" ] && yt_badge="${GREEN}ENABLED${NC}"
+        echo -e "  • Startup YouTube Autoplay:      ${yt_badge} ${DIM}(Plays only when mix audio is playing)${NC}"
+        if [ -n "${STARTUP_YOUTUBE_URL:-}" ]; then
+            echo -e "  • Startup YouTube URL:           ${CYAN}${STARTUP_YOUTUBE_URL}${NC}"
+        fi
+
+        local w_badge="${RED}DISABLED${NC}"
+        [ "${WEATHER_ENABLED:-true}" = "true" ] && w_badge="${GREEN}ENABLED${NC}"
+        echo -e "  • Live Weather Banner:           ${w_badge} ${DIM}(${WEATHER_LOCATION:-Swansea, UK})${NC}"
         echo -e "  • Config File Location:          ${DIM}${SCRIPT_DIR}/config.env${NC}\n"
 
         echo -e "${BOLD}Select Player or Setting to Change:${NC}"
@@ -4242,8 +4372,11 @@ configure_audio_player_and_startup() {
         echo -e "  ${BOLD}${CYAN}15)${NC} Toggle Startup Mix Selection (Latest vs Random)"
         echo -e "  ${BOLD}${CYAN}16)${NC} Test-Play Latest Mix Right Now in Default Player (${DEFAULT_AUDIO_PLAYER})"
         echo -e "  ${BOLD}${CYAN}17)${NC} Configure Tracklist Window Viewer (${BOLD}${TRACKLIST_VIEWER:-console}${NC})"
+        echo -e "  ${BOLD}${CYAN}18)${NC} Configure Default Video Player (${BOLD}${DEFAULT_VIDEO_PLAYER:-vlc}${NC})"
+        echo -e "  ${BOLD}${CYAN}19)${NC} Configure Startup YouTube URL & Autoplay (${yt_badge})"
+        echo -e "  ${BOLD}${CYAN}20)${NC} Configure Live Weather Banner & Location (${BOLD}${WEATHER_LOCATION:-Swansea, UK}${NC})"
         echo -e "  ${BOLD}${CYAN} 0)${NC} Return to Main Menu\n"
-        read -r -p "Enter choice [0-17]: " set_choice
+        read -r -p "Enter choice [0-20]: " set_choice
 
         case "$set_choice" in
             1)
@@ -4395,6 +4528,86 @@ configure_audio_player_and_startup() {
                 save_config_setting "TRACKLIST_VIEWER" "$TRACKLIST_VIEWER"
                 echo -e "\n${GREEN}✓ Tracklist window viewer set to '${TRACKLIST_VIEWER}' and saved to config.env!${NC}"
                 sleep 1.2
+                ;;
+            18)
+                clear
+                echo -e "${BOLD}${MAGENTA}======================================================================${NC}"
+                echo -e "${BOLD}${MAGENTA}                CONFIGURE DEFAULT VIDEO PLAYER                        ${NC}"
+                echo -e "${BOLD}${MAGENTA}======================================================================${NC}\n"
+                echo -e "  Current Video Player: ${BOLD}${GREEN}${DEFAULT_VIDEO_PLAYER:-vlc}${NC}\n"
+                echo -e "  ${BOLD}${CYAN} 1)${NC} ${BOLD}vlc${NC} (VLC Media Player • Recommended)"
+                echo -e "  ${BOLD}${CYAN} 2)${NC} ${BOLD}mpv${NC} (High-performance minimalist player)"
+                echo -e "  ${BOLD}${CYAN} 3)${NC} ${BOLD}haruna${NC} (KDE Qt/QML Video Player)"
+                echo -e "  ${BOLD}${CYAN} 4)${NC} ${BOLD}kodi${NC} (Kodi Media Center)"
+                echo -e "  ${BOLD}${CYAN} 5)${NC} Custom video player command / executable"
+                echo -e "  ${BOLD}${CYAN} 0)${NC} Cancel\n"
+                read -r -p "Enter choice [0-5]: " vp_choice
+                case "$vp_choice" in
+                    1) DEFAULT_VIDEO_PLAYER="vlc" ;;
+                    2) DEFAULT_VIDEO_PLAYER="mpv" ;;
+                    3) DEFAULT_VIDEO_PLAYER="haruna" ;;
+                    4) DEFAULT_VIDEO_PLAYER="kodi" ;;
+                    5)
+                        read -r -p "Enter custom video player command: " cust_vp
+                        [ -n "$cust_vp" ] && DEFAULT_VIDEO_PLAYER="$cust_vp"
+                        ;;
+                    *) ;;
+                esac
+                save_config_setting "DEFAULT_VIDEO_PLAYER" "$DEFAULT_VIDEO_PLAYER"
+                echo -e "\n${GREEN}✓ Default video player set to '${DEFAULT_VIDEO_PLAYER}' and saved to config.env!${NC}"
+                sleep 1.2
+                ;;
+            19)
+                clear
+                echo -e "${BOLD}${MAGENTA}======================================================================${NC}"
+                echo -e "${BOLD}${MAGENTA}        CONFIGURE STARTUP CUSTOM YOUTUBE VIDEO AUTOPLAY               ${NC}"
+                echo -e "${BOLD}${MAGENTA}======================================================================${NC}\n"
+                local cur_yt="${RED}DISABLED${NC}"
+                [ "${AUTO_PLAY_YOUTUBE_ON_STARTUP:-false}" = "true" ] && cur_yt="${GREEN}ENABLED${NC}"
+                echo -e "  • Startup YouTube Autoplay: ${cur_yt}"
+                echo -e "  • Note: Autoplays ONLY if a mix is playing already in a music player!\n"
+                echo -e "  Current YouTube URL: ${CYAN}${STARTUP_YOUTUBE_URL:-None}${NC}\n"
+                echo -e "  ${BOLD}${CYAN} 1)${NC} Toggle Autoplay on/off"
+                echo -e "  ${BOLD}${CYAN} 2)${NC} Set / Change Custom YouTube Video URL"
+                echo -e "  ${BOLD}${CYAN} 3)${NC} Clear YouTube URL & Disable Autoplay"
+                echo -e "  ${BOLD}${CYAN} 0)${NC} Cancel\n"
+                read -r -p "Enter choice [0-3]: " yt_choice
+                case "$yt_choice" in
+                    1)
+                        if [ "${AUTO_PLAY_YOUTUBE_ON_STARTUP:-false}" = "true" ]; then
+                            AUTO_PLAY_YOUTUBE_ON_STARTUP="false"
+                        else
+                            AUTO_PLAY_YOUTUBE_ON_STARTUP="true"
+                        fi
+                        save_config_setting "AUTO_PLAY_YOUTUBE_ON_STARTUP" "$AUTO_PLAY_YOUTUBE_ON_STARTUP"
+                        echo -e "\n${GREEN}✓ Startup YouTube autoplay set to: ${AUTO_PLAY_YOUTUBE_ON_STARTUP}!${NC}"
+                        sleep 1
+                        ;;
+                    2)
+                        echo ""
+                        read -r -p "Enter YouTube video URL (e.g. https://www.youtube.com/watch?v=...): " new_yt
+                        if [ -n "$new_yt" ]; then
+                            STARTUP_YOUTUBE_URL="$new_yt"
+                            AUTO_PLAY_YOUTUBE_ON_STARTUP="true"
+                            save_config_setting "STARTUP_YOUTUBE_URL" "$STARTUP_YOUTUBE_URL"
+                            save_config_setting "AUTO_PLAY_YOUTUBE_ON_STARTUP" "true"
+                            echo -e "\n${GREEN}✓ Startup YouTube URL updated and enabled!${NC}"
+                            sleep 1.2
+                        fi
+                        ;;
+                    3)
+                        STARTUP_YOUTUBE_URL=""
+                        AUTO_PLAY_YOUTUBE_ON_STARTUP="false"
+                        save_config_setting "STARTUP_YOUTUBE_URL" ""
+                        save_config_setting "AUTO_PLAY_YOUTUBE_ON_STARTUP" "false"
+                        echo -e "\n${YELLOW}✓ Startup YouTube URL cleared and disabled.${NC}"
+                        sleep 1.2
+                        ;;
+                    *) ;;
+                esac
+                ;;
+            20)
+                manage_weather_menu
                 ;;
             0|[qQ])
                 return 0
@@ -5927,18 +6140,28 @@ auto_show_playing_mix_assets() {
     local mix_basename
     mix_basename=$(basename "$mix_file")
 
-    # 1. Open cover art in external image viewer window
+    # 1. Open cover art in dedicated image viewer window
     local found_cover=""
     found_cover=$(find_mix_cover "$mix_file" 2>/dev/null)
     if [ -n "$found_cover" ] && [ -f "$found_cover" ]; then
-        open_path "$found_cover"
+        open_cover_art_window "$found_cover"
     fi
 
-    # 2. Open tracklist in dedicated text editor window
+    # 2. Open tracklist in dedicated console window
     local found_tl=""
     found_tl=$(find_mix_tracklist "$mix_file" 2>/dev/null)
     if [ -n "$found_tl" ] && [ -f "$found_tl" ]; then
         open_tracklist_window "$found_tl"
+    fi
+
+    # Center and vertically align cover and tracklist on top of the manager window
+    if [ -n "$found_cover" ] || [ -n "$found_tl" ]; then
+        align_mix_windows_on_screen
+    fi
+
+    # 3. Custom YouTube video URL on startup (only if mix audio is playing!)
+    if [ "${AUTO_PLAY_YOUTUBE_ON_STARTUP:-false}" = "true" ] && [ -n "${STARTUP_YOUTUBE_URL:-}" ]; then
+        (sleep 0.6; open_video_url "$STARTUP_YOUTUBE_URL" >/dev/null 2>&1 || true) &
     fi
 
     clear
@@ -5983,6 +6206,171 @@ check_and_show_currently_playing_mix() {
     current_mix=$(detect_currently_playing_mix 2>/dev/null)
     if [ -n "$current_mix" ] && [ -f "$current_mix" ]; then
         auto_show_playing_mix_assets "$current_mix" "Active Player"
+    fi
+}
+
+open_video_url() {
+    local url="$1"
+    [ -z "$url" ] && return 1
+
+    local player="${DEFAULT_VIDEO_PLAYER:-vlc}"
+    if [ "$player" = "vlc" ]; then
+        if command -v vlc >/dev/null 2>&1; then
+            vlc "$url" >/dev/null 2>&1 &
+            return 0
+        elif command -v flatpak >/dev/null 2>&1 && flatpak list 2>/dev/null | grep -q "org.videolan.VLC"; then
+            flatpak run org.videolan.VLC "$url" >/dev/null 2>&1 &
+            return 0
+        fi
+    elif [ "$player" = "mpv" ]; then
+        if command -v mpv >/dev/null 2>&1; then
+            mpv "$url" >/dev/null 2>&1 &
+            return 0
+        fi
+    fi
+
+    # Fallback to default web browser
+    if command -v flatpak >/dev/null 2>&1 && flatpak list 2>/dev/null | grep -q "com.google.Chrome"; then
+        flatpak run com.google.Chrome "$url" >/dev/null 2>&1 &
+    elif command -v google-chrome >/dev/null 2>&1; then
+        google-chrome "$url" >/dev/null 2>&1 &
+    elif command -v firefox >/dev/null 2>&1; then
+        firefox "$url" >/dev/null 2>&1 &
+    elif command -v xdg-open >/dev/null 2>&1; then
+        xdg-open "$url" >/dev/null 2>&1 &
+    elif [ "$OS_TYPE" = "macos" ]; then
+        open "$url" >/dev/null 2>&1 &
+    elif [ "$OS_TYPE" = "windows" ]; then
+        cmd.exe /c start "" "$url" >/dev/null 2>&1 &
+    fi
+}
+
+get_current_weather() {
+    [ "${WEATHER_ENABLED:-true}" != "true" ] && return 0
+    [ -z "${WEATHER_LOCATION:-}" ] && return 0
+
+    local weather_sh="$SCRIPT_DIR/scripts/get_weather.sh"
+    [ ! -f "$weather_sh" ] && weather_sh="$PWD/scripts/get_weather.sh"
+    if [ -x "$weather_sh" ]; then
+        local w_data
+        w_data=$("$weather_sh" get 2>/dev/null)
+        if [ -n "$w_data" ]; then
+            echo -e "  ${BOLD}${CYAN}🌤️  Weather:${NC} ${WHITE}${w_data}${NC}  ${DIM}(${WEATHER_LOCATION})${NC}"
+        fi
+    fi
+}
+
+manage_weather_menu() {
+    while true; do
+        clear
+        echo -e "${BOLD}${MAGENTA}======================================================================${NC}"
+        echo -e "${BOLD}${MAGENTA}             METEOROLOGICAL & LIVE WEATHER SETTINGS                   ${NC}"
+        echo -e "${BOLD}${MAGENTA}======================================================================${NC}\n"
+        local w_badge="${RED}DISABLED${NC}"
+        [ "${WEATHER_ENABLED:-true}" = "true" ] && w_badge="${GREEN}ENABLED${NC}"
+        echo -e "  • ${BOLD}Weather Banner Display:${NC} ${w_badge}"
+        echo -e "  • ${BOLD}Configured Location:${NC}    ${BOLD}${CYAN}${WEATHER_LOCATION:-Not Set}${NC}"
+
+        local weather_sh="$SCRIPT_DIR/scripts/get_weather.sh"
+        [ ! -f "$weather_sh" ] && weather_sh="$PWD/scripts/get_weather.sh"
+        if [ -x "$weather_sh" ]; then
+            local current_w
+            current_w=$("$weather_sh" get 2>/dev/null)
+            if [ -n "$current_w" ]; then
+                echo -e "  • ${BOLD}Current Conditions:${NC}     ${WHITE}${current_w}${NC}"
+            fi
+        fi
+        echo -e "  • ${BOLD}Config File:${NC}            ${DIM}${SCRIPT_DIR}/config.env${NC}\n"
+
+        echo -e "${BOLD}Select an option:${NC}"
+        echo -e "  ${BOLD}${CYAN} 1)${NC} Toggle Weather Display (${w_badge})"
+        echo -e "  ${BOLD}${CYAN} 2)${NC} Change / Update Weather Location (${BOLD}${WEATHER_LOCATION:-Swansea, UK}${NC})"
+        echo -e "  ${BOLD}${CYAN} 3)${NC} Force Refresh Weather Now (Fetch live meteorological data)"
+        echo -e "  ${BOLD}${CYAN} 4)${NC} Remove / Clear Weather Location (Disables weather display)"
+        echo -e "  ${BOLD}${CYAN} 0)${NC} Return to Previous Menu\n"
+        read -r -p "Enter choice [0-4]: " w_choice
+
+        case "$w_choice" in
+            1)
+                if [ "${WEATHER_ENABLED:-true}" = "true" ]; then
+                    WEATHER_ENABLED="false"
+                else
+                    WEATHER_ENABLED="true"
+                fi
+                save_config_setting "WEATHER_ENABLED" "$WEATHER_ENABLED"
+                echo -e "\n${GREEN}✓ Weather display set to '${WEATHER_ENABLED}' and saved to config.env!${NC}"
+                sleep 1
+                ;;
+            2)
+                echo ""
+                echo -e "Current Location: ${CYAN}${WEATHER_LOCATION:-Swansea, UK}${NC}"
+                read -r -p "Enter new location (e.g. 'Swansea, UK', 'London, UK', 'Cardiff, UK'): " new_loc
+                if [ -n "$new_loc" ]; then
+                    WEATHER_LOCATION="$new_loc"
+                    WEATHER_ENABLED="true"
+                    save_config_setting "WEATHER_LOCATION" "$WEATHER_LOCATION"
+                    save_config_setting "WEATHER_ENABLED" "true"
+                    [ -x "$weather_sh" ] && "$weather_sh" clear >/dev/null 2>&1 || true
+                    echo -e "\n${GREEN}✓ Weather location updated to '${WEATHER_LOCATION}'!${NC}"
+                    sleep 1
+                fi
+                ;;
+            3)
+                echo ""
+                if [ -x "$weather_sh" ]; then
+                    "$weather_sh" refresh
+                fi
+                sleep 1.2
+                ;;
+            4)
+                WEATHER_LOCATION=""
+                WEATHER_ENABLED="false"
+                save_config_setting "WEATHER_LOCATION" ""
+                save_config_setting "WEATHER_ENABLED" "false"
+                [ -x "$weather_sh" ] && "$weather_sh" clear >/dev/null 2>&1 || true
+                echo -e "\n${YELLOW}✓ Weather location cleared and weather display disabled.${NC}"
+                sleep 1.2
+                ;;
+            0|[qQ])
+                return 0
+                ;;
+            *)
+                echo -e "\n${RED}Invalid choice!${NC}"
+                sleep 1
+                ;;
+        esac
+    done
+}
+
+manage_video_dispatcher() {
+    local video_sh="$SCRIPT_DIR/scripts/launch_specific_video.sh"
+    [ ! -f "$video_sh" ] && video_sh="$PWD/scripts/launch_specific_video.sh"
+    if [ -x "$video_sh" ]; then
+        "$video_sh"
+    elif [ -f "$video_sh" ]; then
+        bash "$video_sh"
+    else
+        launch_vlc
+    fi
+}
+
+shop_for_new_music_menu() {
+    local shop_sh="$SCRIPT_DIR/scripts/shop_music.sh"
+    [ ! -f "$shop_sh" ] && shop_sh="$PWD/scripts/shop_music.sh"
+    if [ -x "$shop_sh" ]; then
+        "$shop_sh"
+    elif [ -f "$shop_sh" ]; then
+        bash "$shop_sh"
+    else
+        if command -v flatpak >/dev/null 2>&1 && flatpak list 2>/dev/null | grep -q "com.google.Chrome"; then
+            flatpak run com.google.Chrome "https://www.beatport.com" "https://music.apple.com" "https://bandcamp.com" >/dev/null 2>&1 &
+        else
+            xdg-open "https://www.beatport.com" >/dev/null 2>&1 &
+            sleep 0.2
+            xdg-open "https://music.apple.com" >/dev/null 2>&1 &
+            sleep 0.2
+            xdg-open "https://bandcamp.com" >/dev/null 2>&1 &
+        fi
     fi
 }
 
@@ -6132,6 +6520,10 @@ while true; do
     echo -e "  ${os_badge}  ${BOLD}${BLUE}│${NC}  ${BOLD}${CYAN}🐚 Shell:${NC} ${shell_info}  ${BOLD}${BLUE}│${NC}  ${BOLD}${CYAN}📅 Date:${NC} ${current_datetime}"
     sys_perf=$(get_system_perf_stats)
     echo -e "${sys_perf}"
+    if [ "${WEATHER_ENABLED:-true}" = "true" ] && [ -n "${WEATHER_LOCATION:-}" ]; then
+        current_weather=$(get_current_weather)
+        [ -n "$current_weather" ] && echo -e "${current_weather}"
+    fi
     echo -e "${BOLD}${MAGENTA}-----------------------------------------------------------------------------------${NC}"
     echo ""
     
@@ -6140,7 +6532,7 @@ while true; do
     echo ""
     echo -e "${BOLD}Select an operation:${NC}"
     
-        echo -e "\n  ${BOLD}${BLUE}─── [ SECTION 1: MIX ARCHIVE WORKFLOW & INGESTION ] ─────────${NC}"
+    echo -e "\n  ${BOLD}${BLUE}─── [ SECTION 1: MIX ARCHIVE WORKFLOW & INGESTION ] ─────────${NC}"
     echo -e "  ${BOLD}${CYAN} 1)${NC} Run FLAC Conversion Process (${GREEN}Make_SOF_FLAC_CONVERSION.sh${NC})"
     echo -e "  ${BOLD}${CYAN} 2)${NC} Convert Audio Formats & Bit Depths (${GREEN}WAV to MP3, OGG, AAC, ALAC, WAV 32/24/16${NC})"
     echo -e "  ${BOLD}${CYAN} 3)${NC} Retrieve Unconverted WAVs from Archive (${GREEN}MOVE_NOT_CONVERTED_WAVS.sh${NC})"
@@ -6162,95 +6554,96 @@ while true; do
     echo -e "  ${BOLD}${CYAN}17)${NC} Launch MusicBrainz Picard Meta Tag Editor (${GREEN}Auto-install if missing${NC})"
     echo -e "  ${BOLD}${CYAN}18)${NC} Promotional & Publisher Outreach Emails (${GREEN}Promoters, Publishers, Radio, Labels${NC})"
     echo -e "  ${BOLD}${CYAN}19)${NC} Mix Publishing Schedule & Multi-Platform Syndication (${GREEN}Apple Podcasts, Spotify, YouTube, SoundCloud, RSS, iCal${NC})"
+    echo -e "  ${BOLD}${CYAN}20)${NC} Go Shopping for New Music (${GREEN}Beatport, Apple Music & Bandcamp Tabs${NC})"
     
     echo -e "\n  ${BOLD}${BLUE}─── [ SECTION 3: AUDIO PLAYBACK, DAWS & SOUND SUITE ] ───────${NC}"
-    echo -e "  ${BOLD}${CYAN}20)${NC} Digital Audio Workstations (DAWs) Menu (${GREEN}Reaper, Logic Pro, FL Studio, Traktor, Ardour, Bitwig...${NC})"
-    echo -e "  ${BOLD}${CYAN}21)${NC} Open Mix WAV/FLAC Audio File in DAW (${GREEN}Direct Mix Search/Select & Dispatch${NC})"
-    echo -e "  ${BOLD}${CYAN}22)${NC} Acoustic Spectrogram Suite & Audio Analysis (${GREEN}Spek, Sonic Visualiser, SoX 24-bit, Praat, Kwave${NC})"
-    echo -e "  ${BOLD}${CYAN}23)${NC} Launch Audacity Audio Editor (${GREEN}audacity${NC})"
-    echo -e "  ${BOLD}${CYAN}24)${NC} Launch Audio Players Menu (${GREEN}cliamp, Strawberry, VLC, foobar2000, Winamp, Apple Music...${NC})"
-    echo -e "  ${BOLD}${CYAN}25)${NC} Configure Default Audio Player & Startup Autoplay (${GREEN}Current: ${DEFAULT_AUDIO_PLAYER:-cliamp}${NC})"
-    echo -e "  ${BOLD}${CYAN}26)${NC} cliamp Music Player & Track Control (${GREEN}Now Playing Path, Controls & Launch${NC})"
-    echo -e "  ${BOLD}${CYAN}27)${NC} Custom Mix Playlists Suite (.m3u8 / .xspf) (${GREEN}Create, Edit & Launch in cliamp/Strawberry/VLC${NC})"
-    echo -e "  ${BOLD}${CYAN}28)${NC} Launch Strawberry Music Player (New Window) (${GREEN}strawberry${NC})"
-    echo -e "  ${BOLD}${CYAN}29)${NC} Launch VLC Media Player (${GREEN}vlc / org.videolan.VLC${NC})"
-    echo -e "  ${BOLD}${CYAN}30)${NC} Launch Haruna Media Player (${GREEN}org.kde.haruna${NC})"
-    echo -e "  ${BOLD}${CYAN}31)${NC} Launch Kodi Entertainment Center (${GREEN}tv.kodi.Kodi${NC})"
-    echo -e "  ${BOLD}${CYAN}32)${NC} Show Connected USB MIDI Devices (${GREEN}list-midi-devices${NC})"
-    echo -e "  ${BOLD}${CYAN}33)${NC} Studio Hardware & Software Inspector (${GREEN}PipeWire, ALSA, DAWs, MIDI Controllers & Surfaces${NC})"
-    echo -e "  ${BOLD}${CYAN}34)${NC} Toggle Audio Mute / Unmute & Master Volume Control (${GREEN}Instant PipeWire/ALSA Mute${NC})"
+    echo -e "  ${BOLD}${CYAN}21)${NC} Digital Audio Workstations (DAWs) Menu (${GREEN}Reaper, Logic Pro, FL Studio, Traktor, Ardour, Bitwig...${NC})"
+    echo -e "  ${BOLD}${CYAN}22)${NC} Open Mix WAV/FLAC Audio File in DAW (${GREEN}Direct Mix Search/Select & Dispatch${NC})"
+    echo -e "  ${BOLD}${CYAN}23)${NC} Acoustic Spectrogram Suite & Audio Analysis (${GREEN}Spek, Sonic Visualiser, SoX 24-bit, Praat, Kwave${NC})"
+    echo -e "  ${BOLD}${CYAN}24)${NC} Launch Audacity Audio Editor (${GREEN}audacity${NC})"
+    echo -e "  ${BOLD}${CYAN}25)${NC} Launch Audio Players Menu (${GREEN}cliamp, Strawberry, VLC, foobar2000, Winamp, Apple Music...${NC})"
+    echo -e "  ${BOLD}${CYAN}26)${NC} Configure Default Audio Player & Startup Autoplay (${GREEN}Current: ${DEFAULT_AUDIO_PLAYER:-cliamp}${NC})"
+    echo -e "  ${BOLD}${CYAN}27)${NC} cliamp Music Player & Track Control (${GREEN}Now Playing Path, Controls & Launch${NC})"
+    echo -e "  ${BOLD}${CYAN}28)${NC} Custom Mix Playlists Suite (.m3u8 / .xspf) (${GREEN}Create, Edit & Launch in cliamp/Strawberry/VLC${NC})"
+    echo -e "  ${BOLD}${CYAN}29)${NC} Launch Strawberry Music Player (New Window) (${GREEN}strawberry${NC})"
+    echo -e "  ${BOLD}${CYAN}30)${NC} Launch VLC Media Player (${GREEN}vlc / org.videolan.VLC${NC})"
+    echo -e "  ${BOLD}${CYAN}31)${NC} Launch Haruna Media Player (${GREEN}org.kde.haruna${NC})"
+    echo -e "  ${BOLD}${CYAN}32)${NC} Launch Kodi Entertainment Center (${GREEN}tv.kodi.Kodi${NC})"
+    echo -e "  ${BOLD}${CYAN}33)${NC} Show Connected USB MIDI Devices (${GREEN}list-midi-devices${NC})"
+    echo -e "  ${BOLD}${CYAN}34)${NC} Studio Hardware & Software Inspector (${GREEN}PipeWire, ALSA, DAWs, MIDI Controllers & Surfaces${NC})"
+    echo -e "  ${BOLD}${CYAN}35)${NC} Toggle Audio Mute / Unmute & Master Volume Control (${GREEN}Instant PipeWire/ALSA Mute${NC})"
     
     echo -e "\n  ${BOLD}${BLUE}─── [ SECTION 4: VIDEO PRODUCTION, ART & VISUAL MEDIA ] ─────${NC}"
-    echo -e "  ${BOLD}${CYAN}35)${NC} Generate YouTube Video (4K UHD, 1080p, 720p with NVENC/Hardware)"
-    echo -e "  ${BOLD}${CYAN}36)${NC} Cut Video File (.mp4 / .mkv) (${GREEN}Cut_Video.sh${NC})"
-    echo -e "  ${BOLD}${CYAN}37)${NC} Launch Video Playlists (NFT Videos (VLC))"
-    echo -e "  ${BOLD}${CYAN}38)${NC} Launch VLC Video Player (${GREEN}vlc${NC})"
-    echo -e "  ${BOLD}${CYAN}39)${NC} Launch GIMP Image Editor (${GREEN}gimp / org.gimp.GIMP${NC})"
-    echo -e "  ${BOLD}${CYAN}40)${NC} Convert Cover Art & Resize / Byte Target (${GREEN}1MB Podcast, WebP/JPG/PNG, Sizes${NC})"
-    echo -e "  ${BOLD}${CYAN}41)${NC} View Cover Art by Mix Number (External Viewer)"
-    echo -e "  ${BOLD}${CYAN}42)${NC} Procedural Gradient .PPM Cover Art Generator (${GREEN}Netpbm P6 Binary, Palettes, Typography Overlays${NC})"
-    echo -e "  ${BOLD}${CYAN}43)${NC} Launch Electric Sheep Generative Screensaver (${GREEN}electricsheep / infinidream${NC})"
-    echo -e "  ${BOLD}${CYAN}44)${NC} Synchronized Mix-Video Companion Player Daemon (${GREEN}Auto-play Video on Mix Start, Close on Stop${NC})"
+    echo -e "  ${BOLD}${CYAN}36)${NC} Generate YouTube Video (4K UHD, 1080p, 720p with NVENC/Hardware)"
+    echo -e "  ${BOLD}${CYAN}37)${NC} Cut Video File (.mp4 / .mkv) (${GREEN}Cut_Video.sh${NC})"
+    echo -e "  ${BOLD}${CYAN}38)${NC} Launch Video Playlists (NFT Videos (VLC))"
+    echo -e "  ${BOLD}${CYAN}39)${NC} Launch Specific Video in Default Video Player (${GREEN}${DEFAULT_VIDEO_PLAYER:-vlc}${NC})"
+    echo -e "  ${BOLD}${CYAN}40)${NC} Launch GIMP Image Editor (${GREEN}gimp / org.gimp.GIMP${NC})"
+    echo -e "  ${BOLD}${CYAN}41)${NC} Convert Cover Art & Resize / Byte Target (${GREEN}1MB Podcast, WebP/JPG/PNG, Sizes${NC})"
+    echo -e "  ${BOLD}${CYAN}42)${NC} View Cover Art by Mix Number (External Viewer)"
+    echo -e "  ${BOLD}${CYAN}43)${NC} Procedural Gradient .PPM Cover Art Generator (${GREEN}Netpbm P6 Binary, Palettes, Typography Overlays${NC})"
+    echo -e "  ${BOLD}${CYAN}44)${NC} Launch Electric Sheep Generative Screensaver (${GREEN}electricsheep / infinidream${NC})"
+    echo -e "  ${BOLD}${CYAN}45)${NC} Synchronized Mix-Video Companion Player Daemon (${GREEN}Auto-play Video on Mix Start, Close on Stop${NC})"
     
     echo -e "\n  ${BOLD}${BLUE}─── [ SECTION 5: LIVE MONITORS & SYSTEM DIAGNOSTICS ] ───────${NC}"
-    echo -e "  ${BOLD}${CYAN}45)${NC} Launch Live Tracklist Monitor (${GREEN}SOF_Live_Tracker.sh${NC})"
-    echo -e "  ${BOLD}${CYAN}46)${NC} Launch Live File Transfer Monitor (${GREEN}transfer-monitor${NC})"
-    echo -e "  ${BOLD}${CYAN}47)${NC} Launch Chrome Upload Monitor (${GREEN}Podcast Connect / Web Uploads${NC})"
-    echo -e "  ${BOLD}${CYAN}48)${NC} View Advanced Archive Statistics (${GREEN}SOF_Archive_Stats.sh${NC})"
-    echo -e "  ${BOLD}${CYAN}49)${NC} View Running Background Tasks"
-    echo -e "  ${BOLD}${CYAN}50)${NC} Launch Resource Monitor (${GREEN}btop${NC})"
-    echo -e "  ${BOLD}${CYAN}51)${NC} Launch GPU Process Monitor (${GREEN}nvtop${NC})"
-    echo -e "  ${BOLD}${CYAN}52)${NC} Launch System Process Monitor (${GREEN}top${NC})"
+    echo -e "  ${BOLD}${CYAN}46)${NC} Launch Live Tracklist Monitor (${GREEN}SOF_Live_Tracker.sh${NC})"
+    echo -e "  ${BOLD}${CYAN}47)${NC} Launch Live File Transfer Monitor (${GREEN}transfer-monitor${NC})"
+    echo -e "  ${BOLD}${CYAN}48)${NC} Launch Chrome Upload Monitor (${GREEN}Podcast Connect / Web Uploads${NC})"
+    echo -e "  ${BOLD}${CYAN}49)${NC} View Advanced Archive Statistics (${GREEN}SOF_Archive_Stats.sh${NC})"
+    echo -e "  ${BOLD}${CYAN}50)${NC} View Running Background Tasks"
+    echo -e "  ${BOLD}${CYAN}51)${NC} Launch Resource Monitor (${GREEN}btop${NC})"
+    echo -e "  ${BOLD}${CYAN}52)${NC} Launch GPU Process Monitor (${GREEN}nvtop${NC})"
+    echo -e "  ${BOLD}${CYAN}53)${NC} Launch System Process Monitor (${GREEN}top${NC})"
     
     echo -e "\n  ${BOLD}${BLUE}─── [ SECTION 6: SYSTEM, NETWORK & HARDWARE MANAGEMENT ] ────${NC}"
-    echo -e "  ${BOLD}${CYAN}53)${NC} Manage WAN2GP Server (Start, Stop, Restart in Profile 2 or 4.5)"
-    echo -e "  ${BOLD}${CYAN}54)${NC} Manage Network Services (SSH, Samba, FTP - Start, Stop, Restart All)"
-    echo -e "  ${BOLD}${CYAN}55)${NC} Block Internet Access (LAN Only) (${GREEN}block-internet${NC})"
-    echo -e "  ${BOLD}${CYAN}56)${NC} Restore / Unblock Internet Access (${GREEN}unblock-internet${NC})"
+    echo -e "  ${BOLD}${CYAN}54)${NC} Manage WAN2GP Server (Start, Stop, Restart in Profile 2 or 4.5)"
+    echo -e "  ${BOLD}${CYAN}55)${NC} Manage Network Services (SSH, Samba, FTP - Start, Stop, Restart All)"
+    echo -e "  ${BOLD}${CYAN}56)${NC} Block Internet Access (LAN Only) (${GREEN}block-internet${NC})"
+    echo -e "  ${BOLD}${CYAN}57)${NC} Restore / Unblock Internet Access (${GREEN}unblock-internet${NC})"
     if [ "$OS_TYPE" = "macos" ]; then
-        echo -e "  ${BOLD}${CYAN}57)${NC} Open macOS Display Settings (${GREEN}Displays, Arrangement & HDR${NC})"
-        echo -e "  ${BOLD}${CYAN}58)${NC} Open macOS Audio MIDI Setup (${GREEN}Sample Rates & Output Devices${NC})"
+        echo -e "  ${BOLD}${CYAN}58)${NC} Open macOS Display Settings (${GREEN}Displays, Arrangement & HDR${NC})"
+        echo -e "  ${BOLD}${CYAN}59)${NC} Open macOS Audio MIDI Setup (${GREEN}Sample Rates & Output Devices${NC})"
     elif [ "$OS_TYPE" = "windows" ] || [ "$OS_TYPE" = "wsl" ]; then
-        echo -e "  ${BOLD}${CYAN}57)${NC} Open Windows Display Settings (${GREEN}ms-settings:display - HDR & Scale${NC})"
-        echo -e "  ${BOLD}${CYAN}58)${NC} Open Windows Sound Settings (${GREEN}control.exe mmsys.cpl${NC})"
+        echo -e "  ${BOLD}${CYAN}58)${NC} Open Windows Display Settings (${GREEN}ms-settings:display - HDR & Scale${NC})"
+        echo -e "  ${BOLD}${CYAN}59)${NC} Open Windows Sound Settings (${GREEN}control.exe mmsys.cpl${NC})"
     else
-        echo -e "  ${BOLD}${CYAN}57)${NC} Switch Desktop to Plasma Wayland (HDR Gaming on Hisense & Steam BPM)"
-        echo -e "  ${BOLD}${CYAN}58)${NC} Switch Desktop to Plasma X11 (Workstation 4-Screen Defasten)"
+        echo -e "  ${BOLD}${CYAN}58)${NC} Switch Desktop to Plasma Wayland (HDR Gaming on Hisense & Steam BPM)"
+        echo -e "  ${BOLD}${CYAN}59)${NC} Switch Desktop to Plasma X11 (Workstation 4-Screen Defasten)"
     fi
-    echo -e "  ${BOLD}${CYAN}59)${NC} Close All Desktop Applications (Keep Manager Open)"
+    echo -e "  ${BOLD}${CYAN}60)${NC} Close All Desktop Applications (Keep Manager Open)"
     if [ "$OS_TYPE" = "macos" ]; then
-        echo -e "  ${BOLD}${CYAN}60)${NC} macOS System Maintenance & Cleanup (${GREEN}brew cleanup, purge RAM, caches${NC})"
+        echo -e "  ${BOLD}${CYAN}61)${NC} macOS System Maintenance & Cleanup (${GREEN}brew cleanup, purge RAM, caches${NC})"
     elif [ "$OS_TYPE" = "windows" ] || [ "$OS_TYPE" = "wsl" ]; then
-        echo -e "  ${BOLD}${CYAN}60)${NC} Windows System Maintenance & Cleanup (${GREEN}winget upgrade, clean temp, TRIM${NC})"
+        echo -e "  ${BOLD}${CYAN}61)${NC} Windows System Maintenance & Cleanup (${GREEN}winget upgrade, clean temp, TRIM${NC})"
     elif [ "$OS_TYPE" = "freebsd" ]; then
-        echo -e "  ${BOLD}${CYAN}60)${NC} FreeBSD System Maintenance & Cleanup (${GREEN}pkg upgrade, pkg clean, autoremove, audit${NC})"
+        echo -e "  ${BOLD}${CYAN}61)${NC} FreeBSD System Maintenance & Cleanup (${GREEN}pkg upgrade, pkg clean, autoremove, audit${NC})"
     else
-        echo -e "  ${BOLD}${CYAN}60)${NC} Bazzite System Maintenance & Cleanup (${GREEN}ujust clean-system, update, trim, logs${NC})"
+        echo -e "  ${BOLD}${CYAN}61)${NC} Bazzite System Maintenance & Cleanup (${GREEN}ujust clean-system, update, trim, logs${NC})"
     fi
-    echo -e "  ${BOLD}${CYAN}61)${NC} Launch GeeXLab Demo Launcher (${GREEN}FurMark_linux64/demo_launcher.sh${NC})"
-    echo -e "  ${BOLD}${CYAN}62)${NC} Burn ISO Image to USB Drive (${GREEN}dd / diskutil with safety checks${NC})"
-    echo -e "  ${BOLD}${CYAN}63)${NC} Dynamic System MOTD Banner Manager (${GREEN}Last 5 Mixes, Date/Time, Size, Format & Specs${NC})"
+    echo -e "  ${BOLD}${CYAN}62)${NC} Launch GeeXLab Demo Launcher (${GREEN}FurMark_linux64/demo_launcher.sh${NC})"
+    echo -e "  ${BOLD}${CYAN}63)${NC} Burn ISO Image to USB Drive (${GREEN}dd / diskutil with safety checks${NC})"
+    echo -e "  ${BOLD}${CYAN}64)${NC} Dynamic System MOTD Banner Manager (${GREEN}Last 5 Mixes, Date/Time, Size, Format & Specs${NC})"
     
     echo -e "\n  ${BOLD}${BLUE}─── [ SECTION 7: AI, SHELL CLI & SETTINGS ] ──────────────────${NC}"
-    echo -e "  ${BOLD}${CYAN}64)${NC} Launch AI Assistant / Models (${GREEN}Claude Opus, Claude Sonnet, GPT-OSS, Gemini${NC})"
-    echo -e "  ${BOLD}${CYAN}65)${NC} Run Bash CLI Commands (${GREEN}Interactive Shell & Direct Runner${NC})"
-    echo -e "  ${BOLD}${CYAN}66)${NC} Manager Themes & Color Palette Switcher (${GREEN}8 Themes + Classic${NC})"
-    echo -e "  ${BOLD}${CYAN}67)${NC} Manage Installation & Configuration (${GREEN}Migrate Path, Backup, Export & Import Config${NC})"
+    echo -e "  ${BOLD}${CYAN}65)${NC} Launch AI Assistant / Models (${GREEN}Claude Opus, Claude Sonnet, GPT-OSS, Gemini${NC})"
+    echo -e "  ${BOLD}${CYAN}66)${NC} Run Bash CLI Commands (${GREEN}Interactive Shell & Direct Runner${NC})"
+    echo -e "  ${BOLD}${CYAN}67)${NC} Manager Themes & Color Palette Switcher (${GREEN}8 Themes + Classic${NC})"
+    echo -e "  ${BOLD}${CYAN}68)${NC} Manage Installation & Configuration (${GREEN}Migrate Path, Backup, Export & Import Config${NC})"
     if [ "$OS_TYPE" = "macos" ]; then
-        echo -e "  ${BOLD}${CYAN}68)${NC} Reboot System (${RED}macOS restart with confirmation${NC})"
+        echo -e "  ${BOLD}${CYAN}69)${NC} Reboot System (${RED}macOS restart with confirmation${NC})"
     elif [ "$OS_TYPE" = "windows" ] || [ "$OS_TYPE" = "wsl" ]; then
-        echo -e "  ${BOLD}${CYAN}68)${NC} Reboot System (${RED}Windows restart with confirmation${NC})"
+        echo -e "  ${BOLD}${CYAN}69)${NC} Reboot System (${RED}Windows restart with confirmation${NC})"
     elif [ "$OS_TYPE" = "freebsd" ]; then
-        echo -e "  ${BOLD}${CYAN}68)${NC} Reboot System (${RED}FreeBSD restart with confirmation${NC})"
+        echo -e "  ${BOLD}${CYAN}69)${NC} Reboot System (${RED}FreeBSD restart with confirmation${NC})"
     else
-        echo -e "  ${BOLD}${CYAN}68)${NC} Reboot System (${RED}systemctl reboot with confirmation${NC})"
+        echo -e "  ${BOLD}${CYAN}69)${NC} Reboot System (${RED}systemctl reboot with confirmation${NC})"
     fi
     
     echo -e "\n  ${BOLD}${BLUE}──────────────────────────────────────────────────────────────${NC}"
     get_manager_uptime
-    echo -e "  ${BOLD}${CYAN}69)${NC} Exit Manager ${DIM}(or 0 / q)${NC}"
+    echo -e "  ${BOLD}${CYAN}70)${NC} Exit Manager ${DIM}(or 0 / q)${NC}"
     echo ""
-    read -r -p "Enter choice [1-69, or q to exit]: " choice
+    read -r -p "Enter choice [1-70, or q to exit]: " choice
     
     case $choice in
         1)
@@ -6324,83 +6717,86 @@ while true; do
             manage_publishing_schedule
             ;;
         20)
-            manage_daws
+            shop_for_new_music_menu
             ;;
         21)
-            open_mix_in_daw
+            manage_daws
             ;;
         22)
-            manage_spek_generation
+            open_mix_in_daw
             ;;
         23)
-            launch_audacity
+            manage_spek_generation
             ;;
         24)
-            manage_audio_players
+            launch_audacity
             ;;
         25)
-            configure_audio_player_and_startup
+            manage_audio_players
             ;;
         26)
-            manage_cliamp
+            configure_audio_player_and_startup
             ;;
         27)
-            manage_playlists_menu
+            manage_cliamp
             ;;
         28)
-            launch_strawberry
+            manage_playlists_menu
             ;;
         29)
-            launch_vlc
+            launch_strawberry
             ;;
         30)
-            launch_haruna
+            launch_vlc
             ;;
         31)
-            launch_kodi
+            launch_haruna
             ;;
         32)
-            list_usb_midi_devices
+            launch_kodi
             ;;
         33)
-            inspect_audio_studio_menu
+            list_usb_midi_devices
             ;;
         34)
-            toggle_audio_mute
+            inspect_audio_studio_menu
             ;;
         35)
-            generate_youtube_video
+            toggle_audio_mute
             ;;
         36)
+            generate_youtube_video
+            ;;
+        37)
             cut_video_clip
             press_enter
             ;;
-        37)
+        38)
             launch_video_playlists
             ;;
-        38)
-            launch_vlc
-            ;;
         39)
-            launch_gimp
+            manage_video_dispatcher
             ;;
         40)
-            manage_cover_converter
+            launch_gimp
             ;;
         41)
+            manage_cover_converter
+            ;;
+        42)
             view_cover
             press_enter
             ;;
-        42)
+        43)
             generate_ppm_cover_menu
             ;;
-        43)
+        44)
             launch_electricsheep
             ;;
-        44)
+        45)
             manage_sync_video_companion_menu
             ;;
-        45)
+        46)
             echo -e "\n${BOLD}${YELLOW}Launching Live Tracklist Monitor (Press Ctrl+C to return to menu)...${NC}\n"
             sleep 1
             trap ':' INT
@@ -6408,7 +6804,7 @@ while true; do
             trap - INT
             press_enter
             ;;
-        46)
+        47)
             echo -e "\n${BOLD}${YELLOW}Launching Live File Transfer Monitor (Press Ctrl+C to return to menu)...${NC}\n"
             sleep 1
             trap ':' INT
@@ -6422,7 +6818,7 @@ while true; do
             trap - INT
             press_enter
             ;;
-        47)
+        48)
             echo -e "\n${BOLD}${YELLOW}Launching Chrome Upload Monitor (Press Ctrl+C to return to menu)...${NC}\n"
             sleep 1
             trap ':' INT
@@ -6444,17 +6840,17 @@ while true; do
             trap - INT
             press_enter
             ;;
-        48)
+        49)
             echo -e "\n${BOLD}${YELLOW}Loading Advanced Archive Statistics...${NC}\n"
             sleep 0.5
             run_sub_script "SOF_Archive_Stats.sh"
             press_enter
             ;;
-        49)
+        50)
             view_tasks
             press_enter
             ;;
-        50)
+        51)
             echo -e "\n${BOLD}${YELLOW}Launching btop Resource Monitor (Press 'q' to exit)...${NC}\n"
             sleep 0.5
             trap ':' INT
@@ -6466,7 +6862,7 @@ while true; do
             fi
             trap - INT
             ;;
-        51)
+        52)
             echo -e "\n${BOLD}${YELLOW}Launching nvtop GPU Monitor (Press 'q' to exit)...${NC}\n"
             sleep 0.5
             trap ':' INT
@@ -6478,7 +6874,7 @@ while true; do
             fi
             trap - INT
             ;;
-        52)
+        53)
             echo -e "\n${BOLD}${YELLOW}Launching top Process Monitor (Press 'q' to exit)...${NC}\n"
             sleep 0.5
             trap ':' INT
@@ -6490,60 +6886,60 @@ while true; do
             fi
             trap - INT
             ;;
-        53)
+        54)
             manage_wan2gp
             ;;
-        54)
+        55)
             manage_network_services
             ;;
-        55)
+        56)
             block_internet
             ;;
-        56)
+        57)
             unblock_internet
             ;;
-        57)
+        58)
             switch_to_wayland
             ;;
-        58)
+        59)
             switch_to_x11
             ;;
-        59)
+        60)
             close_all_desktop_apps
             ;;
-        60)
+        61)
             manage_system_maintenance
             ;;
-        61)
+        62)
             launch_geexlab_demos
             ;;
-        62)
+        63)
             burn_iso_to_usb
             ;;
-        63)
+        64)
             manage_system_motd_menu
             ;;
-        64)
+        65)
             manage_ai_models
             ;;
-        65)
+        66)
             run_bash_cli
             ;;
-        66)
+        67)
             manage_themes
             ;;
-        67)
+        68)
             manage_installation_and_config
             ;;
-        68)
+        69)
             reboot_system
             ;;
-        69|0|[qQ]|[eE][xX][iI][tT])
+        70|0|[qQ]|[eE][xX][iI][tT])
             echo -e "\n${BOLD}${GREEN}Exiting Mix Archive Manager. Goodbye!${NC}\n"
             exit 0
             ;;
         *)
-            echo -e "\n${RED}Invalid option! Please enter a number between 1 and 69 (or 'q' to exit).${NC}"
+            echo -e "\n${RED}Invalid option! Please enter a number between 1 and 70 (or 'q' to exit).${NC}"
             sleep 2
             ;;
     esac

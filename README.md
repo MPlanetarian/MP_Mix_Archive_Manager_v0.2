@@ -14,7 +14,7 @@ An enterprise-grade workstation orchestration console and media management suite
 
 ## 🎧 Overview
 
-The **Stream of Frequency Mix Archive Manager** provides an interactive, terminal-driven control center (**69 operations** across **7 logical relational sections**) that automates the entire lifecycle of professional DJ mixes and audio recordings:
+The **Stream of Frequency Mix Archive Manager** provides an interactive, terminal-driven control center (**70 operations** across **7 logical relational sections**) that automates the entire lifecycle of professional DJ mixes and audio recordings:
 
 1. **Ingestion & Concatenation**: Auto-detects split multi-hour WAV recordings (e.g. 3-hour chunks from Traktor / external recorders), normalizes filenames, and concatenates them into single pristine tracks.
 2. **Lossless FLAC Mastering & Acoustic Spectrograms**: Encodes to 32-bit sample depth FLAC (`-sample_fmt s32 -compression_level 12`), optimizes and embeds cover art (`scale='min(1400,iw)':-1`), and outputs high-resolution 1080p acoustic spectrograms across an expanded acoustic suite (Spek, Sonic Visualiser, SoX 24-bit multi-colormap spectrograms, Praat, Kwave, Audacity).
@@ -134,7 +134,7 @@ chmod +x manager_freebsd.sh install.sh
 
 ```
 MP_Mix_Manager_v0.2/
-├── Mix_Archive_Manager.sh       # Authoritative master interactive console (69 operations)
+├── Mix_Archive_Manager.sh       # Authoritative master interactive console (70 operations)
 ├── manager.sh                   # Linux bash wrapper
 ├── manager_macos.command        # macOS double-clickable Finder launcher
 ├── manager_freebsd.sh           # FreeBSD shell launcher
@@ -179,6 +179,10 @@ MP_Mix_Manager_v0.2/
 │   └── unblock-internet         # Firewall restore toggle
 │
 ├── scripts/                     # Modular sub-operation scripts
+│   ├── align_mix_windows.py     # Cross-platform window alignment (KWin DBus / X11 / macOS)
+│   ├── get_weather.sh           # Meteorological weather fetcher & cache manager
+│   ├── launch_specific_video.sh # Dedicated video launcher & dispatcher (VLC / mpv / Haruna)
+│   ├── shop_music.sh            # Music store browser tab quick-launcher (Beatport / Apple / Bandcamp)
 │   ├── publish_calendar_scheduler.py# Mix publishing calendar & syndication schedule engine
 │   ├── publish_calendar_scheduler.sh# Mix publishing calendar shell launcher
 │   ├── inspect_audio_studio.py  # Studio hardware & software inspector
@@ -248,7 +252,7 @@ MP_Mix_Manager_v0.2/
 
 ---
 
-## 🎛️ Feature Matrix (69 Core Operations in 7 Logical Sections)
+## 🎛️ Feature Matrix (70 Core Operations in 7 Logical Sections)
 
 ### ─── [ SECTION 1: MIX ARCHIVE WORKFLOW & INGESTION ] ──────────
 | # | Operation | Description |
@@ -276,76 +280,77 @@ MP_Mix_Manager_v0.2/
 | **17**| **Launch MusicBrainz Picard Meta Tag Editor** | Opens Picard audio tagger (auto-installs on system if missing). |
 | **18**| **Promotional & Publisher Outreach Emails** | Professional email pitch and enquiry suite (`send_promo_email.py`). Sends tailored HTML and Plaintext outreach to podcast publishers (Apple Podcasts, DI.FM, Proton), club/festival promoters, radio syndicators, record labels, and dance music media. Auto-attaches episode cover artwork, cue tracklists, and streaming links via direct SMTP or desktop email clients (`mailto:`). Includes address book and delivery logging. |
 | **19**| **Mix Publishing Schedule & Multi-Platform Syndication** | Release calendar and syndication scheduler (`publish_calendar_scheduler.sh`). Manages release dates, platforms (Apple Podcasts, Spotify, YouTube, SoundCloud, Mixcloud, DI.FM, Proton Radio, Bandcamp), custom RSS feed publishing (`podcast_feed.xml`), and standard iCalendar (`.ics`) export. |
+| **20**| **Go Shopping for New Music** | Quick-launches curated music store browser tabs in parallel for **Beatport**, **Apple Music**, and **Bandcamp** (`shop_music.sh`). |
 
 ### ─── [ SECTION 3: AUDIO PLAYBACK, DAWS & SOUND SUITE ] ────────
 | # | Operation | Description |
 |---|---|---|
-| **20**| **Digital Audio Workstations (DAWs) Menu** | Unified launch hub and package installer for REAPER, Logic Pro (macOS), FL Studio (macOS, Windows, Linux), Traktor Pro (macOS & Windows), GarageBand (macOS), Ardour, LMMS, Bitwig Studio, and Bespoke Synth. |
-| **21**| **Open Mix WAV/FLAC Audio File in DAW** | Direct dispatch: prompts user to search by episode/keyword or select from archive mixes, then automatically opens the mix audio file in REAPER, Logic Pro, GarageBand, FL Studio, Audacity, Ardour, or Bitwig. |
-| **22**| **Acoustic Spectrogram Suite & Audio Analysis** | Multi-software acoustic analysis suite (`generate_spek.sh`): 1080p full-spectrum Spek analysis, Sonic Visualiser deep frequency inspection, SoX 24-bit multi-colormap spectrograms, Praat phonetic/acoustic analysis, Kwave, and Audacity spectrograms. |
-| **23**| **Launch Audacity Audio Editor** | Launches Audacity audio editor or installs via Homebrew / winget / Flatpak / native packages. |
-| **24**| **Launch Audio Players Menu** | Quick launch hub for cliamp, Strawberry, VLC, foobar2000 (macOS & Windows), Winamp (Windows), Apple Music (macOS), Haruna, and Kodi. |
-| **25**| **Configure Default Audio Player & Startup Autoplay** | User preferences suite: choose default player (cliamp, Strawberry, VLC, foobar2000, Winamp, Apple Music, Haruna, Kodi, Audacity, custom), toggle startup mix autoplay, toggle auto-opening cover art, toggle auto-displaying tracklists in borderless console (or GUI editor), and configure tracklist viewer preference (`TRACKLIST_VIEWER`). |
-| **26**| **cliamp Music Player & Track Control** | Built-in retro terminal player: now-playing path display, cross-platform clipboard copy, folder open, and playback controls. |
-| **27**| **Custom Mix Playlists Suite (.m3u8 / .xspf)** | Comprehensive archive playlist manager (`manage_playlists.sh`): build custom playlists from archive mixes, search and add tracks, reorder, export `.m3u8` / `.xspf`, and dispatch to `cliamp`, `strawberry`, `vlc`, or `mpv`. |
-| **28**| **Launch Strawberry Music Player** | Opens Strawberry Music Player in a separate desktop window. |
-| **29**| **Launch VLC Media Player** | Launches VLC audio/video media player. |
-| **30**| **Launch Haruna Media Player** | Opens Haruna Media Player (KDE / mpv / IINA). |
-| **31**| **Launch Kodi Entertainment Center** | Launches Kodi Media Center. |
-| **32**| **Show Connected USB MIDI Devices** | Inspects connected synthesizers, DJ controllers, and keyboards (`list-midi-devices`). |
-| **33**| **Studio Hardware & Software Inspector** | Deep audio diagnostic inspector (`inspect_audio_studio.sh`): surveys active PipeWire / PulseAudio / ALSA soundcards, sinks, sample rates, latencies, connected MIDI controllers & control surfaces (AKAI MPKmini2, Arturia MiniLab mkII, Valve), and installed studio DAWs. |
-| **34**| **Toggle Audio Mute / Unmute & Master Volume Control** | Instant live audio mute toggle via PipeWire (`wpctl`), PulseAudio (`pactl`), ALSA, or macOS AppleScript without leaving the manager. |
+| **21**| **Digital Audio Workstations (DAWs) Menu** | Unified launch hub and package installer for REAPER, Logic Pro (macOS), FL Studio (macOS, Windows, Linux), Traktor Pro (macOS & Windows), GarageBand (macOS), Ardour, LMMS, Bitwig Studio, and Bespoke Synth. |
+| **22**| **Open Mix WAV/FLAC Audio File in DAW** | Direct dispatch: prompts user to search by episode/keyword or select from archive mixes, then automatically opens the mix audio file in REAPER, Logic Pro, GarageBand, FL Studio, Audacity, Ardour, or Bitwig. |
+| **23**| **Acoustic Spectrogram Suite & Audio Analysis** | Multi-software acoustic analysis suite (`generate_spek.sh`): 1080p full-spectrum Spek analysis, Sonic Visualiser deep frequency inspection, SoX 24-bit multi-colormap spectrograms, Praat phonetic/acoustic analysis, Kwave, and Audacity spectrograms. |
+| **24**| **Launch Audacity Audio Editor** | Launches Audacity audio editor or installs via Homebrew / winget / Flatpak / native packages. |
+| **25**| **Launch Audio Players Menu** | Quick launch hub for cliamp, Strawberry, VLC, foobar2000 (macOS & Windows), Winamp (Windows), Apple Music (macOS), Haruna, and Kodi. |
+| **26**| **Configure Default Audio Player & Startup Autoplay** | User preferences suite: choose default audio player (cliamp, Strawberry, VLC, foobar2000, Winamp, Apple Music, Haruna, Kodi, Audacity, custom), default video player (VLC, mpv, Haruna, Kodi), toggle startup mix autoplay, toggle startup YouTube autoplay (only when mix audio plays), configure live weather banner location, toggle auto-opening cover art, toggle auto-displaying tracklists in borderless console, and configure tracklist viewer preference (`TRACKLIST_VIEWER`). |
+| **27**| **cliamp Music Player & Track Control** | Built-in retro terminal player: now-playing path display, cross-platform clipboard copy, folder open, and playback controls. |
+| **28**| **Custom Mix Playlists Suite (.m3u8 / .xspf)** | Comprehensive archive playlist manager (`manage_playlists.sh`): build custom playlists from archive mixes, search and add tracks, reorder, export `.m3u8` / `.xspf`, and dispatch to `cliamp`, `strawberry`, `vlc`, or `mpv`. |
+| **29**| **Launch Strawberry Music Player** | Opens Strawberry Music Player in a separate desktop window. |
+| **30**| **Launch VLC Media Player** | Launches VLC audio/video media player. |
+| **31**| **Launch Haruna Media Player** | Opens Haruna Media Player (KDE / mpv / IINA). |
+| **32**| **Launch Kodi Entertainment Center** | Launches Kodi Media Center. |
+| **33**| **Show Connected USB MIDI Devices** | Inspects connected synthesizers, DJ controllers, and keyboards (`list-midi-devices`). |
+| **34**| **Studio Hardware & Software Inspector** | Deep audio diagnostic inspector (`inspect_audio_studio.sh`): surveys active PipeWire / PulseAudio / ALSA soundcards, sinks, sample rates, latencies, connected MIDI controllers & control surfaces (AKAI MPKmini2, Arturia MiniLab mkII, Valve), and installed studio DAWs. |
+| **35**| **Toggle Audio Mute / Unmute & Master Volume Control** | Instant live audio mute toggle via PipeWire (`wpctl`), PulseAudio (`pactl`), ALSA, or macOS AppleScript without leaving the manager. |
 
 ### ─── [ SECTION 4: VIDEO PRODUCTION, ART & VISUAL MEDIA ] ──────
 | # | Operation | Description |
 |---|---|---|
-| **35**| **Generate YouTube Video (4K UHD, 1080p, 720p)** | Encodes pristine YouTube MP4 videos in 4K UHD (3840x2160), 1080p Full HD (1920x1080), or 720p HD (1280x720) with NVENC/Hardware acceleration, 320kbps AAC audio, and smooth 5s audio fading (`generate_youtube_video.sh`). |
-| **36**| **Cut Video File (.mp4 / .mkv)** | Precision video clipping utility based on start/end timestamps with cross-platform folder launch (`Cut_Video.sh`). |
-| **37**| **Launch Video Playlists** | Plays Defasten or NFT video playlists in VLC, or regenerates `.m3u`/`.xspf` files. |
-| **38**| **Launch VLC Video Player** | Launches VLC Video Player directly. |
-| **39**| **Launch GIMP Image Editor** | Launches GIMP image editor or installs via package manager. |
-| **40**| **Convert Cover Art & Resize / Byte Target** | Converts covers between JPEG, WebP, PNG, and TIFF with preset resolutions (3000x3000, 1400x1400, 1080x1080) and binary-search byte targeting (e.g. strict <= 1MB podcast standard). |
-| **41**| **View Cover Art by Mix Number** | Searches `COVERS/` directory by episode or mix number and opens in system image viewer. |
-| **42**| **Procedural Gradient .PPM Cover Art Generator** | Pure mathematical Netpbm P6 binary `.PPM` cover art generator (`generate_ppm_cover.sh`): renders linear, radial, plasma, and angular gradients, composites typography overlays (Artist, Title, Episode, Tags), and exports high-res lossless PNGs. |
-| **43**| **Launch Electric Sheep Screensaver** | Launches Electric Sheep generative screensaver. |
-| **44**| **Synchronized Mix-Video Companion Player Daemon** | Intelligent background watcher (`sync_video_companion.sh`): automatically discovers matching companion video for the currently playing mix and launches it in VLC / Haruna / MPV, closing the player when audio stops. |
+| **36**| **Generate YouTube Video (4K UHD, 1080p, 720p)** | Encodes pristine YouTube MP4 videos in 4K UHD (3840x2160), 1080p Full HD (1920x1080), or 720p HD (1280x720) with NVENC/Hardware acceleration, 320kbps AAC audio, and smooth 5s audio fading (`generate_youtube_video.sh`). |
+| **37**| **Cut Video File (.mp4 / .mkv)** | Precision video clipping utility based on start/end timestamps with cross-platform folder launch (`Cut_Video.sh`). |
+| **38**| **Launch Video Playlists** | Plays Defasten or NFT video playlists in VLC, or regenerates `.m3u`/`.xspf` files. |
+| **39**| **Launch Specific Video in Default Video Player** | Launches specific video files or streaming URLs in user's default video player (VLC default, mpv, Haruna, Kodi) (`launch_specific_video.sh`). |
+| **40**| **Launch GIMP Image Editor** | Launches GIMP image editor or installs via package manager. |
+| **41**| **Convert Cover Art & Resize / Byte Target** | Converts covers between JPEG, WebP, PNG, and TIFF with preset resolutions (3000x3000, 1400x1400, 1080x1080) and binary-search byte targeting (e.g. strict <= 1MB podcast standard). |
+| **42**| **View Cover Art by Mix Number** | Searches `COVERS/` directory by episode or mix number and opens in system image viewer. |
+| **43**| **Procedural Gradient .PPM Cover Art Generator** | Pure mathematical Netpbm P6 binary `.PPM` cover art generator (`generate_ppm_cover.sh`): renders linear, radial, plasma, and angular gradients, composites typography overlays (Artist, Title, Episode, Tags), and exports high-res lossless PNGs. |
+| **44**| **Launch Electric Sheep Screensaver** | Launches Electric Sheep generative screensaver. |
+| **45**| **Synchronized Mix-Video Companion Player Daemon** | Intelligent background watcher (`sync_video_companion.sh`): automatically discovers matching companion video for the currently playing mix and launches it in VLC / Haruna / MPV, closing the player when audio stops. |
 
 ### ─── [ SECTION 5: LIVE MONITORS & SYSTEM DIAGNOSTICS ] ────────
 | # | Operation | Description |
 |---|---|---|
-| **45**| **Launch Live Tracklist Monitor** | Real-time CLI display connecting to Strawberry MPRIS and `cliamp` with live progress and track info (`SOF_Live_Tracker.sh`). |
-| **46**| **Launch Live File Transfer Monitor** | Inspects transfer speeds, byte positions, and percentage for huge files (`transfer-monitor`). |
-| **47**| **Launch Chrome Upload Monitor** | Monitors web uploads (e.g. Apple Podcasts Connect, YouTube Studio) in real-time (`chrome_upload_monitor.py`). |
-| **48**| **View Advanced Archive Statistics** | Deep inventory scan calculating total duration, file sizes, GB footprint, and tracklist completeness (`SOF_Archive_Stats.sh`). |
-| **49**| **View Running Background Tasks** | Scans process table for active encoding, syncing, or AI batch jobs. |
-| **50**| **Launch Resource Monitor** | Launches `btop` for deep multi-core CPU and memory profiling. |
-| **51**| **Launch GPU Process Monitor** | Launches `nvtop` for real-time monitoring of NVIDIA GPU clock, VRAM, and power draw. |
-| **52**| **Launch System Process Monitor** | Quick-launches `top` inside manager session. |
+| **46**| **Launch Live Tracklist Monitor** | Real-time CLI display connecting to Strawberry MPRIS and `cliamp` with live progress and track info (`SOF_Live_Tracker.sh`). |
+| **47**| **Launch Live File Transfer Monitor** | Inspects transfer speeds, byte positions, and percentage for huge files (`transfer-monitor`). |
+| **48**| **Launch Chrome Upload Monitor** | Monitors web uploads (e.g. Apple Podcasts Connect, YouTube Studio) in real-time (`chrome_upload_monitor.py`). |
+| **49**| **View Advanced Archive Statistics** | Deep inventory scan calculating total duration, file sizes, GB footprint, and tracklist completeness (`SOF_Archive_Stats.sh`). |
+| **50**| **View Running Background Tasks** | Scans process table for active encoding, syncing, or AI batch jobs. |
+| **51**| **Launch Resource Monitor** | Launches `btop` for deep multi-core CPU and memory profiling. |
+| **52**| **Launch GPU Process Monitor** | Launches `nvtop` for real-time monitoring of NVIDIA GPU clock, VRAM, and power draw. |
+| **53**| **Launch System Process Monitor** | Quick-launches `top` inside manager session. |
 
 ### ─── [ SECTION 6: SYSTEM, NETWORK & HARDWARE MANAGEMENT ] ─────
 | # | Operation | Description |
 |---|---|---|
-| **53**| **Manage WAN2GP Server** | Controls WAN2GP AI video server (Profile 2 / 4.5, Flux Klein 9B batch, LTX Video 2B/13B). |
-| **54**| **Manage Network Services** | Bulk and individual start, stop, restart, and status for SSH (`sshd`), Samba (`smb`), and FTP (`vsftpd`) across Linux (`systemctl`), FreeBSD (`service`), macOS (`launchctl`/`systemsetup`), and Windows (PowerShell). |
-| **55**| **Block Internet Access (LAN Only)** | Activates an isolated firewall table blocking WAN while keeping LAN open (`block-internet`). |
-| **56**| **Restore / Unblock Internet Access** | Restores immediate full internet connectivity (`unblock-internet`). |
-| **57**| **Display Settings (OS Tailored)** | Opens Plasma Wayland on Linux, macOS Display Settings, or Windows Display Settings (`ms-settings:display`). |
-| **58**| **Audio / Sound Settings (OS Tailored)** | Opens Plasma X11 on Linux, Audio MIDI Setup on macOS, or Windows Sound Panel (`control.exe mmsys.cpl`). |
-| **59**| **Close All Desktop Applications** | Gracefully closes external desktop windows using AppleScript (macOS), PowerShell (Windows), or `wmctrl` (Linux) while shielding the manager. |
-| **60**| **System Maintenance & Cleanup** | Executes platform maintenance (Linux `ujust clean-system`, macOS `brew cleanup` & RAM purge, Windows `winget upgrade` & temp cleanup, FreeBSD `pkg clean`, `pkg upgrade`, `pkg autoremove`). |
-| **61**| **Launch GeeXLab Demo Launcher** | Runs 3D/OpenGL shader demos and GPU stress tests via GeeXLab/FurMark. |
-| **62**| **Burn ISO Image to USB Drive** | Writes bootable ISO files directly to removable USB storage with safety checks and dd progress (macOS `diskutil` / Linux `lsblk`). |
-| **63**| **Dynamic System MOTD Banner Manager** | Dynamic Message Of The Day generator (`update_system_motd.sh`): renders stylized ANSI MOTD table summarizing the last 5 created mixes, dates, times, sizes, formats, and audio specs. |
+| **54**| **Manage WAN2GP Server** | Controls WAN2GP AI video server (Profile 2 / 4.5, Flux Klein 9B batch, LTX Video 2B/13B). |
+| **55**| **Manage Network Services** | Bulk and individual start, stop, restart, and status for SSH (`sshd`), Samba (`smb`), and FTP (`vsftpd`) across Linux (`systemctl`), FreeBSD (`service`), macOS (`launchctl`/`systemsetup`), and Windows (PowerShell). |
+| **56**| **Block Internet Access (LAN Only)** | Activates an isolated firewall table blocking WAN while keeping LAN open (`block-internet`). |
+| **57**| **Restore / Unblock Internet Access** | Restores immediate full internet connectivity (`unblock-internet`). |
+| **58**| **Display Settings (OS Tailored)** | Opens Plasma Wayland on Linux, macOS Display Settings, or Windows Display Settings (`ms-settings:display`). |
+| **59**| **Audio / Sound Settings (OS Tailored)** | Opens Plasma X11 on Linux, Audio MIDI Setup on macOS, or Windows Sound Panel (`control.exe mmsys.cpl`). |
+| **60**| **Close All Desktop Applications** | Gracefully closes external desktop windows using AppleScript (macOS), PowerShell (Windows), or `wmctrl` (Linux) while shielding the manager. |
+| **61**| **System Maintenance & Cleanup** | Executes platform maintenance (Linux `ujust clean-system`, macOS `brew cleanup` & RAM purge, Windows `winget upgrade` & temp cleanup, FreeBSD `pkg clean`, `pkg upgrade`, `pkg autoremove`). |
+| **62**| **Launch GeeXLab Demo Launcher** | Runs 3D/OpenGL shader demos and GPU stress tests via GeeXLab/FurMark. |
+| **63**| **Burn ISO Image to USB Drive** | Writes bootable ISO files directly to removable USB storage with safety checks and dd progress (macOS `diskutil` / Linux `lsblk`). |
+| **64**| **Dynamic System MOTD Banner Manager** | Dynamic Message Of The Day generator (`update_system_motd.sh`): renders stylized ANSI MOTD table summarizing the last 5 created mixes, dates, times, sizes, formats, and audio specs. |
 
 ### ─── [ SECTION 7: AI, SHELL CLI & SETTINGS ] ───────────────────
 | # | Operation | Description |
 |---|---|---|
-| **64**| **Launch AI Assistant / Models (AGY)** | Starts Antigravity CLI AI sessions (Claude Sonnet, Claude Opus, GPT-OSS, Gemini). |
-| **65**| **Run Bash CLI Commands** | Built-in interactive Bash shell and direct command execution runner. |
-| **66**| **Manager Themes & Color Palette Switcher** | Switch between 9 terminal themes (Cyberpunk, Dracula, Nord, Matrix, Solarized, Tokyo Night, Monokai, Gruvbox, Emerald, Classic). |
-| **67**| **Manage Installation & Configuration** | Comprehensive installation migration wizard (relocates codebase path and auto-repoints all CLI wrappers and desktop entries), instant timestamped config backups, portable `.tar.gz` config bundle export (with SHA-256 verification and manifest), safe bundle import with pre-import snapshots, and rollback/restore of historical snapshots (`manage_installation_config.sh`). |
-| **68**| **Reboot System** | Cross-platform system reboot with safety confirmation dialog (`systemctl reboot`, macOS `osascript`, Windows `shutdown.exe /r`, FreeBSD `shutdown -r now`). |
-| **69**| **Exit Manager** | Cleans up and exits the console session. |
+| **65**| **Launch AI Assistant / Models (AGY)** | Starts Antigravity CLI AI sessions (Claude Sonnet, Claude Opus, GPT-OSS, Gemini). |
+| **66**| **Run Bash CLI Commands** | Built-in interactive Bash shell and direct command execution runner. |
+| **67**| **Manager Themes & Color Palette Switcher** | Switch between 9 terminal themes (Cyberpunk, Dracula, Nord, Matrix, Solarized, Tokyo Night, Monokai, Gruvbox, Emerald, Classic). |
+| **68**| **Manage Installation & Configuration** | Comprehensive installation migration wizard (relocates codebase path and auto-repoints all CLI wrappers and desktop entries), instant timestamped config backups, portable `.tar.gz` config bundle export (with SHA-256 verification and manifest), safe bundle import with pre-import snapshots, and rollback/restore of historical snapshots (`manage_installation_config.sh`). |
+| **69**| **Reboot System** | Cross-platform system reboot with safety confirmation dialog (`systemctl reboot`, macOS `osascript`, Windows `shutdown.exe /r`, FreeBSD `shutdown -r now`). |
+| **70**| **Exit Manager** | Cleans up and exits the console session. |
 
 ---
 
@@ -378,6 +383,15 @@ PROMO_PODCAST_URL="https://podcasts.apple.com"
 PROMO_SOUNDCLOUD_URL="https://soundcloud.com/mplanetarian"
 PROMO_YOUTUBE_URL="https://youtube.com/@mplanetarian"
 PROMO_WEBSITE_URL="https://mplanetarian.com"
+
+# Video Player & Startup Custom YouTube Video Settings
+DEFAULT_VIDEO_PLAYER="vlc"
+AUTO_PLAY_YOUTUBE_ON_STARTUP="false"
+STARTUP_YOUTUBE_URL=""
+
+# Meteorological & Live Weather Settings (Banner Display)
+WEATHER_ENABLED="true"
+WEATHER_LOCATION="Swansea, UK"
 ```
 
 ---
