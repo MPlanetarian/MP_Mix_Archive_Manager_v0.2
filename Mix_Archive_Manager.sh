@@ -195,72 +195,135 @@ open_path() {
     fi
 }
 
-# Cross-Platform Open Tracklist in a Dedicated Window
+# Ensure KWin rules for Borderless Terminal Window exist on Bazzite / KDE Plasma
+ensure_bazzite_borderless_kwin_rule() {
+    [ ! -d "$HOME/.config" ] && return 0
+    local rc_path="$HOME/.config/kwinrulesrc"
+
+    if command -v python3 >/dev/null 2>&1; then
+        python3 -c "
+import configparser, os, uuid, subprocess
+
+rc_path = os.path.expanduser('~/.config/kwinrulesrc')
+if not os.path.exists(rc_path):
+    os.makedirs(os.path.dirname(rc_path), exist_ok=True)
+    with open(rc_path, 'w') as f:
+        f.write('[General]\ncount=0\nrules=\n')
+
+cp = configparser.ConfigParser()
+cp.read(rc_path)
+
+rule_desc = 'Mix Tracklist Viewer (Borderless)'
+found = False
+for sec in cp.sections():
+    if cp.has_option(sec, 'description') and cp.get(sec, 'description') == rule_desc:
+        found = True
+        break
+
+if not found:
+    new_uuid = str(uuid.uuid4())
+    cp.add_section(new_uuid)
+    cp.set(new_uuid, 'description', rule_desc)
+    cp.set(new_uuid, 'wmclass', 'konsole')
+    cp.set(new_uuid, 'wmclassmatch', '1')
+    cp.set(new_uuid, 'title', 'Mix Tracklist Viewer')
+    cp.set(new_uuid, 'titlematch', '1')
+    cp.set(new_uuid, 'types', '1')
+    cp.set(new_uuid, 'noborder', 'true')
+    cp.set(new_uuid, 'noborderrule', '2')
+
+    if not cp.has_section('General'):
+        cp.add_section('General')
+    count = int(cp.get('General', 'count', fallback='0')) + 1
+    cp.set('General', 'count', str(count))
+    existing_rules = cp.get('General', 'rules', fallback='')
+    rules_list = [r.strip() for r in existing_rules.split(',') if r.strip()]
+    rules_list.append(new_uuid)
+    cp.set('General', 'rules', ','.join(rules_list))
+
+    with open(rc_path, 'w') as f:
+        cp.write(f)
+
+    if os.path.exists('/usr/bin/qdbus'):
+        subprocess.run(['/usr/bin/qdbus', 'org.kde.KWin', '/KWin', 'reconfigure'], capture_output=True)
+" 2>/dev/null || true
+    fi
+}
+
+# Cross-Platform Open Tracklist in the Default Console (Borderless on Bazzite Linux)
 open_tracklist_window() {
     local target="$1"
     [ -z "$target" ] || [ ! -f "$target" ] && return 1
 
-    local tl_title="Tracklist: $(basename "$target")"
-    local viewer="${TRACKLIST_VIEWER:-auto}"
+    local viewer_sh="$SCRIPT_DIR/scripts/view_tracklist_console.sh"
+    [ ! -f "$viewer_sh" ] && viewer_sh="$PWD/scripts/view_tracklist_console.sh"
+    [ ! -f "$viewer_sh" ] && viewer_sh="$SCRIPT_DIR/view_tracklist_console.sh"
+    [ ! -f "$viewer_sh" ] && viewer_sh="$PWD/view_tracklist_console.sh"
 
-    # Custom configured viewer from config.env
-    if [ "$viewer" != "auto" ] && [ -n "$viewer" ]; then
+    local tl_title="Mix Tracklist Viewer"
+    local viewer="${TRACKLIST_VIEWER:-console}"
+
+    # If custom external viewer explicitly configured and not console/auto
+    if [ "$viewer" != "console" ] && [ "$viewer" != "auto" ] && [ -n "$viewer" ]; then
         if command -v "$viewer" >/dev/null 2>&1; then
             "$viewer" "$target" >/dev/null 2>&1 &
             return 0
         fi
     fi
 
-    # macOS: Open in TextEdit or default editor
-    if [ "$OS_TYPE" = "macos" ]; then
-        open -a TextEdit "$target" >/dev/null 2>&1 &
-        return 0
-    fi
+    # 1. Linux & FreeBSD (Default Console with Borderless Mode on Bazzite / KDE)
+    if [ "$OS_TYPE" = "linux" ] || [ "$OS_TYPE" = "freebsd" ]; then
+        ensure_bazzite_borderless_kwin_rule
 
-    # Windows / WSL: Open in Notepad
-    if [ "$OS_TYPE" = "windows" ]; then
-        if command -v cygpath >/dev/null 2>&1; then
-            local win_p
-            win_p="$(cygpath -w "$target" 2>/dev/null || echo "$target")"
-            cmd.exe /c start notepad.exe "$win_p" >/dev/null 2>&1 &
-        else
-            notepad.exe "$target" >/dev/null 2>&1 &
-        fi
-        return 0
-    elif [ "$OS_TYPE" = "wsl" ]; then
-        if command -v notepad.exe >/dev/null 2>&1; then
-            notepad.exe "$(wslpath -w "$target" 2>/dev/null || echo "$target")" >/dev/null 2>&1 &
-        elif command -v wslview >/dev/null 2>&1; then
-            wslview "$target" >/dev/null 2>&1 &
-        fi
-        return 0
-    fi
-
-    # Linux / FreeBSD: Open in Dedicated GUI Text Window
-    if [ -n "${DISPLAY:-}" ] || [ -n "${WAYLAND_DISPLAY:-}" ]; then
-        if command -v kwrite >/dev/null 2>&1; then
-            kwrite "$target" >/dev/null 2>&1 &
+        # Default Console on Bazzite & KDE: Konsole (Frameless & Borderless)
+        if command -v konsole >/dev/null 2>&1; then
+            konsole --hide-menubar --hide-tabbar --separate \
+                --qwindowtitle "$tl_title" \
+                -p tabtitle="$tl_title" \
+                -p TerminalMargin=0 \
+                --geometry 95x35 \
+                -e bash "$viewer_sh" "$target" >/dev/null 2>&1 &
+            (sleep 0.15; command -v xprop >/dev/null 2>&1 && xprop -name "$tl_title" -f _MOTIF_WM_HINTS 32c -set _MOTIF_WM_HINTS "0x2, 0x0, 0x0, 0x0, 0x0" 2>/dev/null || true) &
             return 0
-        elif command -v kate >/dev/null 2>&1; then
-            kate -n "$target" >/dev/null 2>&1 &
+        elif command -v gnome-terminal >/dev/null 2>&1; then
+            gnome-terminal --title="$tl_title" --hide-menubar -- bash "$viewer_sh" "$target" >/dev/null 2>&1 &
             return 0
-        elif command -v gedit >/dev/null 2>&1; then
-            gedit --new-window "$target" >/dev/null 2>&1 &
+        elif command -v xfce4-terminal >/dev/null 2>&1; then
+            xfce4-terminal --title="$tl_title" --hide-menubar --hide-borders -e "bash '$viewer_sh' '$target'" >/dev/null 2>&1 &
             return 0
-        elif command -v gnome-text-editor >/dev/null 2>&1; then
-            gnome-text-editor --new-window "$target" >/dev/null 2>&1 &
+        elif command -v alacritty >/dev/null 2>&1; then
+            alacritty --title "$tl_title" -e bash "$viewer_sh" "$target" >/dev/null 2>&1 &
             return 0
-        elif command -v mousepad >/dev/null 2>&1; then
-            mousepad "$target" >/dev/null 2>&1 &
-            return 0
-        elif command -v xdg-open >/dev/null 2>&1; then
-            xdg-open "$target" >/dev/null 2>&1 &
-            return 0
-        elif command -v konsole >/dev/null 2>&1; then
-            konsole --separate -p tabtitle="$tl_title" -e less -R "$target" >/dev/null 2>&1 &
+        elif command -v foot >/dev/null 2>&1; then
+            foot -T "$tl_title" bash "$viewer_sh" "$target" >/dev/null 2>&1 &
             return 0
         elif command -v xterm >/dev/null 2>&1; then
-            xterm -T "$tl_title" -e less -R "$target" >/dev/null 2>&1 &
+            xterm -title "$tl_title" -bd 0 -geometry 95x35 -e bash "$viewer_sh" "$target" >/dev/null 2>&1 &
+            return 0
+        fi
+    fi
+
+    # 2. macOS (Default Console: Terminal.app)
+    if [ "$OS_TYPE" = "macos" ]; then
+        local escaped_viewer escaped_target
+        escaped_viewer=$(printf '%s' "$viewer_sh" | sed 's/"/\\"/g')
+        escaped_target=$(printf '%s' "$target" | sed 's/"/\\"/g')
+        osascript -e "tell application \"Terminal\" to do script \"bash \\\"$escaped_viewer\\\" \\\"$escaped_target\\\"\"" >/dev/null 2>&1 &
+        return 0
+    fi
+
+    # 3. Windows / WSL (Default Console: Windows Terminal wt.exe or cmd.exe)
+    if [ "$OS_TYPE" = "windows" ]; then
+        if command -v wt.exe >/dev/null 2>&1; then
+            wt.exe -w new --title "$tl_title" bash "$viewer_sh" "$target" >/dev/null 2>&1 &
+            return 0
+        elif command -v cmd.exe >/dev/null 2>&1; then
+            cmd.exe /c start "$tl_title" bash "$viewer_sh" "$target" >/dev/null 2>&1 &
+            return 0
+        fi
+    elif [ "$OS_TYPE" = "wsl" ]; then
+        if command -v wt.exe >/dev/null 2>&1; then
+            wt.exe -w 0 nt --title "$tl_title" wsl.exe -e bash "$viewer_sh" "$target" >/dev/null 2>&1 &
             return 0
         fi
     fi
@@ -631,7 +694,7 @@ DEFAULT_AUDIO_PLAYER="${DEFAULT_AUDIO_PLAYER:-cliamp}"
 AUTO_PLAY_ON_STARTUP="${AUTO_PLAY_ON_STARTUP:-true}"
 AUTO_SHOW_COVER_ON_STARTUP="${AUTO_SHOW_COVER_ON_STARTUP:-true}"
 AUTO_SHOW_TRACKLIST_ON_STARTUP="${AUTO_SHOW_TRACKLIST_ON_STARTUP:-true}"
-TRACKLIST_VIEWER="${TRACKLIST_VIEWER:-auto}"
+TRACKLIST_VIEWER="${TRACKLIST_VIEWER:-console}"
 AUTO_PLAY_MIX_SELECTION="${AUTO_PLAY_MIX_SELECTION:-latest}"
 STARTUP_AUTOPLAY_EXECUTED=0
 
@@ -4155,7 +4218,7 @@ configure_audio_player_and_startup() {
         local tl_badge="${RED}DISABLED${NC}"
         [ "${AUTO_SHOW_TRACKLIST_ON_STARTUP:-true}" = "true" ] && tl_badge="${GREEN}ENABLED${NC}"
         echo -e "  • Auto-Show Tracklist on Boot:   ${tl_badge}"
-        echo -e "  • Tracklist Window Viewer:       ${BOLD}${CYAN}${TRACKLIST_VIEWER:-auto}${NC} (Dedicated Window)"
+        echo -e "  • Tracklist Window Viewer:       ${BOLD}${CYAN}${TRACKLIST_VIEWER:-console}${NC} (Dedicated Window)"
 
         echo -e "  • Startup Mix Selection Mode:    ${BOLD}${CYAN}${AUTO_PLAY_MIX_SELECTION:-latest}${NC} (Latest Episode or Random)"
         echo -e "  • Config File Location:          ${DIM}${SCRIPT_DIR}/config.env${NC}\n"
@@ -4178,7 +4241,7 @@ configure_audio_player_and_startup() {
         echo -e "  ${BOLD}${CYAN}14)${NC} Toggle Auto-Show Tracklist on Startup (${tl_badge})"
         echo -e "  ${BOLD}${CYAN}15)${NC} Toggle Startup Mix Selection (Latest vs Random)"
         echo -e "  ${BOLD}${CYAN}16)${NC} Test-Play Latest Mix Right Now in Default Player (${DEFAULT_AUDIO_PLAYER})"
-        echo -e "  ${BOLD}${CYAN}17)${NC} Configure Tracklist Window Viewer (${BOLD}${TRACKLIST_VIEWER:-auto}${NC})"
+        echo -e "  ${BOLD}${CYAN}17)${NC} Configure Tracklist Window Viewer (${BOLD}${TRACKLIST_VIEWER:-console}${NC})"
         echo -e "  ${BOLD}${CYAN} 0)${NC} Return to Main Menu\n"
         read -r -p "Enter choice [0-17]: " set_choice
 
@@ -4302,26 +4365,28 @@ configure_audio_player_and_startup() {
                 echo -e "${BOLD}${MAGENTA}======================================================================${NC}"
                 echo -e "${BOLD}${MAGENTA}             CONFIGURE DEDICATED TRACKLIST WINDOW VIEWER              ${NC}"
                 echo -e "${BOLD}${MAGENTA}======================================================================${NC}\n"
-                echo -e "  Current Viewer: ${BOLD}${GREEN}${TRACKLIST_VIEWER:-auto}${NC}\n"
-                echo -e "  ${BOLD}${CYAN} 1)${NC} ${BOLD}Auto${NC} (System Default: KWrite/Kate on KDE, TextEdit on macOS, Notepad on Windows)"
-                echo -e "  ${BOLD}${CYAN} 2)${NC} ${BOLD}kwrite${NC} (KDE Lightweight Dedicated Editor Window)"
-                echo -e "  ${BOLD}${CYAN} 3)${NC} ${BOLD}kate${NC} (KDE Advanced Text Editor - New Window)"
-                echo -e "  ${BOLD}${CYAN} 4)${NC} ${BOLD}gedit${NC} (GNOME Text Editor - New Window)"
-                echo -e "  ${BOLD}${CYAN} 5)${NC} ${BOLD}mousepad${NC} (XFCE Lightweight Text Editor)"
-                echo -e "  ${BOLD}${CYAN} 6)${NC} ${BOLD}konsole${NC} (Dedicated Konsole Window with less viewer)"
-                echo -e "  ${BOLD}${CYAN} 7)${NC} ${BOLD}xdg-open${NC} (Desktop Environment Default MIME Handler)"
-                echo -e "  ${BOLD}${CYAN} 8)${NC} Custom Text Viewer / Editor Executable Command"
+                echo -e "  Current Viewer: ${BOLD}${GREEN}${TRACKLIST_VIEWER:-console}${NC}\n"
+                echo -e "  ${BOLD}${CYAN} 1)${NC} ${BOLD}console${NC} (Default OS Console • Entirely Borderless Window on Bazzite Linux)"
+                echo -e "  ${BOLD}${CYAN} 2)${NC} ${BOLD}auto${NC} (External GUI Editor: KWrite/Kate on KDE, TextEdit on macOS, Notepad on Windows)"
+                echo -e "  ${BOLD}${CYAN} 3)${NC} ${BOLD}kwrite${NC} (KDE Lightweight Dedicated Editor Window)"
+                echo -e "  ${BOLD}${CYAN} 4)${NC} ${BOLD}kate${NC} (KDE Advanced Text Editor - New Window)"
+                echo -e "  ${BOLD}${CYAN} 5)${NC} ${BOLD}gedit${NC} (GNOME Text Editor - New Window)"
+                echo -e "  ${BOLD}${CYAN} 6)${NC} ${BOLD}mousepad${NC} (XFCE Lightweight Text Editor)"
+                echo -e "  ${BOLD}${CYAN} 7)${NC} ${BOLD}konsole${NC} (Standard Konsole Window with less viewer)"
+                echo -e "  ${BOLD}${CYAN} 8)${NC} ${BOLD}xdg-open${NC} (Desktop Environment Default MIME Handler)"
+                echo -e "  ${BOLD}${CYAN} 9)${NC} Custom Text Viewer / Editor Executable Command"
                 echo -e "  ${BOLD}${CYAN} 0)${NC} Cancel\n"
-                read -r -p "Enter choice [0-8]: " tv_choice
+                read -r -p "Enter choice [0-9]: " tv_choice
                 case "$tv_choice" in
-                    1) TRACKLIST_VIEWER="auto" ;;
-                    2) TRACKLIST_VIEWER="kwrite" ;;
-                    3) TRACKLIST_VIEWER="kate" ;;
-                    4) TRACKLIST_VIEWER="gedit" ;;
-                    5) TRACKLIST_VIEWER="mousepad" ;;
-                    6) TRACKLIST_VIEWER="konsole" ;;
-                    7) TRACKLIST_VIEWER="xdg-open" ;;
-                    8)
+                    1) TRACKLIST_VIEWER="console" ;;
+                    2) TRACKLIST_VIEWER="auto" ;;
+                    3) TRACKLIST_VIEWER="kwrite" ;;
+                    4) TRACKLIST_VIEWER="kate" ;;
+                    5) TRACKLIST_VIEWER="gedit" ;;
+                    6) TRACKLIST_VIEWER="mousepad" ;;
+                    7) TRACKLIST_VIEWER="konsole" ;;
+                    8) TRACKLIST_VIEWER="xdg-open" ;;
+                    9)
                         read -r -p "Enter custom text viewer command: " cust_tv
                         [ -n "$cust_tv" ] && TRACKLIST_VIEWER="$cust_tv"
                         ;;

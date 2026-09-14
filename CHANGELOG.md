@@ -11,9 +11,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 🚀 Major Highlights & New Features
 
-- **Dual-Window Startup Mix Experience & Dedicated Tracklist Viewer**:
-  - Automatically loads and opens the playing mix's cover art in an image viewer window (`xdg-open` / Gwenview / Preview / Photos) **and** spawns the complete mix tracklist in a dedicated text editor window (KWrite, Kate, Gedit, TextEdit, Notepad, or Konsole).
-  - Added `open_tracklist_window()` cross-platform launcher with auto-detection and user-configurable viewer preference (`TRACKLIST_VIEWER` in `config.env`).
+- **Dual-Window Startup Mix Experience & Dedicated Borderless Console Tracklist Viewer**:
+  - Automatically loads and displays the playing mix's cover art in an image viewer window (`xdg-open` / Gwenview / Preview / Photos) **and** spawns the complete mix tracklist in a dedicated window on the operating system's default console.
+  - **Entirely Borderless on Bazzite Linux**: Seamlessly leverages KDE Plasma 6 KWin rules (`noborder=true`, `noborderrule=2`) and Konsole flags (`--hide-menubar`, `--hide-tabbar`, `-p TerminalMargin=0`) to present tracklists in a clean, frameless, titlebar-free floating HUD window.
+  - Interactive console viewer (`scripts/view_tracklist_console.sh` & `bin/view-tracklist`):
+    - Syntax-highlighted track entries with artist, title, remix/version tags, and metadata headers.
+    - Hotkey controls: `[Q]` close/exit, `[C]` copy tracklist to system clipboard (`wl-copy` / `xclip` / `pbcopy`), `[S]` full interactive paging via `less`, and `[R]` reload tracklist from disk.
+  - Cross-platform console integration: Konsole / foot / alacritty / xterm on Linux & FreeBSD, Terminal.app on macOS, and Windows Terminal (`wt.exe`) / CMD on Windows 10 & 11.
+  - Automated KWin rule injection during `./install.sh` and runtime fallback via `ensure_bazzite_borderless_kwin_rule`.
   - Added archive-wide deep discovery (`find_mix_tracklist` & `find_mix_cover`) locating episode tracklists and cover artwork even within nested series subdirectories (e.g., `Stream of Frequency/070/`).
   - Enhanced startup autoplay sorting to select the true newest mix by modification time (`mtime`) rather than alphabetical sorting.
 

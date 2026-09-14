@@ -164,10 +164,62 @@ ln -sf "$SCRIPT_DIR/bin/chrome-upload-monitor" "$HOME/.local/bin/chrome-upload-m
 ln -sf "$SCRIPT_DIR/bin/update-nft-playlist" "$HOME/.local/bin/update-nft-playlist" 2>/dev/null || true
 ln -sf "$SCRIPT_DIR/bin/watch-nft-copy-and-update.sh" "$HOME/.local/bin/watch-nft-copy-and-update.sh" 2>/dev/null || true
 ln -sf "$SCRIPT_DIR/bin/list-midi-devices" "$HOME/.local/bin/list-midi-devices" 2>/dev/null || true
+ln -sf "$SCRIPT_DIR/scripts/view_tracklist_console.sh" "$HOME/.local/bin/view-tracklist" 2>/dev/null || true
 ln -sf "$SCRIPT_DIR/Cut_Video.sh" "$HOME/.local/bin/cut-video" 2>/dev/null || true
 ln -sf "$SCRIPT_DIR/Mix_Archive_Manager.sh" "$HOME/manager.sh" 2>/dev/null || true
 
 echo -e "${GREEN}      ✓ Installed symlinks into ~/.local/bin and ~/manager.sh.${NC}"
+
+# Register KWin Borderless Window Rule on Bazzite / KDE Plasma
+if [ "$HOST_OS" = "linux" ] && command -v python3 >/dev/null 2>&1; then
+    python3 -c "
+import configparser, os, uuid, subprocess
+
+rc_path = os.path.expanduser('~/.config/kwinrulesrc')
+if not os.path.exists(rc_path):
+    os.makedirs(os.path.dirname(rc_path), exist_ok=True)
+    with open(rc_path, 'w') as f:
+        f.write('[General]\ncount=0\nrules=\n')
+
+cp = configparser.ConfigParser()
+cp.read(rc_path)
+
+rule_desc = 'Mix Tracklist Viewer (Borderless)'
+found = False
+for sec in cp.sections():
+    if cp.has_option(sec, 'description') and cp.get(sec, 'description') == rule_desc:
+        found = True
+        break
+
+if not found:
+    new_uuid = str(uuid.uuid4())
+    cp.add_section(new_uuid)
+    cp.set(new_uuid, 'description', rule_desc)
+    cp.set(new_uuid, 'wmclass', 'konsole')
+    cp.set(new_uuid, 'wmclassmatch', '1')
+    cp.set(new_uuid, 'title', 'Mix Tracklist Viewer')
+    cp.set(new_uuid, 'titlematch', '1')
+    cp.set(new_uuid, 'types', '1')
+    cp.set(new_uuid, 'noborder', 'true')
+    cp.set(new_uuid, 'noborderrule', '2')
+
+    if not cp.has_section('General'):
+        cp.add_section('General')
+    count = int(cp.get('General', 'count', fallback='0')) + 1
+    cp.set('General', 'count', str(count))
+    existing_rules = cp.get('General', 'rules', fallback='')
+    rules_list = [r.strip() for r in existing_rules.split(',') if r.strip()]
+    rules_list.append(new_uuid)
+    cp.set('General', 'rules', ','.join(rules_list))
+
+    with open(rc_path, 'w') as f:
+        cp.write(f)
+
+    if os.path.exists('/usr/bin/qdbus'):
+        subprocess.run(['/usr/bin/qdbus', 'org.kde.KWin', '/KWin', 'reconfigure'], capture_output=True)
+" 2>/dev/null || true
+    echo -e "${GREEN}      ✓ Configured KWin borderless console window rule for Bazzite / KDE.${NC}"
+fi
 echo ""
 
 # 7. Desktop Integration

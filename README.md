@@ -36,7 +36,7 @@ The **Stream of Frequency Mix Archive Manager** provides an interactive, termina
 For a fresh, step-by-step guide from a clean Bazzite installation, see **[INSTALL_BAZZITE.md](INSTALL_BAZZITE.md)**.
 
 ```bash
-cd ~/MP_Mix_Manager_v0.1
+cd ~/MP_Mix_Manager_v0.2
 chmod +x install.sh
 ./install.sh
 ```
@@ -71,7 +71,7 @@ brew install --cask vlc audacity strawberry musicbrainz-picard gimp reaper fooba
 #### Running on macOS
 1. Run the installer to configure directory structure and desktop launcher:
    ```bash
-   cd ~/MP_Mix_Manager_v0.1
+   cd ~/MP_Mix_Manager_v0.2
    chmod +x install.sh
    ./install.sh
    ```
@@ -121,7 +121,7 @@ pkg install -y audacity vlc strawberry-music-player gimp reaper
 
 #### Running on FreeBSD
 ```bash
-cd ~/MP_Mix_Manager_v0.1
+cd ~/MP_Mix_Manager_v0.2
 chmod +x manager_freebsd.sh install.sh
 ./manager_freebsd.sh
 # or:
@@ -285,7 +285,7 @@ MP_Mix_Manager_v0.2/
 | **22**| **Acoustic Spectrogram Suite & Audio Analysis** | Multi-software acoustic analysis suite (`generate_spek.sh`): 1080p full-spectrum Spek analysis, Sonic Visualiser deep frequency inspection, SoX 24-bit multi-colormap spectrograms, Praat phonetic/acoustic analysis, Kwave, and Audacity spectrograms. |
 | **23**| **Launch Audacity Audio Editor** | Launches Audacity audio editor or installs via Homebrew / winget / Flatpak / native packages. |
 | **24**| **Launch Audio Players Menu** | Quick launch hub for cliamp, Strawberry, VLC, foobar2000 (macOS & Windows), Winamp (Windows), Apple Music (macOS), Haruna, and Kodi. |
-| **25**| **Configure Default Audio Player & Startup Autoplay** | User preferences suite: choose default player (cliamp, Strawberry, VLC, foobar2000, Winamp, Apple Music, Haruna, Kodi, Audacity, custom), toggle startup mix autoplay, toggle auto-opening cover art, and toggle auto-displaying tracklists. |
+| **25**| **Configure Default Audio Player & Startup Autoplay** | User preferences suite: choose default player (cliamp, Strawberry, VLC, foobar2000, Winamp, Apple Music, Haruna, Kodi, Audacity, custom), toggle startup mix autoplay, toggle auto-opening cover art, toggle auto-displaying tracklists in borderless console (or GUI editor), and configure tracklist viewer preference (`TRACKLIST_VIEWER`). |
 | **26**| **cliamp Music Player & Track Control** | Built-in retro terminal player: now-playing path display, cross-platform clipboard copy, folder open, and playback controls. |
 | **27**| **Custom Mix Playlists Suite (.m3u8 / .xspf)** | Comprehensive archive playlist manager (`manage_playlists.sh`): build custom playlists from archive mixes, search and add tracks, reorder, export `.m3u8` / `.xspf`, and dispatch to `cliamp`, `strawberry`, `vlc`, or `mpv`. |
 | **28**| **Launch Strawberry Music Player** | Opens Strawberry Music Player in a separate desktop window. |

@@ -109,7 +109,7 @@ python3 -m pip install --user pillow ultralytics
 
 Or, if using a virtual environment:
 ```bash
-cd ~/MP_Mix_Manager_v0.1
+cd ~/MP_Mix_Manager_v0.2
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
@@ -119,18 +119,18 @@ pip install -r requirements.txt
 
 ## 6. Step 5: Deploy the Mix Manager Codebase
 
-Clone or copy the codebase into your home directory under `MP_Mix_Manager_v0.2` (or `MP_Mix_Manager_v0.1`):
+Clone or copy the codebase into your home directory under `MP_Mix_Manager_v0.2`:
 
 ```bash
 cd ~
-git clone https://github.com/MPlanetarian/MP_Mix_Manager_v0.1.git MP_Mix_Manager_v0.2
+git clone https://github.com/MPlanetarian/MP_Mix_Manager_v0.2.git MP_Mix_Manager_v0.2
 # OR copy directory to:
 # /var/home/<username>/MP_Mix_Manager_v0.2
 ```
 
 Enter the codebase directory:
 ```bash
-cd ~/MP_Mix_Manager_v0.2 || cd ~/MP_Mix_Manager_v0.1
+cd ~/MP_Mix_Manager_v0.2
 ```
 
 ---
@@ -223,7 +223,7 @@ manager
 
 ### Method B: From Codebase Directory
 ```bash
-cd ~/MP_Mix_Manager_v0.1
+cd ~/MP_Mix_Manager_v0.2
 ./Mix_Archive_Manager.sh
 ```
 
