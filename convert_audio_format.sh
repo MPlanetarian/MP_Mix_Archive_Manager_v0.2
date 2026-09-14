@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# MP_Mix_Manager_v0.1 - Universal Audio Format & Bit Depth Converter
+# MP_Mix_Manager_v0.2 - Universal Audio Format & Bit Depth Converter
 # Converts WAV (and other audio) to MP3, Ogg Vorbis, Apple AAC/ALAC, Opus,
 # FLAC, and WAV to WAV with custom bit depths (32-bit, 24-bit, 16-bit).
 # ==============================================================================

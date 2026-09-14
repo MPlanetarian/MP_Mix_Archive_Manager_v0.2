@@ -1,0 +1,40 @@
+{
+  "version": "MP_Mix_Manager_v0.2",
+  "last_updated": "2026-09-14T01:45:17.501360",
+  "schedules": [
+    {
+      "id": "SCHED-2026-001",
+      "title": "Stream of Frequency Episode 041",
+      "mix_file": "Stream of Frequency Episode 041.flac",
+      "publish_date": "2026-09-18",
+      "publish_time": "18:00",
+      "platforms": [
+        "apple_podcasts",
+        "spotify",
+        "youtube",
+        "soundcloud",
+        "rss_feed"
+      ],
+      "cadence": "bi-weekly",
+      "status": "scheduled",
+      "notes": "High-energy progressive trance & melodic techno showcase."
+    },
+    {
+      "id": "SCHED-2026-002",
+      "title": "Stream of Frequency Episode 042",
+      "mix_file": "Stream of Frequency Episode 042.flac",
+      "publish_date": "2026-10-02",
+      "publish_time": "18:00",
+      "platforms": [
+        "apple_podcasts",
+        "spotify",
+        "mixcloud",
+        "di_fm",
+        "proton_radio"
+      ],
+      "cadence": "bi-weekly",
+      "status": "draft",
+      "notes": "Deep atmospheric trance session."
+    }
+  ]
+}

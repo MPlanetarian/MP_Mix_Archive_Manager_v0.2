@@ -1,6 +1,6 @@
 # Installing Mix Archive Manager on Bazzite Linux (From Scratch)
 
-This document provides an exhaustive, step-by-step guide to installing and configuring the **Mix Archive Manager (`MP_Mix_Manager_v0.1`)** on a brand new, clean installation of **Bazzite Linux** (KDE Plasma Edition).
+This document provides an exhaustive, step-by-step guide to installing and configuring the **Mix Archive Manager (`MP_Mix_Manager_v0.2`)** on a brand new, clean installation of **Bazzite Linux** (KDE Plasma Edition).
 
 ---
 
@@ -119,18 +119,18 @@ pip install -r requirements.txt
 
 ## 6. Step 5: Deploy the Mix Manager Codebase
 
-Clone or copy the codebase into your home directory under `MP_Mix_Manager_v0.1`:
+Clone or copy the codebase into your home directory under `MP_Mix_Manager_v0.2` (or `MP_Mix_Manager_v0.1`):
 
 ```bash
 cd ~
-git clone https://github.com/MPlanetarian/MP_Mix_Manager_v0.1.git
+git clone https://github.com/MPlanetarian/MP_Mix_Manager_v0.1.git MP_Mix_Manager_v0.2
 # OR copy directory to:
-# /var/home/<username>/MP_Mix_Manager_v0.1
+# /var/home/<username>/MP_Mix_Manager_v0.2
 ```
 
 Enter the codebase directory:
 ```bash
-cd ~/MP_Mix_Manager_v0.1
+cd ~/MP_Mix_Manager_v0.2 || cd ~/MP_Mix_Manager_v0.1
 ```
 
 ---

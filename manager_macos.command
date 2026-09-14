@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# MP_Mix_Manager_v0.1 - macOS Double-Clickable Launcher
+# MP_Mix_Manager_v0.2 - macOS Double-Clickable Launcher
 # Double-click this script in Finder to run Mix Archive Manager in Terminal.app
 # ==============================================================================
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

@@ -136,6 +136,82 @@ launch_native_spek_gui() {
     fi
 }
 
+launch_sonic_visualiser() {
+    local target_audio="${1:-}"
+    echo -e "${BOLD}${CYAN}Checking for Sonic Visualiser...${NC}"
+    if command -v sonic-visualiser >/dev/null 2>&1; then
+        nohup sonic-visualiser "$target_audio" >/dev/null 2>&1 &
+        echo -e "${GREEN}✓ Launched Sonic Visualiser.${NC}"
+        return 0
+    elif command -v flatpak >/dev/null 2>&1 && flatpak list | grep -qi "sonicvisualiser"; then
+        flatpak run org.sonicvisualiser.SonicVisualiser "$target_audio" >/dev/null 2>&1 &
+        echo -e "${GREEN}✓ Launched Sonic Visualiser (Flatpak).${NC}"
+        return 0
+    elif [ "$OS_TYPE" = "macos" ] && [ -d "/Applications/Sonic Visualiser.app" ]; then
+        open -a "Sonic Visualiser" "$target_audio" >/dev/null 2>&1 &
+        echo -e "${GREEN}✓ Launched Sonic Visualiser.app on macOS.${NC}"
+        return 0
+    else
+        echo -e "${YELLOW}Sonic Visualiser is not currently installed.${NC}"
+        echo -e "Install via Flatpak: ${CYAN}flatpak install flathub org.sonicvisualiser.SonicVisualiser${NC}"
+        echo -e "or macOS Homebrew:  ${CYAN}brew install --cask sonic-visualiser${NC}"
+        return 1
+    fi
+}
+
+generate_sox_spectrogram() {
+    local audio_file="$1"
+    local out_dir="${2:-SPEK_OUTPUTS}"
+    local colormap="${3:-magma}" # viridis, magma, rainbow, mono
+    mkdir -p "$out_dir"
+    local base_name
+    base_name="$(basename "$audio_file")"
+    local out_png="$out_dir/${base_name%.*}.sox_${colormap}_spek.png"
+    
+    echo -e "${BOLD}${CYAN}Generating SoX High-Resolution Spectrogram (${colormap})...${NC}"
+    if command -v sox >/dev/null 2>&1; then
+        local p_flag=""
+        [ "$colormap" = "mono" ] && p_flag="-m"
+        sox "$audio_file" -n rate 48k spectrogram -X 200 -y 1024 -z 120 -q 1 -w Hann $p_flag -t "$base_name" -o "$out_png"
+        echo -e "${GREEN}✓ Generated SoX spectrogram: $out_png${NC}"
+        open_image_viewer "$out_png"
+        return 0
+    else
+        echo -e "${DIM}SoX not in PATH, using FFmpeg high-res acoustic renderer (${colormap})...${NC}"
+        local color_filter="color=$colormap:scale=log:legend=1:s=1920x1080"
+        ffmpeg -y -i "$audio_file" -filter_complex "showspectrumpic=$color_filter" -frames:v 1 "$out_png" >/dev/null 2>&1
+        echo -e "${GREEN}✓ Generated High-Resolution Spectrogram: $out_png${NC}"
+        open_image_viewer "$out_png"
+        return 0
+    fi
+}
+
+launch_praat_or_kwave() {
+    local target_audio="${1:-}"
+    echo -e "${BOLD}${CYAN}Checking for Praat / Kwave / Audacity...${NC}"
+    if command -v flatpak >/dev/null 2>&1 && flatpak list | grep -qi "org.praat.Praat"; then
+        flatpak run org.praat.Praat "$target_audio" >/dev/null 2>&1 &
+        echo -e "${GREEN}✓ Launched Praat Acoustic Analyzer (Flatpak).${NC}"
+        return 0
+    elif command -v flatpak >/dev/null 2>&1 && flatpak list | grep -qi "org.kde.kwave"; then
+        flatpak run org.kde.kwave "$target_audio" >/dev/null 2>&1 &
+        echo -e "${GREEN}✓ Launched Kwave Sonagram Editor (Flatpak).${NC}"
+        return 0
+    elif command -v audacity >/dev/null 2>&1 || (command -v flatpak >/dev/null 2>&1 && flatpak list | grep -qi "Audacity"); then
+        if command -v audacity >/dev/null 2>&1; then
+            audacity "$target_audio" >/dev/null 2>&1 &
+        else
+            flatpak run org.audacityteam.Audacity "$target_audio" >/dev/null 2>&1 &
+        fi
+        echo -e "${GREEN}✓ Launched Audacity with Spectral View.${NC}"
+        return 0
+    else
+        echo -e "${YELLOW}Praat/Kwave is not installed.${NC}"
+        echo -e "Install with: ${CYAN}flatpak install flathub org.praat.Praat org.kde.kwave${NC}"
+        return 1
+    fi
+}
+
 show_help() {
     cat <<EOF
 Usage: $(basename "$0") [options]
@@ -394,9 +470,12 @@ echo -e "  ${BOLD}${CYAN}3)${NC} Batch Generate Speks for all WAVs in ${BOLD}CON
 echo -e "  ${BOLD}${CYAN}4)${NC} Batch Generate Speks for WAV/FLAC files in Current Directory ($PWD)"
 echo -e "  ${BOLD}${CYAN}5)${NC} Launch Native Spek GUI Application (macOS / Windows / Linux / FreeBSD)"
 echo -e "  ${BOLD}${CYAN}6)${NC} Open Spectrograms Output Folder (${BOLD}${OUTPUT_DIR}/${NC})"
+echo -e "  ${BOLD}${CYAN}7)${NC} Launch Sonic Visualiser (Open mix in Sonic Visualiser Spectrogram pane)"
+echo -e "  ${BOLD}${CYAN}8)${NC} Generate SoX High-Resolution Spectrogram (Viridis, Magma, Rainbow, Mono)"
+echo -e "  ${BOLD}${CYAN}9)${NC} Launch Praat / Kwave / Audacity Spectral Analyzer"
 echo -e "  ${BOLD}${CYAN}0)${NC} Exit\n"
 
-read -r -p "Enter choice [0-6]: " choice
+read -r -p "Enter choice [0-9]: " choice
 
 case "$choice" in
     1)
@@ -485,6 +564,36 @@ case "$choice" in
     6)
         echo -e "\n${CYAN}Opening ${OUTPUT_DIR}/...${NC}"
         open_image_viewer "$OUTPUT_DIR"
+        ;;
+    7)
+        echo ""
+        read -r -p "Enter path to audio mix (or press Enter to select recent): " sfile
+        if [ -z "$sfile" ]; then
+            sfile="$(find FLAC_CONVERTED_OUTPUTS CONVERTED_WAV_FILES -name "*.flac" -o -name "*.wav" 2>/dev/null | head -n 1 || true)"
+        fi
+        launch_sonic_visualiser "$sfile" || true
+        ;;
+    8)
+        echo ""
+        read -r -p "Enter path to audio mix (or press Enter for newest): " sxfile
+        if [ -z "$sxfile" ]; then
+            sxfile="$(find FLAC_CONVERTED_OUTPUTS CONVERTED_WAV_FILES -name "*.flac" -o -name "*.wav" 2>/dev/null | head -n 1 || true)"
+        fi
+        echo "Select colormap: 1) Magma/Fire  2) Viridis  3) Rainbow  4) Monochrome"
+        read -r -p "Choice [1-4, default 1]: " cmap_choice
+        cmap="magma"
+        [ "$cmap_choice" = "2" ] && cmap="viridis"
+        [ "$cmap_choice" = "3" ] && cmap="rainbow"
+        [ "$cmap_choice" = "4" ] && cmap="mono"
+        generate_sox_spectrogram "$sxfile" "$OUTPUT_DIR" "$cmap"
+        ;;
+    9)
+        echo ""
+        read -r -p "Enter path to audio mix (or press Enter for newest): " prfile
+        if [ -z "$prfile" ]; then
+            prfile="$(find FLAC_CONVERTED_OUTPUTS CONVERTED_WAV_FILES -name "*.flac" -o -name "*.wav" 2>/dev/null | head -n 1 || true)"
+        fi
+        launch_praat_or_kwave "$prfile" || true
         ;;
     0|[qQ])
         exit 0

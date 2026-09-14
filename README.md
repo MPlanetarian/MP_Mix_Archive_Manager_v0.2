@@ -1,4 +1,4 @@
-# Mix Archive Manager (`MP_Mix_Manager_v0.1`)
+# Mix Archive Manager (`MP_Mix_Manager_v0.2`)
 
 [![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20macOS%20%7C%20Windows%20%7C%20FreeBSD-blue.svg)](README.md)
 [![macOS](https://img.shields.io/badge/macOS-Sonoma%20%7C%20Sequoia%20%7C%20Apple%20Silicon%20%26%20Intel-silver.svg)]()
@@ -14,18 +14,19 @@ An enterprise-grade workstation orchestration console and media management suite
 
 ## 🎧 Overview
 
-The **Stream of Frequency Mix Archive Manager** provides an interactive, terminal-driven control center (**61 operations** across **7 logical relational sections**) that automates the entire lifecycle of professional DJ mixes and audio recordings:
+The **Stream of Frequency Mix Archive Manager** provides an interactive, terminal-driven control center (**69 operations** across **7 logical relational sections**) that automates the entire lifecycle of professional DJ mixes and audio recordings:
 
 1. **Ingestion & Concatenation**: Auto-detects split multi-hour WAV recordings (e.g. 3-hour chunks from Traktor / external recorders), normalizes filenames, and concatenates them into single pristine tracks.
-2. **Lossless FLAC Mastering & Acoustic Spectrograms**: Encodes to 32-bit sample depth FLAC (`-sample_fmt s32 -compression_level 12`), optimizes and embeds cover art (`scale='min(1400,iw)':-1`), and outputs high-resolution 1080p acoustic spectrograms (`generate_spek.sh` / `SPEK_OUTPUTS`).
+2. **Lossless FLAC Mastering & Acoustic Spectrograms**: Encodes to 32-bit sample depth FLAC (`-sample_fmt s32 -compression_level 12`), optimizes and embeds cover art (`scale='min(1400,iw)':-1`), and outputs high-resolution 1080p acoustic spectrograms across an expanded acoustic suite (Spek, Sonic Visualiser, SoX 24-bit multi-colormap spectrograms, Praat, Kwave, Audacity).
 3. **Traktor Pro History Integration & Tracklists**: Scans Traktor history XML archives (`collection.nml`), maps played tracks to exact session timestamps, and generates ready-to-publish timestamped tracklists with HTML and printable PDF document exports (`generate_tracklist_docs.py`).
-4. **Promotional & Publisher Outreach Email Suite**: Dedicated outreach and pitch system for podcast publishers, syndicators, club promoters, festival bookers, radio stations, and record labels (`send_promo_email.py`). Sends rich HTML and plaintext emails with automatic episode cover art attachments, cue tracklists, and streaming links via SMTP or native desktop email clients (`mailto:` in Apple Mail, Thunderbird, Outlook).
-5. **Digital Audio Workstations (DAWs) & Audio Editors**: Unified launch hub and package installer for REAPER, Logic Pro (macOS), FL Studio (macOS, Windows, Linux via Wine/Bottles), Traktor Pro (macOS & Windows), GarageBand (macOS), Ardour, LMMS, Bitwig Studio, Bespoke Synth, Audacity, and MusicBrainz Picard. Includes direct **"Open Mix Audio File in DAW"** with keyword search and catalog selection.
-6. **Playback Suite & cliamp Retro Player**: Live MPRIS and retro console audio player with real-time playback progress, track metadata, active filesystem paths, and instant cross-platform clipboard copy (`pbcopy` on macOS, `clip.exe` on Windows, `wl-copy`/`xclip` on Linux). Launches cliamp, Strawberry, VLC, foobar2000 (macOS & Windows), Winamp (Windows), Apple Music (macOS), Apple Podcasts (macOS), Haruna, and Kodi.
-7. **Video Production & Generative Art**: Generates 4K UHD, 1080p Full HD, and 720p HD YouTube videos with NVENC/Hardware acceleration, 320kbps AAC, and smooth 5s audio fading (`generate_youtube_video.sh`), video clip cutter (`Cut_Video.sh`), VLC playback, GIMP image editing, and Electric Sheep generative screensaver.
-8. **Cloud, Network & Diagnostics**: Automated rclone mirroring to Google Drive, SMB network share ingestion, multi-platform network services manager (SSH, Samba, FTP), real-time file transfer monitors, and comprehensive archive statistics.
-9. **Multi-Platform System Maintenance**: OS-tailored system cleaning (Bazzite `ujust`, macOS Homebrew caches & RAM purge, Windows `winget` update & TRIM, FreeBSD `pkg` cleanup & audit), display configuration, and reboot control.
-10. **Themes & CLI Engine**: 9 custom retro terminal color themes (Cyberpunk, Dracula, Nord, Matrix, Solarized, Tokyo Night, Monokai, Gruvbox, Emerald) and an integrated interactive Bash CLI runner.
+4. **Mix Publishing Schedule & Multi-Platform Syndication**: Integrated multi-platform release calendar and syndication scheduler (`publish_calendar_scheduler.sh`) supporting Apple Podcasts, Spotify for Podcasters, YouTube, SoundCloud, Mixcloud, DI.FM, Proton Radio, Bandcamp, custom RSS feed generation (`podcast_feed.xml`), and standard iCalendar (`.ics`) exports.
+5. **Promotional & Publisher Outreach Email Suite**: Dedicated outreach and pitch system for podcast publishers, syndicators, club promoters, festival bookers, radio stations, and record labels (`send_promo_email.py`). Sends rich HTML and plaintext emails with automatic episode cover art attachments, cue tracklists, and streaming links via SMTP or native desktop email clients (`mailto:` in Apple Mail, Thunderbird, Outlook).
+6. **Digital Audio Workstations (DAWs) & Studio Diagnostics**: Unified launch hub and package installer for REAPER, Logic Pro (macOS), FL Studio (macOS, Windows, Linux via Wine/Bottles), Traktor Pro (macOS & Windows), GarageBand (macOS), Ardour, LMMS, Bitwig Studio, Bespoke Synth, Audacity, and MusicBrainz Picard. Includes deep **Studio Hardware & Software Inspector** (`inspect_audio_studio.sh`) mapping PipeWire, ALSA audio sinks/sources, MIDI hardware controllers (AKAI MPKmini2, Arturia MiniLab mkII, Valve), and installed studio DAWs.
+7. **Master Audio Control & Retro Playback**: Instant live master audio mute/unmute toggle directly from the manager menu, custom `.m3u8` / `.xspf` playlist suite (`manage_playlists.sh`), live MPRIS and retro console audio player with real-time playback progress, track metadata, active filesystem paths, and instant cross-platform clipboard copy (`pbcopy` on macOS, `clip.exe` on Windows, `wl-copy`/`xclip` on Linux). Launches cliamp, Strawberry, VLC, foobar2000 (macOS & Windows), Winamp (Windows), Apple Music (macOS), Apple Podcasts (macOS), Haruna, and Kodi.
+8. **Video Production & Procedural Netpbm Art**: Generates 4K UHD, 1080p Full HD, and 720p HD YouTube videos with NVENC/Hardware acceleration, 320kbps AAC, and smooth 5s audio fading (`generate_youtube_video.sh`), synchronized mix-video companion daemon (`sync_video_companion.sh`), procedural gradient binary Netpbm P6 `.PPM` cover art generator with mathematical palettes and typography overlays (`generate_ppm_cover.sh`), video clip cutter (`Cut_Video.sh`), and Electric Sheep screensaver.
+9. **Dynamic System MOTD & Diagnostics**: Auto-updating Message Of The Day banner generator (`update_system_motd.sh`) highlighting the last 5 mixes, dates, times, sizes, formats, and audio specs. Automated rclone mirroring to Google Drive, SMB network share ingestion, multi-platform network services manager (SSH, Samba, FTP), real-time file transfer monitors, and comprehensive archive statistics.
+10. **Multi-Platform System Maintenance**: OS-tailored system cleaning (Bazzite `ujust`, macOS Homebrew caches & RAM purge, Windows `winget` update & TRIM, FreeBSD `pkg` cleanup & audit), display configuration, reboot control, and live manager & system uptime tracking.
+11. **Themes & CLI Engine**: 9 custom retro terminal color themes (Cyberpunk, Dracula, Nord, Matrix, Solarized, Tokyo Night, Monokai, Gruvbox, Emerald) and an integrated interactive Bash CLI runner.
 
 ---
 
@@ -132,20 +133,33 @@ chmod +x manager_freebsd.sh install.sh
 ## 📂 Repository & Codebase Layout
 
 ```
-MP_Mix_Manager_v0.1/
-├── Mix_Archive_Manager.sh       # Authoritative master interactive console (61 operations)
+MP_Mix_Manager_v0.2/
+├── Mix_Archive_Manager.sh       # Authoritative master interactive console (69 operations)
 ├── manager.sh                   # Linux bash wrapper
 ├── manager_macos.command        # macOS double-clickable Finder launcher
 ├── manager_freebsd.sh           # FreeBSD shell launcher
 ├── manager.bat                  # Windows native Command Prompt / Batch launcher
 ├── manager.ps1                  # Windows PowerShell launcher
-├── generate_spek.sh             # Dedicated CLI/GUI acoustic spectrogram generator
+├── publish_calendar_scheduler.py# Mix publishing calendar & syndication schedule engine
+├── publish_calendar_scheduler.sh# Mix publishing calendar shell launcher
+├── inspect_audio_studio.py      # Studio hardware (PipeWire/ALSA/MIDI) & DAW diagnostic inspector
+├── inspect_audio_studio.sh      # Studio inspector shell launcher
+├── generate_ppm_cover.py        # Procedural Netpbm P6 binary PPM cover art generator
+├── generate_ppm_cover.sh        # Procedural PPM generator shell launcher
+├── sync_video_companion.py      # Synchronized mix-video companion playback daemon
+├── sync_video_companion.sh      # Mix-video companion shell launcher
+├── manage_playlists.py          # Custom playlist suite (.m3u8 / .xspf creator & launcher)
+├── manage_playlists.sh          # Custom playlist shell launcher
+├── manage_motd.py               # Dynamic System MOTD generator (Last 5 mixes & specs)
+├── update_system_motd.sh        # System MOTD update shell launcher
+├── generate_spek.sh             # Dedicated CLI/GUI acoustic spectrogram suite (Spek, SoX, Praat, Sonic Visualiser)
 ├── send_promo_email.py          # Promotional & publisher outreach email system
 ├── search_and_import_mixes.py   # Universal mix search & importer (Local Drives & SMB)
 ├── search_and_import_mixes.sh   # Universal mix search shell launcher
 ├── manage_installation_config.sh# Installation migration & configuration backup/export/import suite
 ├── install.sh                   # Cross-platform automated environment installer
 ├── INSTALL_BAZZITE.md           # Step-by-step Bazzite installation guide
+├── CHANGELOG.md                 # Full release changelog
 ├── README.md                    # Project documentation & reference
 ├── LICENSE                      # MIT Open-Source License
 ├── config.env.example           # Cross-platform configuration template
@@ -165,62 +179,76 @@ MP_Mix_Manager_v0.1/
 │   └── unblock-internet         # Firewall restore toggle
 │
 ├── scripts/                     # Modular sub-operation scripts
+│   ├── publish_calendar_scheduler.py# Mix publishing calendar & syndication schedule engine
+│   ├── publish_calendar_scheduler.sh# Mix publishing calendar shell launcher
+│   ├── inspect_audio_studio.py  # Studio hardware & software inspector
+│   ├── inspect_audio_studio.sh  # Studio inspector launcher
+│   ├── generate_ppm_cover.py    # Netpbm P6 PPM procedural gradient art generator
+│   ├── generate_ppm_cover.sh    # PPM generator launcher
+│   ├── sync_video_companion.py  # Synchronized video playback companion daemon
+│   ├── sync_video_companion.sh  # Video companion launcher
+│   ├── manage_playlists.py      # Custom playlist creator & dispatcher
+│   ├── manage_playlists.sh      # Playlist launcher
+│   ├── manage_motd.py           # Dynamic system MOTD generator
+│   ├── update_system_motd.sh    # System MOTD launcher
 │   ├── Make_SOF_FLAC_CONVERSION.sh  # 32-bit FLAC conversion & spectrogram generation
-│   ├── generate_spek.sh             # Acoustic spectrogram generation engine
-│   ├── send_promo_email.py          # Promotional & publisher outreach email system
-│   ├── search_and_import_mixes.py   # Universal mix search & importer (Local Drives & SMB)
-│   ├── search_and_import_mixes.sh   # Universal mix search shell launcher
+│   ├── generate_spek.sh         # Acoustic spectrogram generation engine
+│   ├── send_promo_email.py      # Promotional & publisher outreach email system
+│   ├── search_and_import_mixes.py # Universal mix search & importer (Local Drives & SMB)
+│   ├── search_and_import_mixes.sh # Universal mix search shell launcher
 │   ├── manage_installation_config.sh# Installation migration & configuration management
-│   ├── Check_Find_Tracklists.sh     # Traktor Pro history XML parser
-│   ├── MOVE_NOT_CONVERTED_WAVS.sh   # Unconverted WAV retrieval engine
-│   ├── SOF_Live_Tracker.sh          # Live tracklist monitor (Strawberry / cliamp)
-│   ├── SOF_Archive_Stats.sh         # Archive statistics and duration accumulator
-│   ├── backup_to_gdrive.sh          # Rclone Google Drive backup
-│   ├── Verify_FLAC_Files.sh         # Multi-threaded FLAC bitstream corruption scanner
-│   ├── import_new_mixes.sh          # Automated SMB network mix ingest
-│   ├── import_new_mixes.py          # Network archive deduplicator
+│   ├── Check_Find_Tracklists.sh # Traktor Pro history XML parser
+│   ├── MOVE_NOT_CONVERTED_WAVS.sh # Unconverted WAV retrieval engine
+│   ├── SOF_Live_Tracker.sh      # Live tracklist monitor (Strawberry / cliamp)
+│   ├── SOF_Archive_Stats.sh     # Archive statistics and duration accumulator
+│   ├── backup_to_gdrive.sh      # Rclone Google Drive backup
+│   ├── Verify_FLAC_Files.sh     # Multi-threaded FLAC bitstream corruption scanner
+│   ├── import_new_mixes.sh      # Automated SMB network mix ingest
+│   ├── import_new_mixes.py      # Network archive deduplicator
 │   ├── Generate_Master_Tracklist.sh # Master HTML index generator
 │   ├── generate_master_tracklist.py # HTML generator logic
 │   ├── Make_SOF_Episode_From_PNG_FLAC_Output_MP4_1080p_Video.sh # 1080p YouTube video creator
 │   ├── Make_SOF_Episode_From_PNG_FLAC_Output_MP4_4K_Video.sh     # 4K NVENC YouTube video creator
 │   ├── Make_SOF_Episode_From_PNG_FLAC_Output_MP4_720p_Video.sh  # 720p YouTube video creator
-│   ├── generate_youtube_video.sh    # Unified YouTube video generation engine
-│   ├── Cut_Video.sh                 # Precision start/end video cutter
-│   ├── merge_playlist_flac.sh       # Concat M3U playlist to FLAC
-│   ├── process_trance_roots.py      # Audio processing helper
-│   ├── switch-to-plasma-wayland.sh  # Plasma Wayland HDR display switcher
-│   ├── switch-to-plasma-x11.sh      # Plasma X11 session switcher
-│   ├── play_defasten_4screens.sh    # Multi-screen video display orchestrator
-│   ├── close_allapps.sh             # Window manager cleaner (protects active manager)
-│   ├── wan2gp.sh                    # WAN2GP AI Video server runner
-│   ├── wan2gp_flux_batch.py         # Flux Klein 9B batch generation
-│   ├── wan2gp_ltx_batch.py          # LTX Video 2B/13B batch generation
-│   ├── clear-wan2gp-logs.sh         # AI generation log pruner
-│   ├── detect_and_move_people.py    # YOLOv8 human presence detection
-│   └── remove_duplicate_images.py   # Byte-for-byte duplicate image remover
+│   ├── generate_youtube_video.sh# Unified YouTube video generation engine
+│   ├── Cut_Video.sh             # Precision start/end video cutter
+│   ├── merge_playlist_flac.sh   # Concat M3U playlist to FLAC
+│   ├── process_trance_roots.py  # Audio processing helper
+│   ├── switch-to-plasma-wayland.sh # Plasma Wayland HDR display switcher
+│   ├── switch-to-plasma-x11.sh  # Plasma X11 session switcher
+│   ├── play_defasten_4screens.sh# Multi-screen video display orchestrator
+│   ├── close_allapps.sh         # Window manager cleaner (protects active manager)
+│   ├── wan2gp.sh                # WAN2GP AI Video server runner
+│   ├── wan2gp_flux_batch.py     # Flux Klein 9B batch generation
+│   ├── wan2gp_ltx_batch.py      # LTX Video 2B/13B batch generation
+│   ├── clear-wan2gp-logs.sh     # AI generation log pruner
+│   ├── detect_and_move_people.py# YOLOv8 human presence detection
+│   └── remove_duplicate_images.py # Byte-for-byte duplicate image remover
 │
 ├── desktop/
-│   └── Mix_Archive_Manager.desktop  # FreeDesktop Application Entry
+│   └── Mix_Archive_Manager.desktop # FreeDesktop Application Entry
 │
 └── assets/
-    ├── Cover.png                    # Default cover art template
-    ├── promo_contacts.json          # Outreach contacts book (promoters, publishers, labels)
-    ├── promo_logs/                  # Sent email history & delivery logs
-    └── scaffolds/                   # Working directories (.gitkeep)
+    ├── Cover.png                # Default cover art template
+    ├── promo_contacts.json      # Outreach contacts book (promoters, publishers, labels)
+    ├── promo_logs/              # Sent email history & delivery logs
+    ├── publishing_calendar.json # Mix publishing schedule & platform targets
+    ├── mix_publishing_calendar.ics # Standard iCalendar calendar export
+    └── scaffolds/               # Working directories (.gitkeep)
         ├── FLAC_CONVERTED_OUTPUTS/  # Master FLAC outputs & text tracklists
-        ├── CONVERTED_WAV_FILES/     # Archived source WAV files
-        ├── SPEK_OUTPUTS/            # Generated audio spectrograms
-        ├── BACKUP_LOGS/             # Cloud backup reports
-        ├── VERIFY_LOGS/             # FLAC integrity test reports
-        ├── IMPORT_LOGS/             # SMB import reports
-        ├── config_backups/          # Local timestamped configuration snapshots
-        ├── exported_configs/        # Portable exported configuration bundles (.tar.gz)
-        └── COVERS/                  # Episode and album artwork library
+        ├── CONVERTED_WAV_FILES/ # Archived source WAV files
+        ├── SPEK_OUTPUTS/        # Generated audio spectrograms
+        ├── BACKUP_LOGS/         # Cloud backup reports
+        ├── VERIFY_LOGS/         # FLAC integrity test reports
+        ├── IMPORT_LOGS/         # SMB import reports
+        ├── config_backups/      # Local timestamped configuration snapshots
+        ├── exported_configs/    # Portable exported configuration bundles (.tar.gz)
+        └── COVERS/              # Episode and album artwork library
 ```
 
 ---
 
-## 🎛️ Feature Matrix (62 Core Operations in 7 Logical Sections)
+## 🎛️ Feature Matrix (69 Core Operations in 7 Logical Sections)
 
 ### ─── [ SECTION 1: MIX ARCHIVE WORKFLOW & INGESTION ] ──────────
 | # | Operation | Description |
@@ -247,70 +275,77 @@ MP_Mix_Manager_v0.1/
 | **16**| **Generate Master Tracklist HTML Index** | Compiles all individual mix tracklists into a single, searchable HTML reference index (`Generate_Master_Tracklist.sh`). |
 | **17**| **Launch MusicBrainz Picard Meta Tag Editor** | Opens Picard audio tagger (auto-installs on system if missing). |
 | **18**| **Promotional & Publisher Outreach Emails** | Professional email pitch and enquiry suite (`send_promo_email.py`). Sends tailored HTML and Plaintext outreach to podcast publishers (Apple Podcasts, DI.FM, Proton), club/festival promoters, radio syndicators, record labels, and dance music media. Auto-attaches episode cover artwork, cue tracklists, and streaming links via direct SMTP or desktop email clients (`mailto:`). Includes address book and delivery logging. |
+| **19**| **Mix Publishing Schedule & Multi-Platform Syndication** | Release calendar and syndication scheduler (`publish_calendar_scheduler.sh`). Manages release dates, platforms (Apple Podcasts, Spotify, YouTube, SoundCloud, Mixcloud, DI.FM, Proton Radio, Bandcamp), custom RSS feed publishing (`podcast_feed.xml`), and standard iCalendar (`.ics`) export. |
 
 ### ─── [ SECTION 3: AUDIO PLAYBACK, DAWS & SOUND SUITE ] ────────
 | # | Operation | Description |
 |---|---|---|
-| **19**| **Digital Audio Workstations (DAWs) Menu** | Unified launch hub and package installer for REAPER, Logic Pro (macOS), FL Studio (macOS, Windows, Linux), Traktor Pro (macOS & Windows), GarageBand (macOS), Ardour, LMMS, Bitwig Studio, and Bespoke Synth. |
-| **20**| **Open Mix WAV/FLAC Audio File in DAW** | Direct dispatch: prompts user to search by episode/keyword or select from archive mixes, then automatically opens the mix audio file in REAPER, Logic Pro, GarageBand, FL Studio, Audacity, Ardour, or Bitwig. |
-| **21**| **Generate Acoustic Spectrograms (Spek)** | Generates 1080p full-spectrum acoustic spectrograms with lossless verification via FFmpeg or launches native Spek GUI (`generate_spek.sh`). Supports batch scans across archive folders. |
-| **22**| **Launch Audacity Audio Editor** | Launches Audacity audio editor or installs via Homebrew / winget / Flatpak / native packages. |
-| **23**| **Launch Audio Players Menu** | Quick launch hub for cliamp, Strawberry, VLC, foobar2000 (macOS & Windows), Winamp (Windows), Apple Music (macOS), Haruna, and Kodi. |
-| **24**| **Configure Default Audio Player & Startup Autoplay** | User preferences suite: choose default player (cliamp, Strawberry, VLC, foobar2000, Winamp, Apple Music, Haruna, Kodi, Audacity, custom), toggle startup mix autoplay, toggle auto-opening cover art, and toggle auto-displaying tracklists. |
-| **25**| **cliamp Music Player & Track Control** | Built-in retro terminal player: now-playing path display, cross-platform clipboard copy, folder open, and playback controls. |
-| **26**| **Launch Strawberry Music Player** | Opens Strawberry Music Player in a separate desktop window. |
-| **27**| **Launch VLC Media Player** | Launches VLC audio/video media player. |
-| **28**| **Launch Haruna Media Player** | Opens Haruna Media Player (KDE / mpv / IINA). |
-| **29**| **Launch Kodi Entertainment Center** | Launches Kodi Media Center. |
-| **30**| **Show Connected USB MIDI Devices** | Inspects connected synthesizers, DJ controllers, and keyboards. |
+| **20**| **Digital Audio Workstations (DAWs) Menu** | Unified launch hub and package installer for REAPER, Logic Pro (macOS), FL Studio (macOS, Windows, Linux), Traktor Pro (macOS & Windows), GarageBand (macOS), Ardour, LMMS, Bitwig Studio, and Bespoke Synth. |
+| **21**| **Open Mix WAV/FLAC Audio File in DAW** | Direct dispatch: prompts user to search by episode/keyword or select from archive mixes, then automatically opens the mix audio file in REAPER, Logic Pro, GarageBand, FL Studio, Audacity, Ardour, or Bitwig. |
+| **22**| **Acoustic Spectrogram Suite & Audio Analysis** | Multi-software acoustic analysis suite (`generate_spek.sh`): 1080p full-spectrum Spek analysis, Sonic Visualiser deep frequency inspection, SoX 24-bit multi-colormap spectrograms, Praat phonetic/acoustic analysis, Kwave, and Audacity spectrograms. |
+| **23**| **Launch Audacity Audio Editor** | Launches Audacity audio editor or installs via Homebrew / winget / Flatpak / native packages. |
+| **24**| **Launch Audio Players Menu** | Quick launch hub for cliamp, Strawberry, VLC, foobar2000 (macOS & Windows), Winamp (Windows), Apple Music (macOS), Haruna, and Kodi. |
+| **25**| **Configure Default Audio Player & Startup Autoplay** | User preferences suite: choose default player (cliamp, Strawberry, VLC, foobar2000, Winamp, Apple Music, Haruna, Kodi, Audacity, custom), toggle startup mix autoplay, toggle auto-opening cover art, and toggle auto-displaying tracklists. |
+| **26**| **cliamp Music Player & Track Control** | Built-in retro terminal player: now-playing path display, cross-platform clipboard copy, folder open, and playback controls. |
+| **27**| **Custom Mix Playlists Suite (.m3u8 / .xspf)** | Comprehensive archive playlist manager (`manage_playlists.sh`): build custom playlists from archive mixes, search and add tracks, reorder, export `.m3u8` / `.xspf`, and dispatch to `cliamp`, `strawberry`, `vlc`, or `mpv`. |
+| **28**| **Launch Strawberry Music Player** | Opens Strawberry Music Player in a separate desktop window. |
+| **29**| **Launch VLC Media Player** | Launches VLC audio/video media player. |
+| **30**| **Launch Haruna Media Player** | Opens Haruna Media Player (KDE / mpv / IINA). |
+| **31**| **Launch Kodi Entertainment Center** | Launches Kodi Media Center. |
+| **32**| **Show Connected USB MIDI Devices** | Inspects connected synthesizers, DJ controllers, and keyboards (`list-midi-devices`). |
+| **33**| **Studio Hardware & Software Inspector** | Deep audio diagnostic inspector (`inspect_audio_studio.sh`): surveys active PipeWire / PulseAudio / ALSA soundcards, sinks, sample rates, latencies, connected MIDI controllers & control surfaces (AKAI MPKmini2, Arturia MiniLab mkII, Valve), and installed studio DAWs. |
+| **34**| **Toggle Audio Mute / Unmute & Master Volume Control** | Instant live audio mute toggle via PipeWire (`wpctl`), PulseAudio (`pactl`), ALSA, or macOS AppleScript without leaving the manager. |
 
 ### ─── [ SECTION 4: VIDEO PRODUCTION, ART & VISUAL MEDIA ] ──────
 | # | Operation | Description |
 |---|---|---|
-| **31**| **Generate YouTube Video (4K UHD, 1080p, 720p)** | Encodes pristine YouTube MP4 videos in 4K UHD (3840x2160), 1080p Full HD (1920x1080), or 720p HD (1280x720) with NVENC/Hardware acceleration, 320kbps AAC audio, and smooth 5s audio fading (`generate_youtube_video.sh`). |
-| **32**| **Cut Video File (.mp4 / .mkv)** | Precision video clipping utility based on start/end timestamps with cross-platform folder launch (`Cut_Video.sh`). |
-| **33**| **Launch Video Playlists** | Plays Defasten or NFT video playlists in VLC, or regenerates `.m3u`/`.xspf` files. |
-| **34**| **Launch VLC Video Player** | Launches VLC Video Player directly. |
-| **35**| **Launch GIMP Image Editor** | Launches GIMP image editor or installs via package manager. |
-| **36**| **Convert Cover Art & Resize / Byte Target** | Converts covers between JPEG, WebP, PNG, and TIFF with preset resolutions (3000x3000, 1400x1400, 1080x1080) and binary-search byte targeting (e.g. strict <= 1MB podcast standard). |
-| **37**| **View Cover Art by Mix Number** | Searches `COVERS/` directory by episode or mix number and opens in system image viewer. |
-| **38**| **Launch Electric Sheep Screensaver** | Launches Electric Sheep generative screensaver. |
+| **35**| **Generate YouTube Video (4K UHD, 1080p, 720p)** | Encodes pristine YouTube MP4 videos in 4K UHD (3840x2160), 1080p Full HD (1920x1080), or 720p HD (1280x720) with NVENC/Hardware acceleration, 320kbps AAC audio, and smooth 5s audio fading (`generate_youtube_video.sh`). |
+| **36**| **Cut Video File (.mp4 / .mkv)** | Precision video clipping utility based on start/end timestamps with cross-platform folder launch (`Cut_Video.sh`). |
+| **37**| **Launch Video Playlists** | Plays Defasten or NFT video playlists in VLC, or regenerates `.m3u`/`.xspf` files. |
+| **38**| **Launch VLC Video Player** | Launches VLC Video Player directly. |
+| **39**| **Launch GIMP Image Editor** | Launches GIMP image editor or installs via package manager. |
+| **40**| **Convert Cover Art & Resize / Byte Target** | Converts covers between JPEG, WebP, PNG, and TIFF with preset resolutions (3000x3000, 1400x1400, 1080x1080) and binary-search byte targeting (e.g. strict <= 1MB podcast standard). |
+| **41**| **View Cover Art by Mix Number** | Searches `COVERS/` directory by episode or mix number and opens in system image viewer. |
+| **42**| **Procedural Gradient .PPM Cover Art Generator** | Pure mathematical Netpbm P6 binary `.PPM` cover art generator (`generate_ppm_cover.sh`): renders linear, radial, plasma, and angular gradients, composites typography overlays (Artist, Title, Episode, Tags), and exports high-res lossless PNGs. |
+| **43**| **Launch Electric Sheep Screensaver** | Launches Electric Sheep generative screensaver. |
+| **44**| **Synchronized Mix-Video Companion Player Daemon** | Intelligent background watcher (`sync_video_companion.sh`): automatically discovers matching companion video for the currently playing mix and launches it in VLC / Haruna / MPV, closing the player when audio stops. |
 
 ### ─── [ SECTION 5: LIVE MONITORS & SYSTEM DIAGNOSTICS ] ────────
 | # | Operation | Description |
 |---|---|---|
-| **39**| **Launch Live Tracklist Monitor** | Real-time CLI display connecting to Strawberry MPRIS and `cliamp` with live progress and track info (`SOF_Live_Tracker.sh`). |
-| **40**| **Launch Live File Transfer Monitor** | Inspects transfer speeds, byte positions, and percentage for huge files (`transfer-monitor`). |
-| **41**| **Launch Chrome Upload Monitor** | Monitors web uploads (e.g. Apple Podcasts Connect, YouTube Studio) in real-time (`chrome_upload_monitor.py`). |
-| **42**| **View Advanced Archive Statistics** | Deep inventory scan calculating total duration, file sizes, GB footprint, and tracklist completeness (`SOF_Archive_Stats.sh`). |
-| **43**| **View Running Background Tasks** | Scans process table for active encoding, syncing, or AI batch jobs. |
-| **44**| **Launch Resource Monitor** | Launches `btop` for deep multi-core CPU and memory profiling. |
-| **45**| **Launch GPU Process Monitor** | Launches `nvtop` for real-time monitoring of NVIDIA GPU clock, VRAM, and power draw. |
-| **46**| **Launch System Process Monitor** | Quick-launches `top` inside manager session. |
+| **45**| **Launch Live Tracklist Monitor** | Real-time CLI display connecting to Strawberry MPRIS and `cliamp` with live progress and track info (`SOF_Live_Tracker.sh`). |
+| **46**| **Launch Live File Transfer Monitor** | Inspects transfer speeds, byte positions, and percentage for huge files (`transfer-monitor`). |
+| **47**| **Launch Chrome Upload Monitor** | Monitors web uploads (e.g. Apple Podcasts Connect, YouTube Studio) in real-time (`chrome_upload_monitor.py`). |
+| **48**| **View Advanced Archive Statistics** | Deep inventory scan calculating total duration, file sizes, GB footprint, and tracklist completeness (`SOF_Archive_Stats.sh`). |
+| **49**| **View Running Background Tasks** | Scans process table for active encoding, syncing, or AI batch jobs. |
+| **50**| **Launch Resource Monitor** | Launches `btop` for deep multi-core CPU and memory profiling. |
+| **51**| **Launch GPU Process Monitor** | Launches `nvtop` for real-time monitoring of NVIDIA GPU clock, VRAM, and power draw. |
+| **52**| **Launch System Process Monitor** | Quick-launches `top` inside manager session. |
 
 ### ─── [ SECTION 6: SYSTEM, NETWORK & HARDWARE MANAGEMENT ] ─────
 | # | Operation | Description |
 |---|---|---|
-| **47**| **Manage WAN2GP Server** | Controls WAN2GP AI video server (Profile 2 / 4.5, Flux Klein 9B batch, LTX Video 2B/13B). |
-| **48**| **Manage Network Services** | Bulk and individual start, stop, restart, and status for SSH (`sshd`), Samba (`smb`), and FTP (`vsftpd`) across Linux (`systemctl`), FreeBSD (`service`), macOS (`launchctl`/`systemsetup`), and Windows (PowerShell). |
-| **49**| **Block Internet Access (LAN Only)** | Activates an isolated firewall table blocking WAN while keeping LAN open (`block-internet`). |
-| **50**| **Restore / Unblock Internet Access** | Restores immediate full internet connectivity (`unblock-internet`). |
-| **51**| **Display Settings (OS Tailored)** | Opens Plasma Wayland on Linux, macOS Display Settings, or Windows Display Settings (`ms-settings:display`). |
-| **52**| **Audio / Sound Settings (OS Tailored)** | Opens Plasma X11 on Linux, Audio MIDI Setup on macOS, or Windows Sound Panel (`control.exe mmsys.cpl`). |
-| **53**| **Close All Desktop Applications** | Gracefully closes external desktop windows using AppleScript (macOS), PowerShell (Windows), or `wmctrl` (Linux) while shielding the manager. |
-| **54**| **System Maintenance & Cleanup** | Executes platform maintenance (Linux `ujust clean-system`, macOS `brew cleanup` & RAM purge, Windows `winget upgrade` & temp cleanup, FreeBSD `pkg clean`, `pkg upgrade`, `pkg autoremove`). |
-| **55**| **Launch GeeXLab Demo Launcher** | Runs 3D/OpenGL shader demos and GPU stress tests via GeeXLab/FurMark. |
-| **56**| **Burn ISO Image to USB Drive** | Writes bootable ISO files directly to removable USB storage with safety checks and dd progress (macOS `diskutil` / Linux `lsblk`). |
+| **53**| **Manage WAN2GP Server** | Controls WAN2GP AI video server (Profile 2 / 4.5, Flux Klein 9B batch, LTX Video 2B/13B). |
+| **54**| **Manage Network Services** | Bulk and individual start, stop, restart, and status for SSH (`sshd`), Samba (`smb`), and FTP (`vsftpd`) across Linux (`systemctl`), FreeBSD (`service`), macOS (`launchctl`/`systemsetup`), and Windows (PowerShell). |
+| **55**| **Block Internet Access (LAN Only)** | Activates an isolated firewall table blocking WAN while keeping LAN open (`block-internet`). |
+| **56**| **Restore / Unblock Internet Access** | Restores immediate full internet connectivity (`unblock-internet`). |
+| **57**| **Display Settings (OS Tailored)** | Opens Plasma Wayland on Linux, macOS Display Settings, or Windows Display Settings (`ms-settings:display`). |
+| **58**| **Audio / Sound Settings (OS Tailored)** | Opens Plasma X11 on Linux, Audio MIDI Setup on macOS, or Windows Sound Panel (`control.exe mmsys.cpl`). |
+| **59**| **Close All Desktop Applications** | Gracefully closes external desktop windows using AppleScript (macOS), PowerShell (Windows), or `wmctrl` (Linux) while shielding the manager. |
+| **60**| **System Maintenance & Cleanup** | Executes platform maintenance (Linux `ujust clean-system`, macOS `brew cleanup` & RAM purge, Windows `winget upgrade` & temp cleanup, FreeBSD `pkg clean`, `pkg upgrade`, `pkg autoremove`). |
+| **61**| **Launch GeeXLab Demo Launcher** | Runs 3D/OpenGL shader demos and GPU stress tests via GeeXLab/FurMark. |
+| **62**| **Burn ISO Image to USB Drive** | Writes bootable ISO files directly to removable USB storage with safety checks and dd progress (macOS `diskutil` / Linux `lsblk`). |
+| **63**| **Dynamic System MOTD Banner Manager** | Dynamic Message Of The Day generator (`update_system_motd.sh`): renders stylized ANSI MOTD table summarizing the last 5 created mixes, dates, times, sizes, formats, and audio specs. |
 
 ### ─── [ SECTION 7: AI, SHELL CLI & SETTINGS ] ───────────────────
 | # | Operation | Description |
 |---|---|---|
-| **57**| **Launch AI Assistant / Models (AGY)** | Starts Antigravity CLI AI sessions (Claude Sonnet, Claude Opus, GPT-OSS, Gemini). |
-| **58**| **Run Bash CLI Commands** | Built-in interactive Bash shell and direct command execution runner. |
-| **59**| **Manager Themes & Color Palette Switcher** | Switch between 9 terminal themes (Cyberpunk, Dracula, Nord, Matrix, Solarized, Tokyo Night, Monokai, Gruvbox, Emerald, Classic). |
-| **60**| **Manage Installation & Configuration** | Comprehensive installation migration wizard (relocates codebase path and auto-repoints all CLI wrappers and desktop entries), instant timestamped config backups, portable `.tar.gz` config bundle export (with SHA-256 verification and manifest), safe bundle import with pre-import snapshots, and rollback/restore of historical snapshots (`manage_installation_config.sh`). |
-| **61**| **Reboot System** | Cross-platform system reboot with safety confirmation dialog (`systemctl reboot`, macOS `osascript`, Windows `shutdown.exe /r`, FreeBSD `shutdown -r now`). |
-| **62**| **Exit Manager** | Cleans up and exits the console session. |
+| **64**| **Launch AI Assistant / Models (AGY)** | Starts Antigravity CLI AI sessions (Claude Sonnet, Claude Opus, GPT-OSS, Gemini). |
+| **65**| **Run Bash CLI Commands** | Built-in interactive Bash shell and direct command execution runner. |
+| **66**| **Manager Themes & Color Palette Switcher** | Switch between 9 terminal themes (Cyberpunk, Dracula, Nord, Matrix, Solarized, Tokyo Night, Monokai, Gruvbox, Emerald, Classic). |
+| **67**| **Manage Installation & Configuration** | Comprehensive installation migration wizard (relocates codebase path and auto-repoints all CLI wrappers and desktop entries), instant timestamped config backups, portable `.tar.gz` config bundle export (with SHA-256 verification and manifest), safe bundle import with pre-import snapshots, and rollback/restore of historical snapshots (`manage_installation_config.sh`). |
+| **68**| **Reboot System** | Cross-platform system reboot with safety confirmation dialog (`systemctl reboot`, macOS `osascript`, Windows `shutdown.exe /r`, FreeBSD `shutdown -r now`). |
+| **69**| **Exit Manager** | Cleans up and exits the console session. |
 
 ---
 

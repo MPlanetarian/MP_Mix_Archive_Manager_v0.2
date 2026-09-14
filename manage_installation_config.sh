@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# MP_Mix_Manager_v0.1 - Installation Migration & Configuration Management Suite
+# MP_Mix_Manager_v0.2 - Installation Migration & Configuration Management Suite
 # Handles:
 #   1. Migration of Mix Manager installation to a new directory path
 #   2. Timestamped configuration backups
@@ -10,26 +10,22 @@
 # ==============================================================================
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-BACKUP_BASE_DIR="$SCRIPT_DIR/config_backups"
-EXPORT_BASE_DIR="$SCRIPT_DIR/exported_configs"
-
-# Colors
 BOLD='\033[1m'
-DIM='\033[2m'
 GREEN='\033[0;32m'
 YELLOW='\033[0;33m'
 RED='\033[0;31m'
 BLUE='\033[0;34m'
 MAGENTA='\033[0;35m'
 CYAN='\033[0;36m'
-WHITE='\033[1;37m'
+DIM='\033[2m'
 NC='\033[0m'
 
-# Ensure directories exist
-mkdir -p "$BACKUP_BASE_DIR" "$EXPORT_BASE_DIR"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+BACKUP_BASE_DIR="$HOME/.config/mix-manager/backups"
+EXPORT_BASE_DIR="$HOME/.config/mix-manager/exports"
+mkdir -p "$BACKUP_BASE_DIR" "$EXPORT_BASE_DIR" 2>/dev/null || true
 
-# Platform detection
+# Detect platform
 OS_TYPE="linux"
 case "$(uname -s)" in
     Darwin*) OS_TYPE="macos" ;;
@@ -46,7 +42,8 @@ esac
 
 press_enter() {
     echo ""
-    read -r -p "Press Enter to continue..."
+    echo -e "${DIM}Press [Enter] to return to menu...${NC}"
+    read -r -s -d $'\n' || true
 }
 
 compute_sha256() {
@@ -80,8 +77,8 @@ migrate_installation_path() {
     echo ""
     echo -e "${BOLD}Choose Target Destination:${NC}"
     echo -e "  ${BOLD}${CYAN} 1)${NC} Home User Directory      ${DIM}($HOME/Mix_Archive_Manager)${NC}"
-    echo -e "  ${BOLD}${CYAN} 2)${NC} External Archive Drive   ${DIM}(/run/media/$USER/WD BLACK B/MP_Mix_Manager_v0.1)${NC}"
-    echo -e "  ${BOLD}${CYAN} 3)${NC} System Optional Directory ${DIM}(/opt/MP_Mix_Manager_v0.1)${NC}"
+    echo -e "  ${BOLD}${CYAN} 2)${NC} External Archive Drive   ${DIM}(/run/media/$USER/WD BLACK B/MP_Mix_Manager_v0.2)${NC}"
+    echo -e "  ${BOLD}${CYAN} 3)${NC} System Optional Directory ${DIM}(/opt/MP_Mix_Manager_v0.2)${NC}"
     echo -e "  ${BOLD}${CYAN} 4)${NC} Custom Directory Path..."
     echo -e "  ${BOLD}${CYAN} 0)${NC} Cancel & Return"
     echo ""
@@ -90,8 +87,8 @@ migrate_installation_path() {
     local target_dir=""
     case "$dest_opt" in
         1) target_dir="$HOME/Mix_Archive_Manager" ;;
-        2) target_dir="/run/media/$USER/WD BLACK B/MP_Mix_Manager_v0.1" ;;
-        3) target_dir="/opt/MP_Mix_Manager_v0.1" ;;
+        2) target_dir="/run/media/$USER/WD BLACK B/MP_Mix_Manager_v0.2" ;;
+        3) target_dir="/opt/MP_Mix_Manager_v0.2" ;;
         4)
             read -r -p "Enter custom absolute target directory path: " target_dir
             ;;
@@ -259,7 +256,7 @@ backup_current_config() {
     python3 -c "
 import json, sys, os, datetime
 data = {
-    'version': 'MP_Mix_Manager_v0.1',
+    'version': 'MP_Mix_Manager_v0.2',
     'backup_type': 'local_snapshot',
     'timestamp': '$timestamp',
     'iso_date': datetime.datetime.now().isoformat(),
@@ -336,7 +333,7 @@ export_config_bundle() {
 import json, os, datetime
 data = {
     'archive_type': 'mix_archive_manager_config_bundle',
-    'app_version': 'MP_Mix_Manager_v0.1',
+    'app_version': 'MP_Mix_Manager_v0.2',
     'export_timestamp': '$timestamp',
     'iso_date': datetime.datetime.now().isoformat(),
     'hostname': os.uname().nodename,

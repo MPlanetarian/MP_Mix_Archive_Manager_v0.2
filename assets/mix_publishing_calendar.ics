@@ -1,0 +1,26 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//MPlanetarian//Mix Archive Manager v0.2//EN
+CALSCALE:GREGORIAN
+METHOD:PUBLISH
+X-WR-CALNAME:Mix Publishing Schedule
+X-WR-TIMEZONE:UTC
+BEGIN:VEVENT
+UID:mix-publish-SCHED-2026-001@mplanetarian.com
+DTSTAMP:20260914T004500Z
+DTSTART:20260918T180000Z
+DTEND:20260918T190000Z
+SUMMARY:Publish: Stream of Frequency Episode 041
+DESCRIPTION:Platforms: apple_podcasts, spotify, youtube, soundcloud, rss_feed\nNotes: High-energy progressive trance & melodic techno showcase.
+STATUS:CONFIRMED
+END:VEVENT
+BEGIN:VEVENT
+UID:mix-publish-SCHED-2026-002@mplanetarian.com
+DTSTAMP:20260914T004500Z
+DTSTART:20261002T180000Z
+DTEND:20261002T190000Z
+SUMMARY:Publish: Stream of Frequency Episode 042
+DESCRIPTION:Platforms: apple_podcasts, spotify, mixcloud, di_fm, proton_radio\nNotes: Deep atmospheric trance session.
+STATUS:CONFIRMED
+END:VEVENT
+END:VCALENDAR

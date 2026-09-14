@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-MP_Mix_Manager_v0.1 - Duplicate Audio Mix Finder & Cleaner
+MP_Mix_Manager_v0.2 - Duplicate Audio Mix Finder & Cleaner
 Detects exact audio duplicates, multi-copy episode renders, and orphaned files.
 Provides safe quarantine and interactive removal options.
 """

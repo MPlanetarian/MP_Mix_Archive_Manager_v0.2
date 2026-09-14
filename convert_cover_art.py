@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-MP_Mix_Manager_v0.1 - Cover Art Converter & Resizer
+MP_Mix_Manager_v0.2 - Cover Art Converter & Resizer
 Supports format conversion (JPEG, PNG, WebP, TIFF), resolution downscaling,
 and byte-targeted compression (e.g. strict <= 1.0 MB target for podcast directories).
 """

@@ -1,17 +1,12 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# MP_Mix_Manager_v0.2 - Universal Mix Search & Importer Shell Wrapper
+# MP_Mix_Manager_v0.2 - Custom Playlists Creator & Launcher
 # ==============================================================================
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PY_SCRIPT="$SCRIPT_DIR/search_and_import_mixes.py"
+PY_SCRIPT="$SCRIPT_DIR/manage_playlists.py"
 
 if [ ! -f "$PY_SCRIPT" ]; then
-    PY_SCRIPT="$SCRIPT_DIR/scripts/search_and_import_mixes.py"
-fi
-
-if [ ! -f "$PY_SCRIPT" ]; then
-    echo "Error: search_and_import_mixes.py not found in $SCRIPT_DIR!" >&2
-    exit 1
+    PY_SCRIPT="$SCRIPT_DIR/scripts/manage_playlists.py"
 fi
 
 exec python3 "$PY_SCRIPT" "$@"

@@ -3,7 +3,7 @@ Type=Application
 Name=Mix Archive Manager
 GenericName=Music Archive Manager
 Comment=Launch Stream of Frequency Mix Archive Manager in Konsole
-Exec=konsole -p tabtitle="Mix Archive Manager" -e bash -c 'if [ -x "$HOME/.local/bin/mix-archive-manager" ]; then exec "$HOME/.local/bin/mix-archive-manager"; elif [ -x "$HOME/MP_Mix_Manager_v0.1/Mix_Archive_Manager.sh" ]; then exec "$HOME/MP_Mix_Manager_v0.1/Mix_Archive_Manager.sh"; else exec bash Mix_Archive_Manager.sh; fi'
+Exec=konsole -p tabtitle="Mix Archive Manager" -e bash -c 'if [ -x "$HOME/.local/bin/mix-archive-manager" ]; then exec "$HOME/.local/bin/mix-archive-manager"; elif [ -x "$HOME/MP_Mix_Manager_v0.2/Mix_Archive_Manager.sh" ]; then exec "$HOME/MP_Mix_Manager_v0.2/Mix_Archive_Manager.sh"; elif [ -x "$HOME/MP_Mix_Manager_v0.1/Mix_Archive_Manager.sh" ]; then exec "$HOME/MP_Mix_Manager_v0.1/Mix_Archive_Manager.sh"; else exec bash Mix_Archive_Manager.sh; fi'
 Icon=utilities-terminal
 Terminal=false
 Categories=AudioVideo;Audio;Utility;

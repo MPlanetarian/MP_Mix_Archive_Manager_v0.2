@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-MP_Mix_Manager_v0.1 - Universal Mix Search & Importer
+MP_Mix_Manager_v0.2 - Universal Mix Search & Importer
 Search and ingest mixes from local drives, removable media (USB/SSD), and SMB network shares.
 Features:
   - Auto-discovery of local mounted volumes, external drives, and common music directories

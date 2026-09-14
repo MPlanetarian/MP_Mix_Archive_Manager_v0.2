@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# MP_Mix_Manager_v0.1 - Cross-Platform Automated Installer
+# MP_Mix_Manager_v0.2 - Cross-Platform Automated Installer
 # Supports Linux (Bazzite / SteamOS / Fedora / Ubuntu), macOS, and Windows
 # ==============================================================================
 set -euo pipefail
@@ -17,7 +17,7 @@ NC='\033[0m'
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 echo -e "${BOLD}${MAGENTA}======================================================================${NC}"
-echo -e "${BOLD}${MAGENTA}        Mix Archive Manager Installer (MP_Mix_Manager_v0.1)           ${NC}"
+echo -e "${BOLD}${MAGENTA}        Mix Archive Manager Installer (MP_Mix_Manager_v0.2)           ${NC}"
 echo -e "${BOLD}${MAGENTA}          Cross-Platform: Linux • macOS • Windows 10 & 11             ${NC}"
 echo -e "${BOLD}${MAGENTA}======================================================================${NC}"
 echo ""
