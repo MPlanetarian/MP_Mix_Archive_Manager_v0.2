@@ -11,6 +11,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 🚀 Major Highlights & New Features
 
+- **Advanced Audio File Specification & Stream Inspector (Option 28)**:
+  - Added dedicated audio inspector engine (`scripts/inspect_playing_audio.py`, `scripts/inspect_playing_audio.sh`, `bin/view-mix-specs`, and `view_playing_specs.sh`).
+  - Probes and displays deep technical stream specifications of currently playing audio (or selected archive mix):
+    - Container & Encoded Format (e.g. `WAV`, `FLAC`, `MP3`, `AAC`, `OGG`)
+    - Exact Bit Depth (`24-Bit`, `16-Bit`, `32-Bit Float/Int`)
+    - Sampling Frequency / Rate (`48,000 Hz / 48.0 kHz`, `44.1 kHz`, `96.0 kHz`, etc.)
+    - Full File Path & File Name
+    - Duration (`HH:MM:SS.ms`) & Audio File Size (Bytes, MB, GB)
+    - Track Title, Artist, Album, and Encoded Metadata
+    - Audio Codec long name, Bitrate (`kbps`), Channels (`Stereo`), and Total PCM Samples
+    - Storage Drive mount point, filesystem, and remaining free space
+    - FLAC Compression Ratio (`% of raw PCM`) and exact MBs saved
+    - Associated Companion Assets (Embedded Artwork, High-Res Cover Art, Tracklist with track count, Spectrogram, and Companion Video)
+  - Interactive Terminal HUD with hotkeys: `[T]` View tracklist in console, `[C]` View cover art, `[S]` View spectrogram, `[Y]` Copy path to clipboard, `[D]` Open in DAW, `[F]` Open containing folder in file manager, `[R]` Refresh playback position, `[Q]` Return to menu.
+  - Real-time stream summary displayed in the Live Status Box (`show_stats`), startup autoplay playback HUD (`execute_startup_autoplay`), now-playing asset HUD (`auto_show_playing_mix_assets`), and `cliamp` track control menu (`manage_cliamp`).
+
+- **Active Audio Interface & Latency Display on Boot**:
+  - Real-time detection of active default sound output device and hardware buffer latency (`scripts/get_audio_interface.py`).
+  - High-performance probe (<120ms):
+    - Linux PipeWire & WirePlumber via `wpctl inspect @DEFAULT_AUDIO_SINK@` and `pw-metadata -n settings` (calculates `(quantum / clock_rate) * 1000` ms)
+    - ALSA hardware buffer parameters via `/proc/asound/card*/pcm*p/sub*/hw_params`
+    - PulseAudio fallback via `pactl`
+    - macOS CoreAudio via AppleScript / `system_profiler`
+    - Windows WASAPI via PowerShell `Win32_SoundDevice`
+    - FreeBSD OSS via `/dev/sndstat`
+  - Integrated directly into the main application banner:
+    `🎧 Audio Interface: Crusher ANC 2  │  ⚡ Latency: 21.3ms (1024 @ 48kHz)  │  🎛️ Engine: PipeWire`
+  - Also displayed in the startup playback and now-playing HUDs.
+
 - **Centered & Vertically Aligned Cover Art & Borderless Tracklist HUD**:
   - Positions the Cover Art Viewer and Tracklist Console side-by-side in the middle of the screen floating directly on top of the manager window (`keepAbove = true`).
   - Seamlessly integrates with KDE Plasma 6 KWin Scripting DBus API on Bazzite Linux Wayland (`scripts/align_mix_windows.py`), with automatic fallbacks for X11 (`wmctrl`/`xdotool`) and macOS AppleScript.
@@ -108,7 +137,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 🛠️ Improvements & Enhancements
 
-- **Menu Expansion**: Expanded master operations menu from 62 to **69 operations** across 7 logical sections with 1:1 case-dispatch synchronization.
+- **Menu Expansion**: Expanded master operations menu to **71 operations** across 7 logical sections with 1:1 case-dispatch synchronization.
 - **Cross-Platform Launchers**: Updated all native platform launchers (`manager.sh`, `manager_macos.command`, `manager.bat`, `manager.ps1`, `manager_freebsd.sh`, `desktop/Mix_Archive_Manager.desktop`) to version `v0.2`.
 - **Dual-Mirror Sync**: Maintained full synchronization between working directory and `/var/home/mplanetarian/Documents/BASH_SCRIPTS/`.
 

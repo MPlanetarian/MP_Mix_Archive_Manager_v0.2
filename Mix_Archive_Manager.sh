@@ -1096,7 +1096,7 @@ show_stats() {
         echo -e "  FLAC Files Missing Tracklists:            ${BOLD}${GREEN}0${NC} files (All complete!)"
     fi
 
-    # 5. CLI Amp Live Player Status
+    # 5. CLI Amp Live Player Status & Audio Specifications
     if get_cliamp_track_info 2>/dev/null; then
         local st_badge
         case "$CLIAMP_STATE" in
@@ -1109,6 +1109,21 @@ show_stats() {
         echo -e "  cliamp Music Player:                      ${st_badge} [${CLIAMP_POS_FMT} / ${CLIAMP_DUR_FMT}] (${CLIAMP_PROGRESS_PCT}%)"
         echo -e "  cliamp Current Track:                     ${BOLD}${YELLOW}${CLIAMP_TITLE}${NC} - ${CLIAMP_ARTIST}"
         echo -e "  cliamp Active File Path:                  ${BOLD}${CYAN}${CLIAMP_RESOLVED_PATH}${NC}"
+        if [ -n "$CLIAMP_RESOLVED_PATH" ] && [ -f "$CLIAMP_RESOLVED_PATH" ]; then
+            local audio_spec
+            audio_spec=$(get_playing_audio_spec_summary "$CLIAMP_RESOLVED_PATH")
+            [ -n "$audio_spec" ] && echo -e "  Audio Specifications:                     ${BOLD}${GREEN}${audio_spec}${NC}"
+        fi
+    else
+        local other_mix
+        other_mix=$(detect_currently_playing_mix 2>/dev/null)
+        if [ -n "$other_mix" ] && [ -f "$other_mix" ]; then
+            local audio_spec
+            audio_spec=$(get_playing_audio_spec_summary "$other_mix")
+            echo -e "  --------------------------------------------------"
+            echo -e "  Active Playing Mix:                       ${BOLD}${GREEN}$(basename "$other_mix")${NC}"
+            [ -n "$audio_spec" ] && echo -e "  Audio Specifications:                     ${BOLD}${GREEN}${audio_spec}${NC}"
+        fi
     fi
     echo -e "${BLUE}===================================${NC}"
 }
@@ -1558,23 +1573,27 @@ manage_cliamp() {
         fi
         if [ "$CLIAMP_FILE_EXISTS" -eq 1 ]; then
             echo -e "  File Status:    ${GREEN}✓ File exists on disk${NC} (${CLIAMP_FILE_SIZE})"
+            local cli_spec
+            cli_spec=$(get_playing_audio_spec_summary "$CLIAMP_RESOLVED_PATH")
+            [ -n "$cli_spec" ] && echo -e "  Audio Specs:    ${BOLD}${GREEN}${cli_spec}${NC}"
         else
             echo -e "  File Status:    ${RED}✗ File not found at resolved location${NC}"
         fi
         echo ""
         echo -e "${BOLD}Select an operation:${NC}"
-        echo -e "  ${BOLD}${CYAN}1)${NC} Copy File Path to Clipboard (${GREEN}System Clipboard${NC})"
-        echo -e "  ${BOLD}${CYAN}2)${NC} Open Containing Folder in File Browser (${GREEN}File Manager${NC})"
-        echo -e "  ${BOLD}${CYAN}3)${NC} View Spek Spectrogram of Current Track"
-        echo -e "  ${BOLD}${CYAN}4)${NC} View Tracklist Text File of Current Track"
-        echo -e "  ${BOLD}${CYAN}5)${NC} Play / Pause Toggle (${GREEN}cliamp toggle${NC})"
-        echo -e "  ${BOLD}${CYAN}6)${NC} Skip to Next Track (${GREEN}cliamp next${NC})"
-        echo -e "  ${BOLD}${CYAN}7)${NC} Skip to Previous Track (${GREEN}cliamp prev${NC})"
-        echo -e "  ${BOLD}${CYAN}8)${NC} Launch / Bring Up cliamp Terminal Window"
-        echo -e "  ${BOLD}${CYAN}9)${NC} Live Real-Time Monitor (Updates Every Second)"
-        echo -e "  ${BOLD}${CYAN}0)${NC} Return to Main Menu"
+        echo -e "  ${BOLD}${CYAN} 1)${NC} Copy File Path to Clipboard (${GREEN}System Clipboard${NC})"
+        echo -e "  ${BOLD}${CYAN} 2)${NC} Open Containing Folder in File Browser (${GREEN}File Manager${NC})"
+        echo -e "  ${BOLD}${CYAN} 3)${NC} View Spek Spectrogram of Current Track"
+        echo -e "  ${BOLD}${CYAN} 4)${NC} View Tracklist Text File of Current Track"
+        echo -e "  ${BOLD}${CYAN} 5)${NC} View Full Audio File Specifications & Stream Analysis (${GREEN}inspect_audio${NC})"
+        echo -e "  ${BOLD}${CYAN} 6)${NC} Play / Pause Toggle (${GREEN}cliamp toggle${NC})"
+        echo -e "  ${BOLD}${CYAN} 7)${NC} Skip to Next Track (${GREEN}cliamp next${NC})"
+        echo -e "  ${BOLD}${CYAN} 8)${NC} Skip to Previous Track (${GREEN}cliamp prev${NC})"
+        echo -e "  ${BOLD}${CYAN} 9)${NC} Launch / Bring Up cliamp Terminal Window"
+        echo -e "  ${BOLD}${CYAN}10)${NC} Live Real-Time Monitor (Updates Every Second)"
+        echo -e "  ${BOLD}${CYAN} 0)${NC} Return to Main Menu"
         echo ""
-        read -r -p "Enter choice [0-9 or c/o/s/t/p/n/b/l/w/Enter]: " c_opt
+        read -r -p "Enter choice [0-10 or c/o/s/t/i/p/n/b/l/w/Enter]: " c_opt
         case "$c_opt" in
             1|[cC])
                 if copy_to_clipboard "$CLIAMP_RESOLVED_PATH"; then
@@ -1630,23 +1649,26 @@ manage_cliamp() {
                     sleep 1.5
                 fi
                 ;;
-            5|[pP])
+            5|[iI])
+                inspect_playing_audio_file "$CLIAMP_RESOLVED_PATH"
+                ;;
+            6|[pP])
                 cliamp toggle 2>/dev/null || true
                 sleep 0.4
                 ;;
-            6|[nN])
+            7|[nN])
                 cliamp next 2>/dev/null || true
                 sleep 0.5
                 ;;
-            7|[bB])
+            8|[bB])
                 cliamp prev 2>/dev/null || true
                 sleep 0.5
                 ;;
-            8|[lL])
+            9|[lL])
                 launch_cliamp
                 break
                 ;;
-            9|[wW])
+            10|[wW])
                 monitor_cliamp_live
                 ;;
             0|q|Q|"")
@@ -4265,6 +4287,16 @@ if files:
     echo -e "${BOLD}${MAGENTA}===================================================================================${NC}"
     echo -e "  • ${BOLD}Now Playing:${NC}       ${BOLD}${GREEN}${mix_basename}${NC}"
     echo -e "  • ${BOLD}Default Player:${NC}    ${BOLD}${CYAN}${player}${NC} (Configured in config.env)"
+    local audio_spec
+    audio_spec=$(get_playing_audio_spec_summary "$selected_mix")
+    if [ -n "$audio_spec" ]; then
+        echo -e "  • ${BOLD}Audio Specs:${NC}       ${BOLD}${GREEN}${audio_spec}${NC}"
+    fi
+    local audio_out
+    audio_out=$(get_active_audio_interface_display)
+    if [ -n "$audio_out" ]; then
+        echo -e "  • ${BOLD}Audio Output:${NC}     ${audio_out#  }"
+    fi
     if [ -n "$found_cover" ]; then
         echo -e "  • ${BOLD}Cover Art Opened:${NC}  ${YELLOW}$(basename "$found_cover")${NC} (Image Viewer Window)"
     fi
@@ -4910,6 +4942,63 @@ get_system_perf_stats() {
     fi
 
     echo -e "  ${BOLD}${CYAN}⚡ CPU Load:${NC} ${cpu_info}  ${BOLD}${BLUE}│${NC}  ${BOLD}${CYAN}🧠 RAM:${NC} ${ram_info}  ${BOLD}${BLUE}│${NC}  ${BOLD}${CYAN}💾 Mix Drive Free:${NC} ${disk_info}"
+}
+
+get_active_audio_interface_display() {
+    local script_py="$SCRIPT_DIR/scripts/get_audio_interface.py"
+    [ ! -f "$script_py" ] && script_py="$PWD/scripts/get_audio_interface.py"
+    if [ -f "$script_py" ]; then
+        local raw
+        raw=$(python3 "$script_py" 2>/dev/null)
+        if [ -n "$raw" ]; then
+            local iface latency sys_mode
+            IFS='|' read -r iface latency sys_mode <<< "$raw"
+            if [ -n "$iface" ]; then
+                echo -e "  ${BOLD}${CYAN}🎧 Audio Interface:${NC} ${WHITE}${iface}${NC}  ${BOLD}${BLUE}│${NC}  ${BOLD}${CYAN}⚡ Latency:${NC} ${GREEN}${latency:-Active}${NC}  ${BOLD}${BLUE}│${NC}  ${BOLD}${CYAN}🎛️ Engine:${NC} ${sys_mode:-Audio}"
+                return 0
+            fi
+        fi
+    fi
+    return 1
+}
+
+get_playing_audio_spec_summary() {
+    local target_file="$1"
+    local script_py="$SCRIPT_DIR/scripts/inspect_playing_audio.py"
+    [ ! -f "$script_py" ] && script_py="$PWD/scripts/inspect_playing_audio.py"
+    if [ -f "$script_py" ]; then
+        if [ -n "$target_file" ] && [ -f "$target_file" ]; then
+            python3 "$script_py" "$target_file" --summary 2>/dev/null
+        else
+            python3 "$script_py" --summary 2>/dev/null
+        fi
+    fi
+}
+
+inspect_playing_audio_file() {
+    local target="$1"
+    local script_sh="$SCRIPT_DIR/scripts/inspect_playing_audio.sh"
+    [ ! -f "$script_sh" ] && script_sh="$PWD/scripts/inspect_playing_audio.sh"
+    if [ -x "$script_sh" ]; then
+        if [ -n "$target" ]; then
+            "$script_sh" "$target"
+        else
+            "$script_sh"
+        fi
+    else
+        local script_py="$SCRIPT_DIR/scripts/inspect_playing_audio.py"
+        [ ! -f "$script_py" ] && script_py="$PWD/scripts/inspect_playing_audio.py"
+        if [ -f "$script_py" ]; then
+            if [ -n "$target" ]; then
+                python3 "$script_py" "$target"
+            else
+                python3 "$script_py"
+            fi
+        else
+            echo -e "\n${RED}Error: inspect_playing_audio script not found in scripts/!${NC}"
+            sleep 1.5
+        fi
+    fi
 }
 
 show_mix_drive_space() {
@@ -6170,6 +6259,16 @@ auto_show_playing_mix_assets() {
     echo -e "${BOLD}${MAGENTA}===================================================================================${NC}"
     echo -e "  • ${BOLD}Now Playing:${NC}       ${BOLD}${GREEN}${mix_basename}${NC}"
     echo -e "  • ${BOLD}Audio Player:${NC}      ${BOLD}${CYAN}${player_name}${NC}"
+    local audio_spec
+    audio_spec=$(get_playing_audio_spec_summary "$mix_file")
+    if [ -n "$audio_spec" ]; then
+        echo -e "  • ${BOLD}Audio Specs:${NC}       ${BOLD}${GREEN}${audio_spec}${NC}"
+    fi
+    local audio_out
+    audio_out=$(get_active_audio_interface_display)
+    if [ -n "$audio_out" ]; then
+        echo -e "  • ${BOLD}Audio Output:${NC}     ${audio_out#  }"
+    fi
     if [ -n "$found_cover" ]; then
         echo -e "  • ${BOLD}Cover Art Opened:${NC}  ${YELLOW}$(basename "$found_cover")${NC} (Image Viewer Window)"
     fi
@@ -6520,6 +6619,8 @@ while true; do
     echo -e "  ${os_badge}  ${BOLD}${BLUE}│${NC}  ${BOLD}${CYAN}🐚 Shell:${NC} ${shell_info}  ${BOLD}${BLUE}│${NC}  ${BOLD}${CYAN}📅 Date:${NC} ${current_datetime}"
     sys_perf=$(get_system_perf_stats)
     echo -e "${sys_perf}"
+    audio_interface_disp=$(get_active_audio_interface_display)
+    [ -n "$audio_interface_disp" ] && echo -e "${audio_interface_disp}"
     if [ "${WEATHER_ENABLED:-true}" = "true" ] && [ -n "${WEATHER_LOCATION:-}" ]; then
         current_weather=$(get_current_weather)
         [ -n "$current_weather" ] && echo -e "${current_weather}"
@@ -6564,86 +6665,87 @@ while true; do
     echo -e "  ${BOLD}${CYAN}25)${NC} Launch Audio Players Menu (${GREEN}cliamp, Strawberry, VLC, foobar2000, Winamp, Apple Music...${NC})"
     echo -e "  ${BOLD}${CYAN}26)${NC} Configure Default Audio Player & Startup Autoplay (${GREEN}Current: ${DEFAULT_AUDIO_PLAYER:-cliamp}${NC})"
     echo -e "  ${BOLD}${CYAN}27)${NC} cliamp Music Player & Track Control (${GREEN}Now Playing Path, Controls & Launch${NC})"
-    echo -e "  ${BOLD}${CYAN}28)${NC} Custom Mix Playlists Suite (.m3u8 / .xspf) (${GREEN}Create, Edit & Launch in cliamp/Strawberry/VLC${NC})"
-    echo -e "  ${BOLD}${CYAN}29)${NC} Launch Strawberry Music Player (New Window) (${GREEN}strawberry${NC})"
-    echo -e "  ${BOLD}${CYAN}30)${NC} Launch VLC Media Player (${GREEN}vlc / org.videolan.VLC${NC})"
-    echo -e "  ${BOLD}${CYAN}31)${NC} Launch Haruna Media Player (${GREEN}org.kde.haruna${NC})"
-    echo -e "  ${BOLD}${CYAN}32)${NC} Launch Kodi Entertainment Center (${GREEN}tv.kodi.Kodi${NC})"
-    echo -e "  ${BOLD}${CYAN}33)${NC} Show Connected USB MIDI Devices (${GREEN}list-midi-devices${NC})"
-    echo -e "  ${BOLD}${CYAN}34)${NC} Studio Hardware & Software Inspector (${GREEN}PipeWire, ALSA, DAWs, MIDI Controllers & Surfaces${NC})"
-    echo -e "  ${BOLD}${CYAN}35)${NC} Toggle Audio Mute / Unmute & Master Volume Control (${GREEN}Instant PipeWire/ALSA Mute${NC})"
+    echo -e "  ${BOLD}${CYAN}28)${NC} View Playing Mix Audio Specifications & Stream Metadata (${GREEN}WAV/FLAC, Bit Depth, 48kHz, Codec, Duration, Size, Title${NC})"
+    echo -e "  ${BOLD}${CYAN}29)${NC} Custom Mix Playlists Suite (.m3u8 / .xspf) (${GREEN}Create, Edit & Launch in cliamp/Strawberry/VLC${NC})"
+    echo -e "  ${BOLD}${CYAN}30)${NC} Launch Strawberry Music Player (New Window) (${GREEN}strawberry${NC})"
+    echo -e "  ${BOLD}${CYAN}31)${NC} Launch VLC Media Player (${GREEN}vlc / org.videolan.VLC${NC})"
+    echo -e "  ${BOLD}${CYAN}32)${NC} Launch Haruna Media Player (${GREEN}org.kde.haruna${NC})"
+    echo -e "  ${BOLD}${CYAN}33)${NC} Launch Kodi Entertainment Center (${GREEN}tv.kodi.Kodi${NC})"
+    echo -e "  ${BOLD}${CYAN}34)${NC} Show Connected USB MIDI Devices (${GREEN}list-midi-devices${NC})"
+    echo -e "  ${BOLD}${CYAN}35)${NC} Studio Hardware & Software Inspector (${GREEN}PipeWire, ALSA, DAWs, MIDI Controllers & Surfaces${NC})"
+    echo -e "  ${BOLD}${CYAN}36)${NC} Toggle Audio Mute / Unmute & Master Volume Control (${GREEN}Instant PipeWire/ALSA Mute${NC})"
     
     echo -e "\n  ${BOLD}${BLUE}─── [ SECTION 4: VIDEO PRODUCTION, ART & VISUAL MEDIA ] ─────${NC}"
-    echo -e "  ${BOLD}${CYAN}36)${NC} Generate YouTube Video (4K UHD, 1080p, 720p with NVENC/Hardware)"
-    echo -e "  ${BOLD}${CYAN}37)${NC} Cut Video File (.mp4 / .mkv) (${GREEN}Cut_Video.sh${NC})"
-    echo -e "  ${BOLD}${CYAN}38)${NC} Launch Video Playlists (NFT Videos (VLC))"
-    echo -e "  ${BOLD}${CYAN}39)${NC} Launch Specific Video in Default Video Player (${GREEN}${DEFAULT_VIDEO_PLAYER:-vlc}${NC})"
-    echo -e "  ${BOLD}${CYAN}40)${NC} Launch GIMP Image Editor (${GREEN}gimp / org.gimp.GIMP${NC})"
-    echo -e "  ${BOLD}${CYAN}41)${NC} Convert Cover Art & Resize / Byte Target (${GREEN}1MB Podcast, WebP/JPG/PNG, Sizes${NC})"
-    echo -e "  ${BOLD}${CYAN}42)${NC} View Cover Art by Mix Number (External Viewer)"
-    echo -e "  ${BOLD}${CYAN}43)${NC} Procedural Gradient .PPM Cover Art Generator (${GREEN}Netpbm P6 Binary, Palettes, Typography Overlays${NC})"
-    echo -e "  ${BOLD}${CYAN}44)${NC} Launch Electric Sheep Generative Screensaver (${GREEN}electricsheep / infinidream${NC})"
-    echo -e "  ${BOLD}${CYAN}45)${NC} Synchronized Mix-Video Companion Player Daemon (${GREEN}Auto-play Video on Mix Start, Close on Stop${NC})"
+    echo -e "  ${BOLD}${CYAN}37)${NC} Generate YouTube Video (4K UHD, 1080p, 720p with NVENC/Hardware)"
+    echo -e "  ${BOLD}${CYAN}38)${NC} Cut Video File (.mp4 / .mkv) (${GREEN}Cut_Video.sh${NC})"
+    echo -e "  ${BOLD}${CYAN}39)${NC} Launch Video Playlists (NFT Videos (VLC))"
+    echo -e "  ${BOLD}${CYAN}40)${NC} Launch Specific Video in Default Video Player (${GREEN}${DEFAULT_VIDEO_PLAYER:-vlc}${NC})"
+    echo -e "  ${BOLD}${CYAN}41)${NC} Launch GIMP Image Editor (${GREEN}gimp / org.gimp.GIMP${NC})"
+    echo -e "  ${BOLD}${CYAN}42)${NC} Convert Cover Art & Resize / Byte Target (${GREEN}1MB Podcast, WebP/JPG/PNG, Sizes${NC})"
+    echo -e "  ${BOLD}${CYAN}43)${NC} View Cover Art by Mix Number (External Viewer)"
+    echo -e "  ${BOLD}${CYAN}44)${NC} Procedural Gradient .PPM Cover Art Generator (${GREEN}Netpbm P6 Binary, Palettes, Typography Overlays${NC})"
+    echo -e "  ${BOLD}${CYAN}45)${NC} Launch Electric Sheep Generative Screensaver (${GREEN}electricsheep / infinidream${NC})"
+    echo -e "  ${BOLD}${CYAN}46)${NC} Synchronized Mix-Video Companion Player Daemon (${GREEN}Auto-play Video on Mix Start, Close on Stop${NC})"
     
     echo -e "\n  ${BOLD}${BLUE}─── [ SECTION 5: LIVE MONITORS & SYSTEM DIAGNOSTICS ] ───────${NC}"
-    echo -e "  ${BOLD}${CYAN}46)${NC} Launch Live Tracklist Monitor (${GREEN}SOF_Live_Tracker.sh${NC})"
-    echo -e "  ${BOLD}${CYAN}47)${NC} Launch Live File Transfer Monitor (${GREEN}transfer-monitor${NC})"
-    echo -e "  ${BOLD}${CYAN}48)${NC} Launch Chrome Upload Monitor (${GREEN}Podcast Connect / Web Uploads${NC})"
-    echo -e "  ${BOLD}${CYAN}49)${NC} View Advanced Archive Statistics (${GREEN}SOF_Archive_Stats.sh${NC})"
-    echo -e "  ${BOLD}${CYAN}50)${NC} View Running Background Tasks"
-    echo -e "  ${BOLD}${CYAN}51)${NC} Launch Resource Monitor (${GREEN}btop${NC})"
-    echo -e "  ${BOLD}${CYAN}52)${NC} Launch GPU Process Monitor (${GREEN}nvtop${NC})"
-    echo -e "  ${BOLD}${CYAN}53)${NC} Launch System Process Monitor (${GREEN}top${NC})"
+    echo -e "  ${BOLD}${CYAN}47)${NC} Launch Live Tracklist Monitor (${GREEN}SOF_Live_Tracker.sh${NC})"
+    echo -e "  ${BOLD}${CYAN}48)${NC} Launch Live File Transfer Monitor (${GREEN}transfer-monitor${NC})"
+    echo -e "  ${BOLD}${CYAN}49)${NC} Launch Chrome Upload Monitor (${GREEN}Podcast Connect / Web Uploads${NC})"
+    echo -e "  ${BOLD}${CYAN}50)${NC} View Advanced Archive Statistics (${GREEN}SOF_Archive_Stats.sh${NC})"
+    echo -e "  ${BOLD}${CYAN}51)${NC} View Running Background Tasks"
+    echo -e "  ${BOLD}${CYAN}52)${NC} Launch Resource Monitor (${GREEN}btop${NC})"
+    echo -e "  ${BOLD}${CYAN}53)${NC} Launch GPU Process Monitor (${GREEN}nvtop${NC})"
+    echo -e "  ${BOLD}${CYAN}54)${NC} Launch System Process Monitor (${GREEN}top${NC})"
     
     echo -e "\n  ${BOLD}${BLUE}─── [ SECTION 6: SYSTEM, NETWORK & HARDWARE MANAGEMENT ] ────${NC}"
-    echo -e "  ${BOLD}${CYAN}54)${NC} Manage WAN2GP Server (Start, Stop, Restart in Profile 2 or 4.5)"
-    echo -e "  ${BOLD}${CYAN}55)${NC} Manage Network Services (SSH, Samba, FTP - Start, Stop, Restart All)"
-    echo -e "  ${BOLD}${CYAN}56)${NC} Block Internet Access (LAN Only) (${GREEN}block-internet${NC})"
-    echo -e "  ${BOLD}${CYAN}57)${NC} Restore / Unblock Internet Access (${GREEN}unblock-internet${NC})"
+    echo -e "  ${BOLD}${CYAN}55)${NC} Manage WAN2GP Server (Start, Stop, Restart in Profile 2 or 4.5)"
+    echo -e "  ${BOLD}${CYAN}56)${NC} Manage Network Services (SSH, Samba, FTP - Start, Stop, Restart All)"
+    echo -e "  ${BOLD}${CYAN}57)${NC} Block Internet Access (LAN Only) (${GREEN}block-internet${NC})"
+    echo -e "  ${BOLD}${CYAN}58)${NC} Restore / Unblock Internet Access (${GREEN}unblock-internet${NC})"
     if [ "$OS_TYPE" = "macos" ]; then
-        echo -e "  ${BOLD}${CYAN}58)${NC} Open macOS Display Settings (${GREEN}Displays, Arrangement & HDR${NC})"
-        echo -e "  ${BOLD}${CYAN}59)${NC} Open macOS Audio MIDI Setup (${GREEN}Sample Rates & Output Devices${NC})"
+        echo -e "  ${BOLD}${CYAN}59)${NC} Open macOS Display Settings (${GREEN}Displays, Arrangement & HDR${NC})"
+        echo -e "  ${BOLD}${CYAN}60)${NC} Open macOS Audio MIDI Setup (${GREEN}Sample Rates & Output Devices${NC})"
     elif [ "$OS_TYPE" = "windows" ] || [ "$OS_TYPE" = "wsl" ]; then
-        echo -e "  ${BOLD}${CYAN}58)${NC} Open Windows Display Settings (${GREEN}ms-settings:display - HDR & Scale${NC})"
-        echo -e "  ${BOLD}${CYAN}59)${NC} Open Windows Sound Settings (${GREEN}control.exe mmsys.cpl${NC})"
+        echo -e "  ${BOLD}${CYAN}59)${NC} Open Windows Display Settings (${GREEN}ms-settings:display - HDR & Scale${NC})"
+        echo -e "  ${BOLD}${CYAN}60)${NC} Open Windows Sound Settings (${GREEN}control.exe mmsys.cpl${NC})"
     else
-        echo -e "  ${BOLD}${CYAN}58)${NC} Switch Desktop to Plasma Wayland (HDR Gaming on Hisense & Steam BPM)"
-        echo -e "  ${BOLD}${CYAN}59)${NC} Switch Desktop to Plasma X11 (Workstation 4-Screen Defasten)"
+        echo -e "  ${BOLD}${CYAN}59)${NC} Switch Desktop to Plasma Wayland (HDR Gaming on Hisense & Steam BPM)"
+        echo -e "  ${BOLD}${CYAN}60)${NC} Switch Desktop to Plasma X11 (Workstation 4-Screen Defasten)"
     fi
-    echo -e "  ${BOLD}${CYAN}60)${NC} Close All Desktop Applications (Keep Manager Open)"
+    echo -e "  ${BOLD}${CYAN}61)${NC} Close All Desktop Applications (Keep Manager Open)"
     if [ "$OS_TYPE" = "macos" ]; then
-        echo -e "  ${BOLD}${CYAN}61)${NC} macOS System Maintenance & Cleanup (${GREEN}brew cleanup, purge RAM, caches${NC})"
+        echo -e "  ${BOLD}${CYAN}62)${NC} macOS System Maintenance & Cleanup (${GREEN}brew cleanup, purge RAM, caches${NC})"
     elif [ "$OS_TYPE" = "windows" ] || [ "$OS_TYPE" = "wsl" ]; then
-        echo -e "  ${BOLD}${CYAN}61)${NC} Windows System Maintenance & Cleanup (${GREEN}winget upgrade, clean temp, TRIM${NC})"
+        echo -e "  ${BOLD}${CYAN}62)${NC} Windows System Maintenance & Cleanup (${GREEN}winget upgrade, clean temp, TRIM${NC})"
     elif [ "$OS_TYPE" = "freebsd" ]; then
-        echo -e "  ${BOLD}${CYAN}61)${NC} FreeBSD System Maintenance & Cleanup (${GREEN}pkg upgrade, pkg clean, autoremove, audit${NC})"
+        echo -e "  ${BOLD}${CYAN}62)${NC} FreeBSD System Maintenance & Cleanup (${GREEN}pkg upgrade, pkg clean, autoremove, audit${NC})"
     else
-        echo -e "  ${BOLD}${CYAN}61)${NC} Bazzite System Maintenance & Cleanup (${GREEN}ujust clean-system, update, trim, logs${NC})"
+        echo -e "  ${BOLD}${CYAN}62)${NC} Bazzite System Maintenance & Cleanup (${GREEN}ujust clean-system, update, trim, logs${NC})"
     fi
-    echo -e "  ${BOLD}${CYAN}62)${NC} Launch GeeXLab Demo Launcher (${GREEN}FurMark_linux64/demo_launcher.sh${NC})"
-    echo -e "  ${BOLD}${CYAN}63)${NC} Burn ISO Image to USB Drive (${GREEN}dd / diskutil with safety checks${NC})"
-    echo -e "  ${BOLD}${CYAN}64)${NC} Dynamic System MOTD Banner Manager (${GREEN}Last 5 Mixes, Date/Time, Size, Format & Specs${NC})"
+    echo -e "  ${BOLD}${CYAN}63)${NC} Launch GeeXLab Demo Launcher (${GREEN}FurMark_linux64/demo_launcher.sh${NC})"
+    echo -e "  ${BOLD}${CYAN}64)${NC} Burn ISO Image to USB Drive (${GREEN}dd / diskutil with safety checks${NC})"
+    echo -e "  ${BOLD}${CYAN}65)${NC} Dynamic System MOTD Banner Manager (${GREEN}Last 5 Mixes, Date/Time, Size, Format & Specs${NC})"
     
     echo -e "\n  ${BOLD}${BLUE}─── [ SECTION 7: AI, SHELL CLI & SETTINGS ] ──────────────────${NC}"
-    echo -e "  ${BOLD}${CYAN}65)${NC} Launch AI Assistant / Models (${GREEN}Claude Opus, Claude Sonnet, GPT-OSS, Gemini${NC})"
-    echo -e "  ${BOLD}${CYAN}66)${NC} Run Bash CLI Commands (${GREEN}Interactive Shell & Direct Runner${NC})"
-    echo -e "  ${BOLD}${CYAN}67)${NC} Manager Themes & Color Palette Switcher (${GREEN}8 Themes + Classic${NC})"
-    echo -e "  ${BOLD}${CYAN}68)${NC} Manage Installation & Configuration (${GREEN}Migrate Path, Backup, Export & Import Config${NC})"
+    echo -e "  ${BOLD}${CYAN}66)${NC} Launch AI Assistant / Models (${GREEN}Claude Opus, Claude Sonnet, GPT-OSS, Gemini${NC})"
+    echo -e "  ${BOLD}${CYAN}67)${NC} Run Bash CLI Commands (${GREEN}Interactive Shell & Direct Runner${NC})"
+    echo -e "  ${BOLD}${CYAN}68)${NC} Manager Themes & Color Palette Switcher (${GREEN}8 Themes + Classic${NC})"
+    echo -e "  ${BOLD}${CYAN}69)${NC} Manage Installation & Configuration (${GREEN}Migrate Path, Backup, Export & Import Config${NC})"
     if [ "$OS_TYPE" = "macos" ]; then
-        echo -e "  ${BOLD}${CYAN}69)${NC} Reboot System (${RED}macOS restart with confirmation${NC})"
+        echo -e "  ${BOLD}${CYAN}70)${NC} Reboot System (${RED}macOS restart with confirmation${NC})"
     elif [ "$OS_TYPE" = "windows" ] || [ "$OS_TYPE" = "wsl" ]; then
-        echo -e "  ${BOLD}${CYAN}69)${NC} Reboot System (${RED}Windows restart with confirmation${NC})"
+        echo -e "  ${BOLD}${CYAN}70)${NC} Reboot System (${RED}Windows restart with confirmation${NC})"
     elif [ "$OS_TYPE" = "freebsd" ]; then
-        echo -e "  ${BOLD}${CYAN}69)${NC} Reboot System (${RED}FreeBSD restart with confirmation${NC})"
+        echo -e "  ${BOLD}${CYAN}70)${NC} Reboot System (${RED}FreeBSD restart with confirmation${NC})"
     else
-        echo -e "  ${BOLD}${CYAN}69)${NC} Reboot System (${RED}systemctl reboot with confirmation${NC})"
+        echo -e "  ${BOLD}${CYAN}70)${NC} Reboot System (${RED}systemctl reboot with confirmation${NC})"
     fi
     
     echo -e "\n  ${BOLD}${BLUE}──────────────────────────────────────────────────────────────${NC}"
     get_manager_uptime
-    echo -e "  ${BOLD}${CYAN}70)${NC} Exit Manager ${DIM}(or 0 / q)${NC}"
+    echo -e "  ${BOLD}${CYAN}71)${NC} Exit Manager ${DIM}(or 0 / q)${NC}"
     echo ""
-    read -r -p "Enter choice [1-70, or q to exit]: " choice
+    read -r -p "Enter choice [1-71, or q to exit]: " choice
     
     case $choice in
         1)
@@ -6741,62 +6843,65 @@ while true; do
             manage_cliamp
             ;;
         28)
-            manage_playlists_menu
+            inspect_playing_audio_file
             ;;
         29)
-            launch_strawberry
+            manage_playlists_menu
             ;;
         30)
-            launch_vlc
+            launch_strawberry
             ;;
         31)
-            launch_haruna
+            launch_vlc
             ;;
         32)
-            launch_kodi
+            launch_haruna
             ;;
         33)
-            list_usb_midi_devices
+            launch_kodi
             ;;
         34)
-            inspect_audio_studio_menu
+            list_usb_midi_devices
             ;;
         35)
-            toggle_audio_mute
+            inspect_audio_studio_menu
             ;;
         36)
-            generate_youtube_video
+            toggle_audio_mute
             ;;
         37)
+            generate_youtube_video
+            ;;
+        38)
             cut_video_clip
             press_enter
             ;;
-        38)
+        39)
             launch_video_playlists
             ;;
-        39)
+        40)
             manage_video_dispatcher
             ;;
-        40)
+        41)
             launch_gimp
             ;;
-        41)
+        42)
             manage_cover_converter
             ;;
-        42)
+        43)
             view_cover
             press_enter
             ;;
-        43)
+        44)
             generate_ppm_cover_menu
             ;;
-        44)
+        45)
             launch_electricsheep
             ;;
-        45)
+        46)
             manage_sync_video_companion_menu
             ;;
-        46)
+        47)
             echo -e "\n${BOLD}${YELLOW}Launching Live Tracklist Monitor (Press Ctrl+C to return to menu)...${NC}\n"
             sleep 1
             trap ':' INT
@@ -6804,7 +6909,7 @@ while true; do
             trap - INT
             press_enter
             ;;
-        47)
+        48)
             echo -e "\n${BOLD}${YELLOW}Launching Live File Transfer Monitor (Press Ctrl+C to return to menu)...${NC}\n"
             sleep 1
             trap ':' INT
@@ -6818,7 +6923,7 @@ while true; do
             trap - INT
             press_enter
             ;;
-        48)
+        49)
             echo -e "\n${BOLD}${YELLOW}Launching Chrome Upload Monitor (Press Ctrl+C to return to menu)...${NC}\n"
             sleep 1
             trap ':' INT
@@ -6840,17 +6945,17 @@ while true; do
             trap - INT
             press_enter
             ;;
-        49)
+        50)
             echo -e "\n${BOLD}${YELLOW}Loading Advanced Archive Statistics...${NC}\n"
             sleep 0.5
             run_sub_script "SOF_Archive_Stats.sh"
             press_enter
             ;;
-        50)
+        51)
             view_tasks
             press_enter
             ;;
-        51)
+        52)
             echo -e "\n${BOLD}${YELLOW}Launching btop Resource Monitor (Press 'q' to exit)...${NC}\n"
             sleep 0.5
             trap ':' INT
@@ -6862,7 +6967,7 @@ while true; do
             fi
             trap - INT
             ;;
-        52)
+        53)
             echo -e "\n${BOLD}${YELLOW}Launching nvtop GPU Monitor (Press 'q' to exit)...${NC}\n"
             sleep 0.5
             trap ':' INT
@@ -6874,7 +6979,7 @@ while true; do
             fi
             trap - INT
             ;;
-        53)
+        54)
             echo -e "\n${BOLD}${YELLOW}Launching top Process Monitor (Press 'q' to exit)...${NC}\n"
             sleep 0.5
             trap ':' INT
@@ -6886,60 +6991,60 @@ while true; do
             fi
             trap - INT
             ;;
-        54)
+        55)
             manage_wan2gp
             ;;
-        55)
+        56)
             manage_network_services
             ;;
-        56)
+        57)
             block_internet
             ;;
-        57)
+        58)
             unblock_internet
             ;;
-        58)
+        59)
             switch_to_wayland
             ;;
-        59)
+        60)
             switch_to_x11
             ;;
-        60)
+        61)
             close_all_desktop_apps
             ;;
-        61)
+        62)
             manage_system_maintenance
             ;;
-        62)
+        63)
             launch_geexlab_demos
             ;;
-        63)
+        64)
             burn_iso_to_usb
             ;;
-        64)
+        65)
             manage_system_motd_menu
             ;;
-        65)
+        66)
             manage_ai_models
             ;;
-        66)
+        67)
             run_bash_cli
             ;;
-        67)
+        68)
             manage_themes
             ;;
-        68)
+        69)
             manage_installation_and_config
             ;;
-        69)
+        70)
             reboot_system
             ;;
-        70|0|[qQ]|[eE][xX][iI][tT])
+        71|0|[qQ]|[eE][xX][iI][tT])
             echo -e "\n${BOLD}${GREEN}Exiting Mix Archive Manager. Goodbye!${NC}\n"
             exit 0
             ;;
         *)
-            echo -e "\n${RED}Invalid option! Please enter a number between 1 and 70 (or 'q' to exit).${NC}"
+            echo -e "\n${RED}Invalid option! Please enter a number between 1 and 71 (or 'q' to exit).${NC}"
             sleep 2
             ;;
     esac
