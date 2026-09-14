@@ -28,6 +28,10 @@ IMPORT_LOGS/*
 !IMPORT_LOGS/.gitkeep
 COVERS/*
 !COVERS/.gitkeep
+config_backups/*
+!config_backups/.gitkeep
+exported_configs/*
+!exported_configs/.gitkeep
 !assets/Cover.png
 !Cover.png
 

@@ -77,7 +77,7 @@ echo ""
 
 # 3. Create Scaffold Working Directories
 echo -e "${BOLD}${BLUE}[3/7] Setting Up Archive Directory Structure...${NC}"
-mkdir -p "$SCRIPT_DIR"/{FLAC_CONVERTED_OUTPUTS,CONVERTED_WAV_FILES,SPEK_OUTPUTS,BACKUP_LOGS,VERIFY_LOGS,IMPORT_LOGS,COVERS}
+mkdir -p "$SCRIPT_DIR"/{FLAC_CONVERTED_OUTPUTS,CONVERTED_WAV_FILES,SPEK_OUTPUTS,BACKUP_LOGS,VERIFY_LOGS,IMPORT_LOGS,COVERS,config_backups,exported_configs}
 touch "$SCRIPT_DIR/FLAC_CONVERTED_OUTPUTS/.gitkeep"
 touch "$SCRIPT_DIR/CONVERTED_WAV_FILES/.gitkeep"
 touch "$SCRIPT_DIR/SPEK_OUTPUTS/.gitkeep"
@@ -85,6 +85,8 @@ touch "$SCRIPT_DIR/BACKUP_LOGS/.gitkeep"
 touch "$SCRIPT_DIR/VERIFY_LOGS/.gitkeep"
 touch "$SCRIPT_DIR/IMPORT_LOGS/.gitkeep"
 touch "$SCRIPT_DIR/COVERS/.gitkeep"
+touch "$SCRIPT_DIR/config_backups/.gitkeep"
+touch "$SCRIPT_DIR/exported_configs/.gitkeep"
 echo -e "${GREEN}      ✓ Archive, output, and log directories ready.${NC}"
 echo ""
 

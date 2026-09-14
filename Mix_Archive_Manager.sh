@@ -5219,6 +5219,37 @@ manage_audio_checksums() {
     done
 }
 
+manage_mix_search_and_import() {
+    clear 2>/dev/null || true
+    echo -e "${BOLD}${MAGENTA}======================================================================${NC}"
+    echo -e "${BOLD}${MAGENTA}       Search & Import Mixes from Local Storage & Network SMB         ${NC}"
+    echo -e "${BOLD}${MAGENTA}======================================================================${NC}"
+    echo -e "  ${BOLD}${CYAN} 1)${NC} Universal Search & Import Wizard ${GREEN}(Local Disks, USB, External Drives & SMB)${NC}"
+    echo -e "  ${BOLD}${CYAN} 2)${NC} Dedicated Traktor & SOF SMB Share Ingest ${GREEN}(import_new_mixes.sh)${NC}"
+    echo ""
+    echo -e "  ${BOLD}${CYAN} 0)${NC} Return to Main Menu"
+    echo ""
+    read -r -p "Select ingest mode [1-2, 0 to return]: " imode
+    case "$imode" in
+        1)
+            run_sub_script "search_and_import_mixes.sh"
+            press_enter
+            ;;
+        2)
+            echo -e "\n${BOLD}${YELLOW}Starting SMB Import Process...${NC}\n"
+            run_sub_script "import_new_mixes.sh"
+            press_enter
+            ;;
+        0|*)
+            return
+            ;;
+    esac
+}
+
+manage_installation_and_config() {
+    run_sub_script "manage_installation_config.sh"
+}
+
 reboot_system() {
     echo -e "\n${BOLD}${RED}⚠️  SYSTEM REBOOT REQUESTED ⚠️${NC}\n"
     echo -e "${YELLOW}Are you sure you want to reboot the system?${NC}"
@@ -5308,7 +5339,7 @@ while true; do
     echo -e "  ${BOLD}${CYAN} 1)${NC} Run FLAC Conversion Process (${GREEN}Make_SOF_FLAC_CONVERSION.sh${NC})"
     echo -e "  ${BOLD}${CYAN} 2)${NC} Convert Audio Formats & Bit Depths (${GREEN}WAV to MP3, OGG, AAC, ALAC, WAV 32/24/16${NC})"
     echo -e "  ${BOLD}${CYAN} 3)${NC} Retrieve Unconverted WAVs from Archive (${GREEN}MOVE_NOT_CONVERTED_WAVS.sh${NC})"
-    echo -e "  ${BOLD}${CYAN} 4)${NC} Import New Mixes from SMB Share (${GREEN}import_new_mixes.sh${NC})"
+    echo -e "  ${BOLD}${CYAN} 4)${NC} Search & Import Mixes from Local Drives & SMB (${GREEN}search_and_import_mixes.sh / import_new_mixes.sh${NC})"
     echo -e "  ${BOLD}${CYAN} 5)${NC} Rename a Mix and Associated Assets (FLAC, Tracklist, Spek)"
     echo -e "  ${BOLD}${CYAN} 6)${NC} Find & Remove Duplicate Audio Files / Mixes (${GREEN}Exact Content & Episode Match${NC})"
     echo -e "  ${BOLD}${CYAN} 7)${NC} Export / Copy Mixes to Specified Path (${GREEN}Audio, Covers, Tracklists, Spek${NC})"
@@ -5392,20 +5423,21 @@ while true; do
     echo -e "  ${BOLD}${CYAN}57)${NC} Launch AI Assistant / Models (${GREEN}Claude Opus, Claude Sonnet, GPT-OSS, Gemini${NC})"
     echo -e "  ${BOLD}${CYAN}58)${NC} Run Bash CLI Commands (${GREEN}Interactive Shell & Direct Runner${NC})"
     echo -e "  ${BOLD}${CYAN}59)${NC} Manager Themes & Color Palette Switcher (${GREEN}8 Themes + Classic${NC})"
+    echo -e "  ${BOLD}${CYAN}60)${NC} Manage Installation & Configuration (${GREEN}Migrate Path, Backup, Export & Import Config${NC})"
     if [ "$OS_TYPE" = "macos" ]; then
-        echo -e "  ${BOLD}${CYAN}60)${NC} Reboot System (${RED}macOS restart with confirmation${NC})"
+        echo -e "  ${BOLD}${CYAN}61)${NC} Reboot System (${RED}macOS restart with confirmation${NC})"
     elif [ "$OS_TYPE" = "windows" ] || [ "$OS_TYPE" = "wsl" ]; then
-        echo -e "  ${BOLD}${CYAN}60)${NC} Reboot System (${RED}Windows restart with confirmation${NC})"
+        echo -e "  ${BOLD}${CYAN}61)${NC} Reboot System (${RED}Windows restart with confirmation${NC})"
     elif [ "$OS_TYPE" = "freebsd" ]; then
-        echo -e "  ${BOLD}${CYAN}60)${NC} Reboot System (${RED}FreeBSD restart with confirmation${NC})"
+        echo -e "  ${BOLD}${CYAN}61)${NC} Reboot System (${RED}FreeBSD restart with confirmation${NC})"
     else
-        echo -e "  ${BOLD}${CYAN}60)${NC} Reboot System (${RED}systemctl reboot with confirmation${NC})"
+        echo -e "  ${BOLD}${CYAN}61)${NC} Reboot System (${RED}systemctl reboot with confirmation${NC})"
     fi
     
     echo -e "\n  ${BOLD}${BLUE}──────────────────────────────────────────────────────────────${NC}"
-    echo -e "  ${BOLD}${CYAN}61)${NC} Exit Manager ${DIM}(or 0 / q)${NC}"
+    echo -e "  ${BOLD}${CYAN}62)${NC} Exit Manager ${DIM}(or 0 / q)${NC}"
     echo ""
-    read -r -p "Enter choice [1-61, or q to exit]: " choice
+    read -r -p "Enter choice [1-62, or q to exit]: " choice
     
     case $choice in
         1)
@@ -5422,9 +5454,7 @@ while true; do
             press_enter
             ;;
         4)
-            echo -e "\n${BOLD}${YELLOW}Starting SMB Import Process...${NC}\n"
-            run_sub_script "import_new_mixes.sh"
-            press_enter
+            manage_mix_search_and_import
             ;;
         5)
             rename_mix
@@ -5669,14 +5699,17 @@ while true; do
             manage_themes
             ;;
         60)
+            manage_installation_and_config
+            ;;
+        61)
             reboot_system
             ;;
-        61|0|[qQ]|[eE][xX][iI][tT])
+        62|0|[qQ]|[eE][xX][iI][tT])
             echo -e "\n${BOLD}${GREEN}Exiting Mix Archive Manager. Goodbye!${NC}\n"
             exit 0
             ;;
         *)
-            echo -e "\n${RED}Invalid option! Please enter a number between 1 and 61 (or 'q' to exit).${NC}"
+            echo -e "\n${RED}Invalid option! Please enter a number between 1 and 62 (or 'q' to exit).${NC}"
             sleep 2
             ;;
     esac

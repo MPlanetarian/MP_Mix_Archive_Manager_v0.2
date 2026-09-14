@@ -141,6 +141,9 @@ MP_Mix_Manager_v0.1/
 ├── manager.ps1                  # Windows PowerShell launcher
 ├── generate_spek.sh             # Dedicated CLI/GUI acoustic spectrogram generator
 ├── send_promo_email.py          # Promotional & publisher outreach email system
+├── search_and_import_mixes.py   # Universal mix search & importer (Local Drives & SMB)
+├── search_and_import_mixes.sh   # Universal mix search shell launcher
+├── manage_installation_config.sh# Installation migration & configuration backup/export/import suite
 ├── install.sh                   # Cross-platform automated environment installer
 ├── INSTALL_BAZZITE.md           # Step-by-step Bazzite installation guide
 ├── README.md                    # Project documentation & reference
@@ -165,6 +168,9 @@ MP_Mix_Manager_v0.1/
 │   ├── Make_SOF_FLAC_CONVERSION.sh  # 32-bit FLAC conversion & spectrogram generation
 │   ├── generate_spek.sh             # Acoustic spectrogram generation engine
 │   ├── send_promo_email.py          # Promotional & publisher outreach email system
+│   ├── search_and_import_mixes.py   # Universal mix search & importer (Local Drives & SMB)
+│   ├── search_and_import_mixes.sh   # Universal mix search shell launcher
+│   ├── manage_installation_config.sh# Installation migration & configuration management
 │   ├── Check_Find_Tracklists.sh     # Traktor Pro history XML parser
 │   ├── MOVE_NOT_CONVERTED_WAVS.sh   # Unconverted WAV retrieval engine
 │   ├── SOF_Live_Tracker.sh          # Live tracklist monitor (Strawberry / cliamp)
@@ -207,12 +213,14 @@ MP_Mix_Manager_v0.1/
         ├── BACKUP_LOGS/             # Cloud backup reports
         ├── VERIFY_LOGS/             # FLAC integrity test reports
         ├── IMPORT_LOGS/             # SMB import reports
+        ├── config_backups/          # Local timestamped configuration snapshots
+        ├── exported_configs/        # Portable exported configuration bundles (.tar.gz)
         └── COVERS/                  # Episode and album artwork library
 ```
 
 ---
 
-## 🎛️ Feature Matrix (61 Core Operations in 7 Logical Sections)
+## 🎛️ Feature Matrix (62 Core Operations in 7 Logical Sections)
 
 ### ─── [ SECTION 1: MIX ARCHIVE WORKFLOW & INGESTION ] ──────────
 | # | Operation | Description |
@@ -220,7 +228,7 @@ MP_Mix_Manager_v0.1/
 | **1** | **Run FLAC Conversion Process** | Batch concatenates split WAVs, encodes to 32-bit FLAC (`Make_SOF_FLAC_CONVERSION.sh`), embeds artwork, and outputs spectrograms. |
 | **2** | **Convert Audio Formats & Bit Depths** | Converts audio between MP3 (320k, V0, 256k), Ogg Vorbis, Opus, Apple AAC, Apple ALAC lossless, FLAC, and WAV-to-WAV bit depths (32-bit float, 32-bit int, 24-bit PCM, 16-bit PCM). |
 | **3** | **Retrieve Unconverted WAVs** | Scans archive and quarantines/moves WAVs lacking a corresponding FLAC back to staging (`MOVE_NOT_CONVERTED_WAVS.sh`). |
-| **4** | **Import New Mixes from SMB Share** | Connects to remote network studio shares, checks local inventory, and transfers new audio files (`import_new_mixes.sh`). |
+| **4** | **Search & Import Mixes (Local Drives & SMB)** | Auto-discovers local storage volumes, USB drives, common music directories, and SMB shares. Scans and filters by mix size (>=100MB) and audio extensions, checks for duplicates against the archive, and executes transfers with live progress and audit logs (`search_and_import_mixes.sh` / `import_new_mixes.sh`). |
 | **5** | **Rename Mix and Associated Assets** | Atomically renames FLAC file, `.txt` tracklist, and Spek `.png` across all archive subdirectories. |
 | **6** | **Find & Remove Duplicate Audio Files** | Fast chunk-content hashing & episode duplicate detector; supports safe reporting, quarantine to `DUPLICATES_QUARANTINE/`, or permanent deletion (`find_duplicate_mixes.py`). |
 | **7** | **Export / Copy Mixes to Specified Path** | Copies complete mix packages (FLAC + Covers + Tracklists TXT/HTML/PDF + Spek) or filtered assets to USB drives or external paths. |
@@ -300,8 +308,9 @@ MP_Mix_Manager_v0.1/
 | **57**| **Launch AI Assistant / Models (AGY)** | Starts Antigravity CLI AI sessions (Claude Sonnet, Claude Opus, GPT-OSS, Gemini). |
 | **58**| **Run Bash CLI Commands** | Built-in interactive Bash shell and direct command execution runner. |
 | **59**| **Manager Themes & Color Palette Switcher** | Switch between 9 terminal themes (Cyberpunk, Dracula, Nord, Matrix, Solarized, Tokyo Night, Monokai, Gruvbox, Emerald, Classic). |
-| **60**| **Reboot System** | Cross-platform system reboot with safety confirmation dialog (`systemctl reboot`, macOS `osascript`, Windows `shutdown.exe /r`, FreeBSD `shutdown -r now`). |
-| **61**| **Exit Manager** | Cleans up and exits the console session. |
+| **60**| **Manage Installation & Configuration** | Comprehensive installation migration wizard (relocates codebase path and auto-repoints all CLI wrappers and desktop entries), instant timestamped config backups, portable `.tar.gz` config bundle export (with SHA-256 verification and manifest), safe bundle import with pre-import snapshots, and rollback/restore of historical snapshots (`manage_installation_config.sh`). |
+| **61**| **Reboot System** | Cross-platform system reboot with safety confirmation dialog (`systemctl reboot`, macOS `osascript`, Windows `shutdown.exe /r`, FreeBSD `shutdown -r now`). |
+| **62**| **Exit Manager** | Cleans up and exits the console session. |
 
 ---
 
