@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# MP_Mix_Manager_v0.1 - Automated Installer for Bazzite Linux
+# MP_Mix_Manager_v0.1 - Cross-Platform Automated Installer
+# Supports Linux (Bazzite / SteamOS / Fedora / Ubuntu), macOS, and Windows
 # ==============================================================================
 set -euo pipefail
 
@@ -9,6 +10,7 @@ GREEN='\033[0;32m'
 YELLOW='\033[0;33m'
 RED='\033[0;31m'
 BLUE='\033[0;34m'
+MAGENTA='\033[0;35m'
 CYAN='\033[0;36m'
 NC='\033[0m'
 
@@ -16,34 +18,57 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 echo -e "${BOLD}${MAGENTA}======================================================================${NC}"
 echo -e "${BOLD}${MAGENTA}        Mix Archive Manager Installer (MP_Mix_Manager_v0.1)           ${NC}"
-echo -e "${BOLD}${MAGENTA}                   Tailored for Bazzite Linux / SteamOS               ${NC}"
+echo -e "${BOLD}${MAGENTA}          Cross-Platform: Linux • macOS • Windows 10 & 11             ${NC}"
 echo -e "${BOLD}${MAGENTA}======================================================================${NC}"
 echo ""
 
-# 1. Verify Bazzite / Fedora Atomic Environment
-echo -e "${BOLD}${BLUE}[1/7] Detecting Host Environment...${NC}"
-if [ -f /etc/os-release ]; then
-    # shellcheck source=/dev/null
-    source /etc/os-release
-    echo -e "      OS: ${CYAN}${PRETTY_NAME:-Linux}${NC}"
-    if [[ "${ID:-}" != *"bazzite"* ]] && [[ "${VARIANT_ID:-}" != *"bazzite"* ]] && [[ "${NAME:-}" != *"Bazzite"* ]]; then
-        echo -e "${YELLOW}      Notice: System does not identify as Bazzite. Continuing installation in compatibility mode.${NC}"
-    else
-        echo -e "${GREEN}      ✓ Verified Bazzite Linux installation.${NC}"
-    fi
-else
-    echo -e "${YELLOW}      Notice: /etc/os-release not found. Continuing.${NC}"
-fi
+# 1. Detect Host Environment
+echo -e "${BOLD}${BLUE}[1/7] Detecting Host Platform & Environment...${NC}"
+HOST_OS="linux"
+case "$(uname -s)" in
+    Darwin*)
+        HOST_OS="macos"
+        MAC_VER=$(sw_vers -productVersion 2>/dev/null || uname -r)
+        MAC_ARCH=$(uname -m)
+        echo -e "      Platform:     ${GREEN}Apple macOS${NC} (${CYAN}${MAC_VER}${NC}, ${MAC_ARCH})"
+        ;;
+    CYGWIN*|MINGW*|MSYS*)
+        HOST_OS="windows"
+        echo -e "      Platform:     ${GREEN}Microsoft Windows${NC} (Git Bash / MSYS2)"
+        ;;
+    Linux*)
+        if grep -qi microsoft /proc/version 2>/dev/null; then
+            HOST_OS="wsl"
+            echo -e "      Platform:     ${GREEN}Microsoft Windows${NC} (WSL2 Linux Subsystem)"
+        else
+            HOST_OS="linux"
+            if [ -f /etc/os-release ]; then
+                # shellcheck source=/dev/null
+                source /etc/os-release
+                echo -e "      Platform:     ${GREEN}Linux${NC} (${CYAN}${PRETTY_NAME:-Linux}${NC})"
+                if [[ "${ID:-}" == *"bazzite"* ]] || [[ "${VARIANT_ID:-}" == *"bazzite"* ]] || [[ "${NAME:-}" == *"Bazzite"* ]]; then
+                    echo -e "${GREEN}      ✓ Verified Bazzite Linux environment.${NC}"
+                fi
+            else
+                echo -e "      Platform:     ${GREEN}Generic Linux${NC}"
+            fi
+        fi
+        ;;
+    *)
+        HOST_OS="linux"
+        echo -e "      Platform:     ${YELLOW}Unknown (${OS})${NC}"
+        ;;
+esac
 echo ""
 
 # 2. Ensure Executable Permissions
 echo -e "${BOLD}${BLUE}[2/7] Configuring Script & Binary Permissions...${NC}"
-chmod +x "$SCRIPT_DIR"/*.sh "$SCRIPT_DIR"/bin/* 2>/dev/null || true
+chmod +x "$SCRIPT_DIR"/*.sh "$SCRIPT_DIR"/*.command "$SCRIPT_DIR"/bin/* 2>/dev/null || true
 if [ -d "$SCRIPT_DIR/scripts" ]; then
     chmod +x "$SCRIPT_DIR"/scripts/*.sh 2>/dev/null || true
 fi
 chmod +x "$SCRIPT_DIR"/bin/cliamp 2>/dev/null || true
-echo -e "${GREEN}      ✓ Executable permissions granted.${NC}"
+echo -e "${GREEN}      ✓ Executable permissions granted across all scripts and tools.${NC}"
 echo ""
 
 # 3. Create Scaffold Working Directories
@@ -56,7 +81,7 @@ touch "$SCRIPT_DIR/BACKUP_LOGS/.gitkeep"
 touch "$SCRIPT_DIR/VERIFY_LOGS/.gitkeep"
 touch "$SCRIPT_DIR/IMPORT_LOGS/.gitkeep"
 touch "$SCRIPT_DIR/COVERS/.gitkeep"
-echo -e "${GREEN}      ✓ Archive and log directories ready.${NC}"
+echo -e "${GREEN}      ✓ Archive, output, and log directories ready.${NC}"
 echo ""
 
 # 4. Check & Report Dependencies
@@ -68,29 +93,32 @@ declare -A TOOLS=(
     ["flac"]="Native lossless audio encoding and decoding"
     ["rclone"]="Automated Google Drive and cloud synchronisation"
     ["jq"]="JSON parser for cliamp and system inspection"
-    ["wmctrl"]="Window management and graceful process shielding"
-    ["btop"]="High-performance terminal system resource monitor"
-    ["nvtop"]="NVIDIA/GPU process and hardware monitor"
-    ["konsole"]="KDE Plasma terminal emulator"
-    ["nft"]="Nftables firewall management for internet toggle"
 )
 
-MISSING_BREW=()
+MISSING_TOOLS=()
 for tool in "${!TOOLS[@]}"; do
     if command -v "$tool" >/dev/null 2>&1; then
         echo -e "      [${GREEN}FOUND${NC}] $tool"
     else
         echo -e "      [${RED}MISSING${NC}] ${BOLD}$tool${NC} (${TOOLS[$tool]})"
-        if [ "$tool" != "konsole" ] && [ "$tool" != "nft" ]; then
-            MISSING_BREW+=("$tool")
-        fi
+        MISSING_TOOLS+=("$tool")
     fi
 done
 
-if [ ${#MISSING_BREW[@]} -gt 0 ]; then
+if [ ${#MISSING_TOOLS[@]} -gt 0 ]; then
     echo ""
-    echo -e "${YELLOW}      To install missing command-line dependencies on Bazzite, run:${NC}"
-    echo -e "${CYAN}      brew install ${MISSING_BREW[*]}${NC}"
+    if [ "$HOST_OS" = "macos" ]; then
+        echo -e "${YELLOW}      To install missing dependencies on macOS using Homebrew, run:${NC}"
+        echo -e "${CYAN}      brew install ${MISSING_TOOLS[*]}${NC}"
+        echo -e "${DIM}      Optional GUI apps: brew install --cask vlc audacity strawberry musicbrainz-picard gimp reaper${NC}"
+    elif [ "$HOST_OS" = "windows" ] || [ "$HOST_OS" = "wsl" ]; then
+        echo -e "${YELLOW}      To install missing dependencies on Windows using winget, run:${NC}"
+        echo -e "${CYAN}      winget install Gyan.FFmpeg Rclone.Rclone jqlang.jq${NC}"
+        echo -e "${DIM}      Optional GUI apps: winget install VideoLAN.VLC Audacity.Audacity MusicBrainz.Picard GIMP.GIMP Cockos.REAPER${NC}"
+    else
+        echo -e "${YELLOW}      To install missing dependencies on Linux, run:${NC}"
+        echo -e "${CYAN}      brew install ${MISSING_TOOLS[*]}${NC}  (or use your system package manager)"
+    fi
 fi
 echo ""
 
@@ -107,37 +135,57 @@ fi
 echo ""
 
 # 6. Install Global/Local User Symlinks
-echo -e "${BOLD}${BLUE}[6/7] Installing Local User Symlinks (~/.local/bin)...${NC}"
+echo -e "${BOLD}${BLUE}[6/7] Installing Local User Symlinks & Launchers...${NC}"
 mkdir -p "$HOME/.local/bin"
 
-ln -sf "$SCRIPT_DIR/bin/cliamp" "$HOME/.local/bin/cliamp"
-ln -sf "$SCRIPT_DIR/bin/mix-archive-manager" "$HOME/.local/bin/mix-archive-manager"
-ln -sf "$SCRIPT_DIR/bin/mix-archive-manager" "$HOME/.local/bin/manager"
-ln -sf "$SCRIPT_DIR/bin/launch-manager-fullscreen" "$HOME/.local/bin/launch-manager-fullscreen"
-ln -sf "$SCRIPT_DIR/bin/transfer-monitor" "$HOME/.local/bin/transfer-monitor"
-ln -sf "$SCRIPT_DIR/bin/chrome-upload-monitor" "$HOME/.local/bin/chrome-upload-monitor"
-ln -sf "$SCRIPT_DIR/bin/update-nft-playlist" "$HOME/.local/bin/update-nft-playlist"
-ln -sf "$SCRIPT_DIR/bin/watch-nft-copy-and-update.sh" "$HOME/.local/bin/watch-nft-copy-and-update.sh"
-ln -sf "$SCRIPT_DIR/bin/list-midi-devices" "$HOME/.local/bin/list-midi-devices"
-ln -sf "$SCRIPT_DIR/Cut_Video.sh" "$HOME/.local/bin/cut-video"
-ln -sf "$SCRIPT_DIR/Mix_Archive_Manager.sh" "$HOME/manager.sh"
+ln -sf "$SCRIPT_DIR/bin/cliamp" "$HOME/.local/bin/cliamp" 2>/dev/null || true
+ln -sf "$SCRIPT_DIR/bin/mix-archive-manager" "$HOME/.local/bin/mix-archive-manager" 2>/dev/null || true
+ln -sf "$SCRIPT_DIR/bin/mix-archive-manager" "$HOME/.local/bin/manager" 2>/dev/null || true
+ln -sf "$SCRIPT_DIR/bin/launch-manager-fullscreen" "$HOME/.local/bin/launch-manager-fullscreen" 2>/dev/null || true
+ln -sf "$SCRIPT_DIR/bin/transfer-monitor" "$HOME/.local/bin/transfer-monitor" 2>/dev/null || true
+ln -sf "$SCRIPT_DIR/bin/chrome-upload-monitor" "$HOME/.local/bin/chrome-upload-monitor" 2>/dev/null || true
+ln -sf "$SCRIPT_DIR/bin/update-nft-playlist" "$HOME/.local/bin/update-nft-playlist" 2>/dev/null || true
+ln -sf "$SCRIPT_DIR/bin/watch-nft-copy-and-update.sh" "$HOME/.local/bin/watch-nft-copy-and-update.sh" 2>/dev/null || true
+ln -sf "$SCRIPT_DIR/bin/list-midi-devices" "$HOME/.local/bin/list-midi-devices" 2>/dev/null || true
+ln -sf "$SCRIPT_DIR/Cut_Video.sh" "$HOME/.local/bin/cut-video" 2>/dev/null || true
+ln -sf "$SCRIPT_DIR/Mix_Archive_Manager.sh" "$HOME/manager.sh" 2>/dev/null || true
 
 echo -e "${GREEN}      ✓ Installed symlinks into ~/.local/bin and ~/manager.sh.${NC}"
 echo ""
 
-# 7. Desktop Entry Installation
+# 7. Desktop Integration
 echo -e "${BOLD}${BLUE}[7/7] Installing Desktop Integration...${NC}"
-mkdir -p "$HOME/.local/share/applications"
-DESKTOP_SRC="$SCRIPT_DIR/desktop/Mix_Archive_Manager.desktop"
-
-if [ -f "$DESKTOP_SRC" ]; then
-    cp -p "$DESKTOP_SRC" "$HOME/.local/share/applications/Mix_Archive_Manager.desktop"
+if [ "$HOST_OS" = "macos" ]; then
     if [ -d "$HOME/Desktop" ]; then
-        cp -p "$DESKTOP_SRC" "$HOME/Desktop/Mix_Archive_Manager.desktop"
-        chmod +x "$HOME/Desktop/Mix_Archive_Manager.desktop" 2>/dev/null || true
+        ln -sf "$SCRIPT_DIR/manager_macos.command" "$HOME/Desktop/Mix Archive Manager.command" 2>/dev/null || cp -p "$SCRIPT_DIR/manager_macos.command" "$HOME/Desktop/Mix Archive Manager.command"
+        echo -e "${GREEN}      ✓ Created double-clickable desktop launcher: ~/Desktop/Mix Archive Manager.command${NC}"
     fi
-    update-desktop-database "$HOME/.local/share/applications" 2>/dev/null || true
-    echo -e "${GREEN}      ✓ Mix Archive Manager application shortcut installed.${NC}"
+elif [ "$HOST_OS" = "windows" ] || [ "$HOST_OS" = "wsl" ]; then
+    WIN_DESKTOP=""
+    if [ -d "$HOME/Desktop" ]; then
+        WIN_DESKTOP="$HOME/Desktop"
+    elif [ -n "${USERPROFILE:-}" ] && [ -d "$USERPROFILE/Desktop" ]; then
+        WIN_DESKTOP="$USERPROFILE/Desktop"
+    elif [ -d "/c/Users/$USER/Desktop" ]; then
+        WIN_DESKTOP="/c/Users/$USER/Desktop"
+    fi
+    if [ -n "$WIN_DESKTOP" ]; then
+        cp -p "$SCRIPT_DIR/manager.bat" "$WIN_DESKTOP/Mix Archive Manager.bat" 2>/dev/null || true
+        echo -e "${GREEN}      ✓ Placed Windows launcher shortcut on Desktop.${NC}"
+    fi
+else
+    # Linux Desktop Entry (.desktop)
+    mkdir -p "$HOME/.local/share/applications"
+    DESKTOP_SRC="$SCRIPT_DIR/desktop/Mix_Archive_Manager.desktop"
+    if [ -f "$DESKTOP_SRC" ]; then
+        cp -p "$DESKTOP_SRC" "$HOME/.local/share/applications/Mix_Archive_Manager.desktop"
+        if [ -d "$HOME/Desktop" ]; then
+            cp -p "$DESKTOP_SRC" "$HOME/Desktop/Mix_Archive_Manager.desktop"
+            chmod +x "$HOME/Desktop/Mix_Archive_Manager.desktop" 2>/dev/null || true
+        fi
+        update-desktop-database "$HOME/.local/share/applications" 2>/dev/null || true
+        echo -e "${GREEN}      ✓ Mix Archive Manager application shortcut installed.${NC}"
+    fi
 fi
 
 echo ""
@@ -145,8 +193,18 @@ echo -e "${BOLD}${GREEN}========================================================
 echo -e "${BOLD}${GREEN}              MIX ARCHIVE MANAGER INSTALLATION COMPLETE!              ${NC}"
 echo -e "${BOLD}${GREEN}======================================================================${NC}"
 echo ""
-echo -e "You can launch Mix Archive Manager in three ways:"
-echo -e "  1. Run from anywhere in terminal: ${BOLD}${CYAN}manager${NC} or ${BOLD}${CYAN}~/manager.sh${NC}"
-echo -e "  2. Launch directly from source:   ${BOLD}${CYAN}cd $SCRIPT_DIR && ./Mix_Archive_Manager.sh${NC}"
-echo -e "  3. Open from Desktop or Application Menu: ${BOLD}${CYAN}Mix Archive Manager${NC}"
+echo -e "You can launch Mix Archive Manager:"
+if [ "$HOST_OS" = "macos" ]; then
+    echo -e "  1. Double-click:                  ${BOLD}${CYAN}~/Desktop/Mix Archive Manager.command${NC}"
+    echo -e "  2. Terminal command:              ${BOLD}${CYAN}manager${NC} or ${BOLD}${CYAN}~/manager.sh${NC}"
+    echo -e "  3. Launch directly from source:   ${BOLD}${CYAN}cd $SCRIPT_DIR && ./manager_macos.command${NC}"
+elif [ "$HOST_OS" = "windows" ] || [ "$HOST_OS" = "wsl" ]; then
+    echo -e "  1. Double-click on Windows:       ${BOLD}${CYAN}manager.bat${NC} or ${BOLD}${CYAN}manager.ps1${NC}"
+    echo -e "  2. Run inside Git Bash / MSYS2:   ${BOLD}${CYAN}./Mix_Archive_Manager.sh${NC}"
+    echo -e "  3. Run inside WSL2:               ${BOLD}${CYAN}./Mix_Archive_Manager.sh${NC}"
+else
+    echo -e "  1. Run from anywhere in terminal: ${BOLD}${CYAN}manager${NC} or ${BOLD}${CYAN}~/manager.sh${NC}"
+    echo -e "  2. Launch directly from source:   ${BOLD}${CYAN}cd $SCRIPT_DIR && ./Mix_Archive_Manager.sh${NC}"
+    echo -e "  3. Open from Desktop or Menu:     ${BOLD}${CYAN}Mix Archive Manager${NC}"
+fi
 echo ""

@@ -5,9 +5,26 @@
 # ================================
 OUTPUT_DIR="FLAC_CONVERTED_OUTPUTS"
 ARCHIVE_DIR="CONVERTED_WAV_FILES"
-LOCAL_HISTORY_DIR="${TRAKTOR_HISTORY_DIR:-/run/media/$USER/WD BLACK B/MIX_ARCHIVE/Traktor 3.11.1/History}"
-if [ ! -d "$LOCAL_HISTORY_DIR" ] && [ -d "./Traktor 3.11.1/History" ]; then
-    LOCAL_HISTORY_DIR="./Traktor 3.11.1/History"
+# Direct Local Traktor History Directory (Auto-detected across Linux, macOS, and Windows)
+LOCAL_HISTORY_DIR="${TRAKTOR_HISTORY_DIR:-}"
+if [ -z "$LOCAL_HISTORY_DIR" ] || [ ! -d "$LOCAL_HISTORY_DIR" ]; then
+    for cand in \
+        "./Traktor 3.11.1/History" \
+        "/run/media/$USER/WD BLACK B/MIX_ARCHIVE/Traktor 3.11.1/History" \
+        "/run/media/mplanetarian/WD BLACK B/MIX_ARCHIVE/Traktor 3.11.1/History" \
+        "/Volumes/WD BLACK B/MIX_ARCHIVE/Traktor 3.11.1/History" \
+        "/Volumes/MIX_ARCHIVE/Traktor 3.11.1/History" \
+        "/d/MIX_ARCHIVE/Traktor 3.11.1/History" \
+        "D:/MIX_ARCHIVE/Traktor 3.11.1/History" \
+        "/mnt/d/MIX_ARCHIVE/Traktor 3.11.1/History" \
+        "$HOME/Documents/Native Instruments/Traktor 3.11.1/History" \
+        "$HOME/Native Instruments/Traktor 3.11.1/History"
+    do
+        if [ -d "$cand" ]; then
+            LOCAL_HISTORY_DIR="$cand"
+            break
+        fi
+    done
 fi
 
 START_TIME=$(date '+%Y-%m-%d %H:%M:%S')

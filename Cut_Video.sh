@@ -29,7 +29,19 @@ open_file_manager() {
         return 0
     fi
     echo -e "${CYAN}Opening file manager in: ${BOLD}${target_dir}${NC}"
-    if command -v xdg-open >/dev/null 2>&1; then
+    if [[ "$OSTYPE" == "darwin"* ]] || [[ "$(uname -s)" == "Darwin"* ]]; then
+        open "$target_dir" >/dev/null 2>&1 &
+        disown 2>/dev/null || true
+    elif [[ "$OSTYPE" == "msys"* ]] || [[ "$OSTYPE" == "cygwin"* ]]; then
+        if command -v cygpath >/dev/null 2>&1; then
+            local win_p
+            win_p="$(cygpath -w "$target_dir" 2>/dev/null || echo "$target_dir")"
+            cmd.exe /c start "" "$win_p" >/dev/null 2>&1 &
+        else
+            explorer.exe "$target_dir" >/dev/null 2>&1 &
+        fi
+        disown 2>/dev/null || true
+    elif command -v xdg-open >/dev/null 2>&1; then
         xdg-open "$target_dir" >/dev/null 2>&1 &
         disown 2>/dev/null || true
     elif command -v dolphin >/dev/null 2>&1; then
@@ -37,6 +49,12 @@ open_file_manager() {
         disown 2>/dev/null || true
     elif command -v nautilus >/dev/null 2>&1; then
         nautilus "$target_dir" >/dev/null 2>&1 &
+        disown 2>/dev/null || true
+    elif command -v open >/dev/null 2>&1; then
+        open "$target_dir" >/dev/null 2>&1 &
+        disown 2>/dev/null || true
+    elif command -v explorer.exe >/dev/null 2>&1; then
+        explorer.exe "$target_dir" >/dev/null 2>&1 &
         disown 2>/dev/null || true
     fi
 }
