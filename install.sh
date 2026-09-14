@@ -166,6 +166,8 @@ ln -sf "$SCRIPT_DIR/bin/watch-nft-copy-and-update.sh" "$HOME/.local/bin/watch-nf
 ln -sf "$SCRIPT_DIR/bin/list-midi-devices" "$HOME/.local/bin/list-midi-devices" 2>/dev/null || true
 ln -sf "$SCRIPT_DIR/scripts/view_tracklist_console.sh" "$HOME/.local/bin/view-tracklist" 2>/dev/null || true
 ln -sf "$SCRIPT_DIR/scripts/inspect_playing_audio.sh" "$HOME/.local/bin/view-mix-specs" 2>/dev/null || true
+ln -sf "$SCRIPT_DIR/bin/traktor-monitor" "$HOME/.local/bin/traktor-monitor" 2>/dev/null || true
+ln -sf "$SCRIPT_DIR/scripts/traktor_monitor.sh" "$HOME/.local/bin/traktor_monitor.sh" 2>/dev/null || true
 ln -sf "$SCRIPT_DIR/Cut_Video.sh" "$HOME/.local/bin/cut-video" 2>/dev/null || true
 ln -sf "$SCRIPT_DIR/Mix_Archive_Manager.sh" "$HOME/manager.sh" 2>/dev/null || true
 

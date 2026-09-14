@@ -9,7 +9,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.2.0] - 2026-09-14
 
-### 🚀 Major Highlights & New Features
+- **Cross-Platform Traktor Pro Live Monitor & Audio Recorder Control (Option 48)**:
+  - Downloaded and upgraded Traktor monitor suite from remote macOS host (`192.168.1.138`) into core repository (`scripts/traktor_monitor.py`, `scripts/traktor_monitor.sh`, `traktor_monitor.sh`, `bin/traktor-monitor`).
+  - Upgraded engine with comprehensive **Microsoft Windows 10 & 11** native support:
+    - Multi-process detection for `Traktor.exe`, `Traktor Pro 3.exe`, and `Traktor Pro 4.exe` via `tasklist` and PowerShell CIM/WMI queries.
+    - Real-time CPU % load and RSS RAM memory footprint profiling.
+    - Native Windows console non-blocking hotkey input using `msvcrt.kbhit()` and `msvcrt.getch()`.
+    - Active deck audio tracking via Traktor session history XML (`history_*.nml`) parsing and file handle inspection.
+    - Real-time recording file status and multi-directory file size growth detector (`RECORDING_DIRS`) to identify active mix recordings and standby files.
+    - Traktor recording control via Windows `WScript.Shell` / `AppActivate("Traktor")` automation and keyboard shortcuts.
+    - Native double-clickable Windows launchers: `traktor_monitor.bat` and `traktor_monitor.ps1`.
+  - Maintained full macOS support (`traktor_monitor_macos.command`) with AppleScript System Events menu clicking and CoreAudio queries.
+  - Native Linux support with `/proc/$pid/fd` inspection, PipeWire audio endpoint probe, and Wine/Proton path detection.
+  - Interactive hotkeys: `[S]` Start Recording, `[X]` Stop Recording, `[T]` Toggle Recording, `[R]` Refresh, `[Q]` Quit.
+  - Integrated into `Mix_Archive_Manager.sh` as dedicated **Option 48** in Section 5 (Live Monitors) launching in a new terminal window (`launch_in_terminal` in Konsole, Terminal.app, Windows Terminal `wt.exe`, Alacritty, Foot, XTerm).
+  - Added companion launch option in Section 3 Digital Audio Workstations (`manage_daws`).
+  - Added process tracking in `view_tasks` for `traktor_monitor` and `Traktor`.
+  - Expanded master operations to **72 operations** across 7 logical sections.
 
 - **Advanced Audio File Specification & Stream Inspector (Option 28)**:
   - Added dedicated audio inspector engine (`scripts/inspect_playing_audio.py`, `scripts/inspect_playing_audio.sh`, `bin/view-mix-specs`, and `view_playing_specs.sh`).

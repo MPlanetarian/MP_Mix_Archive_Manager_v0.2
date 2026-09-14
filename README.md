@@ -14,7 +14,7 @@ An enterprise-grade workstation orchestration console and media management suite
 
 ## 🎧 Overview
 
-The **Stream of Frequency Mix Archive Manager** provides an interactive, terminal-driven control center (**71 operations** across **7 logical relational sections**) that automates the entire lifecycle of professional DJ mixes and audio recordings:
+The **Stream of Frequency Mix Archive Manager** provides an interactive, terminal-driven control center (**72 operations** across **7 logical relational sections**) that automates the entire lifecycle of professional DJ mixes and audio recordings:
 
 1. **Ingestion & Concatenation**: Auto-detects split multi-hour WAV recordings (e.g. 3-hour chunks from Traktor / external recorders), normalizes filenames, and concatenates them into single pristine tracks.
 2. **Lossless FLAC Mastering & Acoustic Spectrograms**: Encodes to 32-bit sample depth FLAC (`-sample_fmt s32 -compression_level 12`), optimizes and embeds cover art (`scale='min(1400,iw)':-1`), and outputs high-resolution 1080p acoustic spectrograms across an expanded acoustic suite (Spek, Sonic Visualiser, SoX 24-bit multi-colormap spectrograms, Praat, Kwave, Audacity).
@@ -160,18 +160,37 @@ MP_Mix_Manager_v0.2/
 ├── search_and_import_mixes.sh   # Universal mix search shell launcher
 ├── manage_installation_config.sh# Installation migration & configuration backup/export/import suite
 ├── install.sh                   # Cross-platform automated environment installer
-├── INSTALL_BAZZITE.md           # Step-by-step Bazzite installation guide
-├── CHANGELOG.md                 # Full release changelog
-├── README.md                    # Project documentation & reference
-├── LICENSE                      # MIT Open-Source License
-├── config.env.example           # Cross-platform configuration template
-├── config.env                   # Active user configuration
-├── requirements.txt             # Python dependencies
+├── manage_checksums.sh          # SHA-256 audio archive integrity manifest & verification
+├── Check_Find_Tracklists.sh     # Traktor Pro history XML parser & tracklist generator
+├── MOVE_NOT_CONVERTED_WAVS.sh   # Unconverted WAV retrieval engine
+├── SOF_Live_Tracker.sh          # Live tracklist monitor (Strawberry / cliamp)
+├── SOF_Archive_Stats.sh         # Archive statistics and duration accumulator
+├── backup_to_gdrive.sh          # Rclone Google Drive backup
+├── Verify_FLAC_Files.sh         # Multi-threaded FLAC bitstream corruption scanner
+├── import_new_mixes.sh          # Automated SMB network mix ingest
+├── import_new_mixes.py          # Network archive deduplicator
+├── Generate_Master_Tracklist.sh # Master HTML index generator
+├── generate_master_tracklist.py # HTML generator logic
+├── generate_tracklist_docs.py   # Styled HTML & printable vector PDF tracklist exporter
+├── generate_youtube_video.sh    # Hardware-accelerated 4K/1080p/720p YouTube video creator
+├── Cut_Video.sh                 # Start/End timestamp video cutter
+├── Get_All_Drive_Space.sh       # Comprehensive system-wide drive space reporter
+├── play_defasten_4screens.sh    # Multi-monitor 4-screen Defasten video launcher
+├── switch-to-plasma-wayland.sh  # Desktop session switcher to Plasma Wayland
+├── switch-to-plasma-x11.sh      # Desktop session switcher to Plasma X11
+├── close_allapps.sh             # Graceful desktop application closer
+├── clear-wan2gp-logs.sh         # WAN2GP AI server log cleaner
+├── install.sh                   # Cross-platform installer & environment setup
+├── config.env                   # User configuration overrides
+├── config.env.example           # Configuration template
+├── README.md                    # System documentation and feature matrix
+└── CHANGELOG.md                 # Version release history and audit log
 │
 ├── bin/                         # Compiled binaries & CLI helpers (symlinked to ~/.local/bin)
 │   ├── cliamp                   # Custom retro terminal music player (v2.0.1)
 │   ├── mix-archive-manager      # Desktop / background launch wrapper
 │   ├── launch-manager-fullscreen# Dedicated full-screen terminal wrapper
+│   ├── traktor-monitor          # Traktor Pro Live Monitor & Audio Recorder CLI
 │   ├── view-mix-specs           # Dedicated audio specification & stream inspector CLI
 │   ├── view-tracklist           # Borderless console tracklist viewer
 │   ├── transfer-monitor         # Live file write and transfer inspector
@@ -259,7 +278,7 @@ MP_Mix_Manager_v0.2/
 
 ---
 
-## 🎛️ Feature Matrix (71 Core Operations in 7 Logical Sections)
+## 🎛️ Feature Matrix (72 Core Operations in 7 Logical Sections)
 
 ### ─── [ SECTION 1: MIX ARCHIVE WORKFLOW & INGESTION ] ──────────
 | # | Operation | Description |
@@ -327,38 +346,39 @@ MP_Mix_Manager_v0.2/
 | # | Operation | Description |
 |---|---|---|
 | **47**| **Launch Live Tracklist Monitor** | Real-time CLI display connecting to Strawberry MPRIS and `cliamp` with live progress and track info (`SOF_Live_Tracker.sh`). |
-| **48**| **Launch Live File Transfer Monitor** | Inspects transfer speeds, byte positions, and percentage for huge files (`transfer-monitor`). |
-| **49**| **Launch Chrome Upload Monitor** | Monitors web uploads (e.g. Apple Podcasts Connect, YouTube Studio) in real-time (`chrome_upload_monitor.py`). |
-| **50**| **View Advanced Archive Statistics** | Deep inventory scan calculating total duration, file sizes, GB footprint, and tracklist completeness (`SOF_Archive_Stats.sh`). |
-| **51**| **View Running Background Tasks** | Scans process table for active encoding, syncing, or AI batch jobs. |
-| **52**| **Launch Resource Monitor** | Launches `btop` for deep multi-core CPU and memory profiling. |
-| **53**| **Launch GPU Process Monitor** | Launches `nvtop` for real-time monitoring of NVIDIA GPU clock, VRAM, and power draw. |
-| **54**| **Launch System Process Monitor** | Quick-launches `top` inside manager session. |
+| **48**| **Launch Traktor Live Monitor & Audio Recorder** | Cross-platform live terminal dashboard (`scripts/traktor_monitor.py` / `traktor_monitor.sh`): monitors Traktor CPU %, RSS RAM, deck playback/loaded tracks, active WAV recording locks, real-time file size growth, and audio interface hardware. Features direct recording controls (start, stop, toggle) via AppleScript and Windows Automation. |
+| **49**| **Launch Live File Transfer Monitor** | Inspects transfer speeds, byte positions, and percentage for huge files (`transfer-monitor`). |
+| **50**| **Launch Chrome Upload Monitor** | Monitors web uploads (e.g. Apple Podcasts Connect, YouTube Studio) in real-time (`chrome_upload_monitor.py`). |
+| **51**| **View Advanced Archive Statistics** | Deep inventory scan calculating total duration, file sizes, GB footprint, and tracklist completeness (`SOF_Archive_Stats.sh`). |
+| **52**| **View Running Background Tasks** | Scans process table for active encoding, syncing, or AI batch jobs. |
+| **53**| **Launch Resource Monitor** | Launches `btop` for deep multi-core CPU and memory profiling. |
+| **54**| **Launch GPU Process Monitor** | Launches `nvtop` for real-time monitoring of NVIDIA GPU clock, VRAM, and power draw. |
+| **55**| **Launch System Process Monitor** | Quick-launches `top` inside manager session. |
 
 ### ─── [ SECTION 6: SYSTEM, NETWORK & HARDWARE MANAGEMENT ] ─────
 | # | Operation | Description |
 |---|---|---|
-| **55**| **Manage WAN2GP Server** | Controls WAN2GP AI video server (Profile 2 / 4.5, Flux Klein 9B batch, LTX Video 2B/13B). |
-| **56**| **Manage Network Services** | Bulk and individual start, stop, restart, and status for SSH (`sshd`), Samba (`smb`), and FTP (`vsftpd`) across Linux (`systemctl`), FreeBSD (`service`), macOS (`launchctl`/`systemsetup`), and Windows (PowerShell). |
-| **57**| **Block Internet Access (LAN Only)** | Activates an isolated firewall table blocking WAN while keeping LAN open (`block-internet`). |
-| **58**| **Restore / Unblock Internet Access** | Restores immediate full internet connectivity (`unblock-internet`). |
-| **59**| **Display Settings (OS Tailored)** | Opens Plasma Wayland on Linux, macOS Display Settings, or Windows Display Settings (`ms-settings:display`). |
-| **60**| **Audio / Sound Settings (OS Tailored)** | Opens Plasma X11 on Linux, Audio MIDI Setup on macOS, or Windows Sound Panel (`control.exe mmsys.cpl`). |
-| **61**| **Close All Desktop Applications** | Gracefully closes external desktop windows using AppleScript (macOS), PowerShell (Windows), or `wmctrl` (Linux) while shielding the manager. |
-| **62**| **System Maintenance & Cleanup** | Executes platform maintenance (Linux `ujust clean-system`, macOS `brew cleanup` & RAM purge, Windows `winget upgrade` & temp cleanup, FreeBSD `pkg clean`, `pkg upgrade`, `pkg autoremove`). |
-| **63**| **Launch GeeXLab Demo Launcher** | Runs 3D/OpenGL shader demos and GPU stress tests via GeeXLab/FurMark. |
-| **64**| **Burn ISO Image to USB Drive** | Writes bootable ISO files directly to removable USB storage with safety checks and dd progress (macOS `diskutil` / Linux `lsblk`). |
-| **65**| **Dynamic System MOTD Banner Manager** | Dynamic Message Of The Day generator (`update_system_motd.sh`): renders stylized ANSI MOTD table summarizing the last 5 created mixes, dates, times, sizes, formats, and audio specs. |
+| **56**| **Manage WAN2GP Server** | Controls WAN2GP AI video server (Profile 2 / 4.5, Flux Klein 9B batch, LTX Video 2B/13B). |
+| **57**| **Manage Network Services** | Bulk and individual start, stop, restart, and status for SSH (`sshd`), Samba (`smb`), and FTP (`vsftpd`) across Linux (`systemctl`), FreeBSD (`service`), macOS (`launchctl`/`systemsetup`), and Windows (PowerShell). |
+| **58**| **Block Internet Access (LAN Only)** | Activates an isolated firewall table blocking WAN while keeping LAN open (`block-internet`). |
+| **59**| **Restore / Unblock Internet Access** | Restores immediate full internet connectivity (`unblock-internet`). |
+| **60**| **Display Settings (OS Tailored)** | Opens Plasma Wayland on Linux, macOS Display Settings, or Windows Display Settings (`ms-settings:display`). |
+| **61**| **Audio / Sound Settings (OS Tailored)** | Opens Plasma X11 on Linux, Audio MIDI Setup on macOS, or Windows Sound Panel (`control.exe mmsys.cpl`). |
+| **62**| **Close All Desktop Applications** | Gracefully closes external desktop windows using AppleScript (macOS), PowerShell (Windows), or `wmctrl` (Linux) while shielding the manager. |
+| **63**| **System Maintenance & Cleanup** | Executes platform maintenance (Linux `ujust clean-system`, macOS `brew cleanup` & RAM purge, Windows `winget upgrade` & temp cleanup, FreeBSD `pkg clean`, `pkg upgrade`, `pkg autoremove`). |
+| **64**| **Launch GeeXLab Demo Launcher** | Runs 3D/OpenGL shader demos and GPU stress tests via GeeXLab/FurMark. |
+| **65**| **Burn ISO Image to USB Drive** | Writes bootable ISO files directly to removable USB storage with safety checks and dd progress (macOS `diskutil` / Linux `lsblk`). |
+| **66**| **Dynamic System MOTD Banner Manager** | Dynamic Message Of The Day generator (`update_system_motd.sh`): renders stylized ANSI MOTD table summarizing the last 5 created mixes, dates, times, sizes, formats, and audio specs. |
 
 ### ─── [ SECTION 7: AI, SHELL CLI & SETTINGS ] ───────────────────
 | # | Operation | Description |
 |---|---|---|
-| **66**| **Launch AI Assistant / Models (AGY)** | Starts Antigravity CLI AI sessions (Claude Sonnet, Claude Opus, GPT-OSS, Gemini). |
-| **67**| **Run Bash CLI Commands** | Built-in interactive Bash shell and direct command execution runner. |
-| **68**| **Manager Themes & Color Palette Switcher** | Switch between 9 terminal themes (Cyberpunk, Dracula, Nord, Matrix, Solarized, Tokyo Night, Monokai, Gruvbox, Emerald, Classic). |
-| **69**| **Manage Installation & Configuration** | Comprehensive installation migration wizard (relocates codebase path and auto-repoints all CLI wrappers and desktop entries), instant timestamped config backups, portable `.tar.gz` config bundle export (with SHA-256 verification and manifest), safe bundle import with pre-import snapshots, and rollback/restore of historical snapshots (`manage_installation_config.sh`). |
-| **70**| **Reboot System** | Cross-platform system reboot with safety confirmation dialog (`systemctl reboot`, macOS `osascript`, Windows `shutdown.exe /r`, FreeBSD `shutdown -r now`). |
-| **71**| **Exit Manager** | Cleans up and exits the console session. |
+| **67**| **Launch AI Assistant / Models (AGY)** | Starts Antigravity CLI AI sessions (Claude Sonnet, Claude Opus, GPT-OSS, Gemini). |
+| **68**| **Run Bash CLI Commands** | Built-in interactive Bash shell and direct command execution runner. |
+| **69**| **Manager Themes & Color Palette Switcher** | Switch between 9 terminal themes (Cyberpunk, Dracula, Nord, Matrix, Solarized, Tokyo Night, Monokai, Gruvbox, Emerald, Classic). |
+| **70**| **Manage Installation & Configuration** | Comprehensive installation migration wizard (relocates codebase path and auto-repoints all CLI wrappers and desktop entries), instant timestamped config backups, portable `.tar.gz` config bundle export (with SHA-256 verification and manifest), safe bundle import with pre-import snapshots, and rollback/restore of historical snapshots (`manage_installation_config.sh`). |
+| **71**| **Reboot System** | Cross-platform system reboot with safety confirmation dialog (`systemctl reboot`, macOS `osascript`, Windows `shutdown.exe /r`, FreeBSD `shutdown -r now`). |
+| **72**| **Exit Manager** | Cleans up and exits the console session. |
 
 ---
 

@@ -1250,6 +1250,18 @@ view_tasks() {
         echo -e "  [${GREEN}RUNNING${NC}] Duplicate Image Remover (PID: ${dup_pids})"
         ((tasks_found++))
     fi
+    if pgrep -f "traktor_monitor" > /dev/null; then
+        local tm_pids
+        tm_pids=$(pgrep -f "traktor_monitor" | tr '\n' ' ')
+        echo -e "  [${GREEN}RUNNING${NC}] Traktor Live Monitor & Audio Recorder (PID: ${tm_pids})"
+        ((tasks_found++))
+    fi
+    if pgrep -x "Traktor" > /dev/null || pgrep -x "Traktor.exe" > /dev/null || pgrep -f "Traktor Pro" > /dev/null; then
+        local tp_pids
+        tp_pids=$(pgrep -x "Traktor" 2>/dev/null || pgrep -x "Traktor.exe" 2>/dev/null || pgrep -f "Traktor Pro" 2>/dev/null | tr '\n' ' ')
+        echo -e "  [${GREEN}RUNNING${NC}] Native Instruments Traktor Pro DJ (PID: ${tp_pids})"
+        ((tasks_found++))
+    fi
     if systemctl is-active --quiet sshd || pgrep -x sshd > /dev/null; then
         local ssh_pids
         ssh_pids=$(pgrep -x sshd | tr '\n' ' ')
@@ -4013,11 +4025,12 @@ manage_daws() {
         echo -e "  ${BOLD}${CYAN} 8)${NC} Launch Apple GarageBand (${garage_badge}${NC})"
         echo -e "  ${BOLD}${CYAN} 9)${NC} Launch Image-Line FL Studio / Fruity Loops (${fl_badge}${NC})"
         echo -e "  ${BOLD}${CYAN}10)${NC} Launch Native Instruments Traktor Pro (${traktor_badge}${NC})"
+        echo -e "  ${BOLD}${CYAN}11)${NC} Launch Traktor Live Monitor & Audio Recorder (${GREEN}New Window - CPU, Decks, Recording, Audio I/O${NC})"
         echo -e "  ${BOLD}${BLUE}────────────────────────────────────────────────────${NC}"
-        echo -e "  ${BOLD}${CYAN}11)${NC} ${BOLD}${GREEN}Open Mix WAV/FLAC Audio File in DAW...${NC} (Reaper, Logic Pro, FL Studio)"
+        echo -e "  ${BOLD}${CYAN}12)${NC} ${BOLD}${GREEN}Open Mix WAV/FLAC Audio File in DAW...${NC} (Reaper, Logic Pro, FL Studio)"
         echo -e "  ${BOLD}${CYAN} 0)${NC} Return to Main Menu"
         echo ""
-        read -r -p "Enter choice [0-11]: " d_choice
+        read -r -p "Enter choice [0-12]: " d_choice
 
         case "$d_choice" in
             1)
@@ -4051,6 +4064,9 @@ manage_daws() {
                 launch_traktor
                 ;;
             11)
+                launch_traktor_monitor_window
+                ;;
+            12)
                 open_mix_in_daw
                 ;;
             0|[qQ])
@@ -4999,6 +5015,108 @@ inspect_playing_audio_file() {
             sleep 1.5
         fi
     fi
+}
+
+launch_traktor_monitor_window() {
+    local mon_sh=""
+    if [ -x "$SCRIPT_DIR/scripts/traktor_monitor.sh" ]; then
+        mon_sh="$SCRIPT_DIR/scripts/traktor_monitor.sh"
+    elif [ -x "$SCRIPT_DIR/traktor_monitor.sh" ]; then
+        mon_sh="$SCRIPT_DIR/traktor_monitor.sh"
+    elif [ -x "$HOME/.local/bin/traktor-monitor" ]; then
+        mon_sh="$HOME/.local/bin/traktor-monitor"
+    elif command -v traktor-monitor >/dev/null 2>&1; then
+        mon_sh="$(command -v traktor-monitor)"
+    elif [ -f "$SCRIPT_DIR/scripts/traktor_monitor.py" ]; then
+        mon_sh="$SCRIPT_DIR/scripts/traktor_monitor.py"
+    elif [ -f "$PWD/scripts/traktor_monitor.py" ]; then
+        mon_sh="$PWD/scripts/traktor_monitor.py"
+    fi
+
+    if [ -z "$mon_sh" ]; then
+        echo -e "\n${RED}Error: traktor_monitor.sh / traktor-monitor was not found in scripts/ or PATH!${NC}"
+        press_enter
+        return 1
+    fi
+
+    echo -e "\n${BOLD}${CYAN}═══════════════════════════════════════════════════════════════════════════════${NC}"
+    echo -e "${BOLD}${CYAN}       🎛️  TRAKTOR PRO LIVE MONITOR & AUDIO RECORDER CONTROL  🎛️               ${NC}"
+    echo -e "${BOLD}${CYAN}═══════════════════════════════════════════════════════════════════════════════${NC}"
+    echo -e "  • ${BOLD}Process Metrics:${NC}   Traktor CPU %, RSS RAM, Thread Count & Execution State"
+    echo -e "  • ${BOLD}Deck Tracking:${NC}     Active open audio files & deck playback detection"
+    echo -e "  • ${BOLD}Audio Recorder:${NC}    Live WAV write detection, file-growth tracking & standby"
+    echo -e "  • ${BOLD}Hardware & I/O:${NC}    Traktor audio device, sample rate, latency & buffer size"
+    echo -e "  • ${BOLD}Hotkeys in Live:${NC}   [s] Start Rec  │  [x] Stop Rec  │  [t] Toggle Rec  │  [q] Quit"
+    echo -e "  • ${BOLD}Cross-Platform:${NC}    macOS (AppleScript UI), Windows 10 & 11, Linux (Bazzite/Fedora)"
+    echo -e "${BOLD}${CYAN}───────────────────────────────────────────────────────────────────────────────${NC}"
+    echo -e "Select launch target:"
+    echo -e "  ${BOLD}${CYAN}1)${NC} Launch Live Monitor in ${BOLD}${GREEN}New Terminal Window${NC} (Recommended)"
+    echo -e "  ${BOLD}${CYAN}2)${NC} Run Live Monitor in Current Terminal Window"
+    echo -e "  ${BOLD}${CYAN}3)${NC} Single Diagnostic Status Snapshot (--once)"
+    echo -e "  ${BOLD}${CYAN}4)${NC} Trigger Traktor Audio Recording: ${GREEN}START RECORDING${NC}"
+    echo -e "  ${BOLD}${CYAN}5)${NC} Trigger Traktor Audio Recording: ${RED}STOP RECORDING${NC}"
+    echo -e "  ${BOLD}${CYAN}6)${NC} Trigger Traktor Audio Recording: ${YELLOW}TOGGLE RECORDING${NC}"
+    echo -e "  ${BOLD}${CYAN}0)${NC} Return to Main Menu"
+    echo ""
+    read -r -p "Enter choice [1-6, default: 1]: " tm_choice
+    tm_choice="${tm_choice:-1}"
+
+    case "$tm_choice" in
+        1)
+            echo -e "\n${BOLD}${GREEN}Launching Traktor Live Monitor in a new terminal window...${NC}\n"
+            local full_cmd="\"$mon_sh\"; echo ''; echo 'Traktor monitor closed. Press [Enter] to exit...'; read -r"
+            if launch_in_terminal "Traktor Live Monitor" "$full_cmd" "window"; then
+                echo -e "${GREEN}✓ Traktor Live Monitor launched in standalone window.${NC}"
+                sleep 1.2
+            else
+                echo -e "${YELLOW}External terminal emulator not available; running in current window...${NC}\n"
+                sleep 0.8
+                trap ':' INT
+                "$mon_sh"
+                trap - INT
+                press_enter
+            fi
+            ;;
+        2)
+            echo -e "\n${BOLD}${YELLOW}Launching Traktor Live Monitor in current window (Press 'q' to quit)...${NC}\n"
+            sleep 0.8
+            trap ':' INT
+            "$mon_sh"
+            trap - INT
+            press_enter
+            ;;
+        3)
+            echo -e "\n${BOLD}${YELLOW}Querying Traktor Diagnostic Snapshot...${NC}\n"
+            "$mon_sh" --once
+            echo ""
+            press_enter
+            ;;
+        4)
+            echo -e "\n${BOLD}${YELLOW}Sending START RECORDING trigger to Traktor...${NC}\n"
+            "$mon_sh" --start-recording
+            echo ""
+            press_enter
+            ;;
+        5)
+            echo -e "\n${BOLD}${YELLOW}Sending STOP RECORDING trigger to Traktor...${NC}\n"
+            "$mon_sh" --stop-recording
+            echo ""
+            press_enter
+            ;;
+        6)
+            echo -e "\n${BOLD}${YELLOW}Sending TOGGLE RECORDING trigger to Traktor...${NC}\n"
+            "$mon_sh" --toggle-recording
+            echo ""
+            press_enter
+            ;;
+        0|[qQ])
+            return 0
+            ;;
+        *)
+            echo -e "\n${RED}Invalid choice!${NC}"
+            sleep 1.2
+            ;;
+    esac
 }
 
 show_mix_drive_space() {
@@ -6689,63 +6807,64 @@ while true; do
     
     echo -e "\n  ${BOLD}${BLUE}─── [ SECTION 5: LIVE MONITORS & SYSTEM DIAGNOSTICS ] ───────${NC}"
     echo -e "  ${BOLD}${CYAN}47)${NC} Launch Live Tracklist Monitor (${GREEN}SOF_Live_Tracker.sh${NC})"
-    echo -e "  ${BOLD}${CYAN}48)${NC} Launch Live File Transfer Monitor (${GREEN}transfer-monitor${NC})"
-    echo -e "  ${BOLD}${CYAN}49)${NC} Launch Chrome Upload Monitor (${GREEN}Podcast Connect / Web Uploads${NC})"
-    echo -e "  ${BOLD}${CYAN}50)${NC} View Advanced Archive Statistics (${GREEN}SOF_Archive_Stats.sh${NC})"
-    echo -e "  ${BOLD}${CYAN}51)${NC} View Running Background Tasks"
-    echo -e "  ${BOLD}${CYAN}52)${NC} Launch Resource Monitor (${GREEN}btop${NC})"
-    echo -e "  ${BOLD}${CYAN}53)${NC} Launch GPU Process Monitor (${GREEN}nvtop${NC})"
-    echo -e "  ${BOLD}${CYAN}54)${NC} Launch System Process Monitor (${GREEN}top${NC})"
+    echo -e "  ${BOLD}${CYAN}48)${NC} Launch Traktor Live Monitor & Audio Recorder (${GREEN}New Window - CPU, Tracks, Recording, Audio I/O${NC})"
+    echo -e "  ${BOLD}${CYAN}49)${NC} Launch Live File Transfer Monitor (${GREEN}transfer-monitor${NC})"
+    echo -e "  ${BOLD}${CYAN}50)${NC} Launch Chrome Upload Monitor (${GREEN}Podcast Connect / Web Uploads${NC})"
+    echo -e "  ${BOLD}${CYAN}51)${NC} View Advanced Archive Statistics (${GREEN}SOF_Archive_Stats.sh${NC})"
+    echo -e "  ${BOLD}${CYAN}52)${NC} View Running Background Tasks"
+    echo -e "  ${BOLD}${CYAN}53)${NC} Launch Resource Monitor (${GREEN}btop${NC})"
+    echo -e "  ${BOLD}${CYAN}54)${NC} Launch GPU Process Monitor (${GREEN}nvtop${NC})"
+    echo -e "  ${BOLD}${CYAN}55)${NC} Launch System Process Monitor (${GREEN}top${NC})"
     
     echo -e "\n  ${BOLD}${BLUE}─── [ SECTION 6: SYSTEM, NETWORK & HARDWARE MANAGEMENT ] ────${NC}"
-    echo -e "  ${BOLD}${CYAN}55)${NC} Manage WAN2GP Server (Start, Stop, Restart in Profile 2 or 4.5)"
-    echo -e "  ${BOLD}${CYAN}56)${NC} Manage Network Services (SSH, Samba, FTP - Start, Stop, Restart All)"
-    echo -e "  ${BOLD}${CYAN}57)${NC} Block Internet Access (LAN Only) (${GREEN}block-internet${NC})"
-    echo -e "  ${BOLD}${CYAN}58)${NC} Restore / Unblock Internet Access (${GREEN}unblock-internet${NC})"
+    echo -e "  ${BOLD}${CYAN}56)${NC} Manage WAN2GP Server (Start, Stop, Restart in Profile 2 or 4.5)"
+    echo -e "  ${BOLD}${CYAN}57)${NC} Manage Network Services (SSH, Samba, FTP - Start, Stop, Restart All)"
+    echo -e "  ${BOLD}${CYAN}58)${NC} Block Internet Access (LAN Only) (${GREEN}block-internet${NC})"
+    echo -e "  ${BOLD}${CYAN}59)${NC} Restore / Unblock Internet Access (${GREEN}unblock-internet${NC})"
     if [ "$OS_TYPE" = "macos" ]; then
-        echo -e "  ${BOLD}${CYAN}59)${NC} Open macOS Display Settings (${GREEN}Displays, Arrangement & HDR${NC})"
-        echo -e "  ${BOLD}${CYAN}60)${NC} Open macOS Audio MIDI Setup (${GREEN}Sample Rates & Output Devices${NC})"
+        echo -e "  ${BOLD}${CYAN}60)${NC} Open macOS Display Settings (${GREEN}Displays, Arrangement & HDR${NC})"
+        echo -e "  ${BOLD}${CYAN}61)${NC} Open macOS Audio MIDI Setup (${GREEN}Sample Rates & Output Devices${NC})"
     elif [ "$OS_TYPE" = "windows" ] || [ "$OS_TYPE" = "wsl" ]; then
-        echo -e "  ${BOLD}${CYAN}59)${NC} Open Windows Display Settings (${GREEN}ms-settings:display - HDR & Scale${NC})"
-        echo -e "  ${BOLD}${CYAN}60)${NC} Open Windows Sound Settings (${GREEN}control.exe mmsys.cpl${NC})"
+        echo -e "  ${BOLD}${CYAN}60)${NC} Open Windows Display Settings (${GREEN}ms-settings:display - HDR & Scale${NC})"
+        echo -e "  ${BOLD}${CYAN}61)${NC} Open Windows Sound Settings (${GREEN}control.exe mmsys.cpl${NC})"
     else
-        echo -e "  ${BOLD}${CYAN}59)${NC} Switch Desktop to Plasma Wayland (HDR Gaming on Hisense & Steam BPM)"
-        echo -e "  ${BOLD}${CYAN}60)${NC} Switch Desktop to Plasma X11 (Workstation 4-Screen Defasten)"
+        echo -e "  ${BOLD}${CYAN}60)${NC} Switch Desktop to Plasma Wayland (HDR Gaming on Hisense & Steam BPM)"
+        echo -e "  ${BOLD}${CYAN}61)${NC} Switch Desktop to Plasma X11 (Workstation 4-Screen Defasten)"
     fi
-    echo -e "  ${BOLD}${CYAN}61)${NC} Close All Desktop Applications (Keep Manager Open)"
+    echo -e "  ${BOLD}${CYAN}62)${NC} Close All Desktop Applications (Keep Manager Open)"
     if [ "$OS_TYPE" = "macos" ]; then
-        echo -e "  ${BOLD}${CYAN}62)${NC} macOS System Maintenance & Cleanup (${GREEN}brew cleanup, purge RAM, caches${NC})"
+        echo -e "  ${BOLD}${CYAN}63)${NC} macOS System Maintenance & Cleanup (${GREEN}brew cleanup, purge RAM, caches${NC})"
     elif [ "$OS_TYPE" = "windows" ] || [ "$OS_TYPE" = "wsl" ]; then
-        echo -e "  ${BOLD}${CYAN}62)${NC} Windows System Maintenance & Cleanup (${GREEN}winget upgrade, clean temp, TRIM${NC})"
+        echo -e "  ${BOLD}${CYAN}63)${NC} Windows System Maintenance & Cleanup (${GREEN}winget upgrade, clean temp, TRIM${NC})"
     elif [ "$OS_TYPE" = "freebsd" ]; then
-        echo -e "  ${BOLD}${CYAN}62)${NC} FreeBSD System Maintenance & Cleanup (${GREEN}pkg upgrade, pkg clean, autoremove, audit${NC})"
+        echo -e "  ${BOLD}${CYAN}63)${NC} FreeBSD System Maintenance & Cleanup (${GREEN}pkg upgrade, pkg clean, autoremove, audit${NC})"
     else
-        echo -e "  ${BOLD}${CYAN}62)${NC} Bazzite System Maintenance & Cleanup (${GREEN}ujust clean-system, update, trim, logs${NC})"
+        echo -e "  ${BOLD}${CYAN}63)${NC} Bazzite System Maintenance & Cleanup (${GREEN}ujust clean-system, update, trim, logs${NC})"
     fi
-    echo -e "  ${BOLD}${CYAN}63)${NC} Launch GeeXLab Demo Launcher (${GREEN}FurMark_linux64/demo_launcher.sh${NC})"
-    echo -e "  ${BOLD}${CYAN}64)${NC} Burn ISO Image to USB Drive (${GREEN}dd / diskutil with safety checks${NC})"
-    echo -e "  ${BOLD}${CYAN}65)${NC} Dynamic System MOTD Banner Manager (${GREEN}Last 5 Mixes, Date/Time, Size, Format & Specs${NC})"
+    echo -e "  ${BOLD}${CYAN}64)${NC} Launch GeeXLab Demo Launcher (${GREEN}FurMark_linux64/demo_launcher.sh${NC})"
+    echo -e "  ${BOLD}${CYAN}65)${NC} Burn ISO Image to USB Drive (${GREEN}dd / diskutil with safety checks${NC})"
+    echo -e "  ${BOLD}${CYAN}66)${NC} Dynamic System MOTD Banner Manager (${GREEN}Last 5 Mixes, Date/Time, Size, Format & Specs${NC})"
     
     echo -e "\n  ${BOLD}${BLUE}─── [ SECTION 7: AI, SHELL CLI & SETTINGS ] ──────────────────${NC}"
-    echo -e "  ${BOLD}${CYAN}66)${NC} Launch AI Assistant / Models (${GREEN}Claude Opus, Claude Sonnet, GPT-OSS, Gemini${NC})"
-    echo -e "  ${BOLD}${CYAN}67)${NC} Run Bash CLI Commands (${GREEN}Interactive Shell & Direct Runner${NC})"
-    echo -e "  ${BOLD}${CYAN}68)${NC} Manager Themes & Color Palette Switcher (${GREEN}8 Themes + Classic${NC})"
-    echo -e "  ${BOLD}${CYAN}69)${NC} Manage Installation & Configuration (${GREEN}Migrate Path, Backup, Export & Import Config${NC})"
+    echo -e "  ${BOLD}${CYAN}67)${NC} Launch AI Assistant / Models (${GREEN}Claude Opus, Claude Sonnet, GPT-OSS, Gemini${NC})"
+    echo -e "  ${BOLD}${CYAN}68)${NC} Run Bash CLI Commands (${GREEN}Interactive Shell & Direct Runner${NC})"
+    echo -e "  ${BOLD}${CYAN}69)${NC} Manager Themes & Color Palette Switcher (${GREEN}8 Themes + Classic${NC})"
+    echo -e "  ${BOLD}${CYAN}70)${NC} Manage Installation & Configuration (${GREEN}Migrate Path, Backup, Export & Import Config${NC})"
     if [ "$OS_TYPE" = "macos" ]; then
-        echo -e "  ${BOLD}${CYAN}70)${NC} Reboot System (${RED}macOS restart with confirmation${NC})"
+        echo -e "  ${BOLD}${CYAN}71)${NC} Reboot System (${RED}macOS restart with confirmation${NC})"
     elif [ "$OS_TYPE" = "windows" ] || [ "$OS_TYPE" = "wsl" ]; then
-        echo -e "  ${BOLD}${CYAN}70)${NC} Reboot System (${RED}Windows restart with confirmation${NC})"
+        echo -e "  ${BOLD}${CYAN}71)${NC} Reboot System (${RED}Windows restart with confirmation${NC})"
     elif [ "$OS_TYPE" = "freebsd" ]; then
-        echo -e "  ${BOLD}${CYAN}70)${NC} Reboot System (${RED}FreeBSD restart with confirmation${NC})"
+        echo -e "  ${BOLD}${CYAN}71)${NC} Reboot System (${RED}FreeBSD restart with confirmation${NC})"
     else
-        echo -e "  ${BOLD}${CYAN}70)${NC} Reboot System (${RED}systemctl reboot with confirmation${NC})"
+        echo -e "  ${BOLD}${CYAN}71)${NC} Reboot System (${RED}systemctl reboot with confirmation${NC})"
     fi
     
     echo -e "\n  ${BOLD}${BLUE}──────────────────────────────────────────────────────────────${NC}"
     get_manager_uptime
-    echo -e "  ${BOLD}${CYAN}71)${NC} Exit Manager ${DIM}(or 0 / q)${NC}"
+    echo -e "  ${BOLD}${CYAN}72)${NC} Exit Manager ${DIM}(or 0 / q)${NC}"
     echo ""
-    read -r -p "Enter choice [1-71, or q to exit]: " choice
+    read -r -p "Enter choice [1-72, or q to exit]: " choice
     
     case $choice in
         1)
@@ -6910,6 +7029,9 @@ while true; do
             press_enter
             ;;
         48)
+            launch_traktor_monitor_window
+            ;;
+        49)
             echo -e "\n${BOLD}${YELLOW}Launching Live File Transfer Monitor (Press Ctrl+C to return to menu)...${NC}\n"
             sleep 1
             trap ':' INT
@@ -6923,7 +7045,7 @@ while true; do
             trap - INT
             press_enter
             ;;
-        49)
+        50)
             echo -e "\n${BOLD}${YELLOW}Launching Chrome Upload Monitor (Press Ctrl+C to return to menu)...${NC}\n"
             sleep 1
             trap ':' INT
@@ -6945,17 +7067,17 @@ while true; do
             trap - INT
             press_enter
             ;;
-        50)
+        51)
             echo -e "\n${BOLD}${YELLOW}Loading Advanced Archive Statistics...${NC}\n"
             sleep 0.5
             run_sub_script "SOF_Archive_Stats.sh"
             press_enter
             ;;
-        51)
+        52)
             view_tasks
             press_enter
             ;;
-        52)
+        53)
             echo -e "\n${BOLD}${YELLOW}Launching btop Resource Monitor (Press 'q' to exit)...${NC}\n"
             sleep 0.5
             trap ':' INT
@@ -6967,7 +7089,7 @@ while true; do
             fi
             trap - INT
             ;;
-        53)
+        54)
             echo -e "\n${BOLD}${YELLOW}Launching nvtop GPU Monitor (Press 'q' to exit)...${NC}\n"
             sleep 0.5
             trap ':' INT
@@ -6979,7 +7101,7 @@ while true; do
             fi
             trap - INT
             ;;
-        54)
+        55)
             echo -e "\n${BOLD}${YELLOW}Launching top Process Monitor (Press 'q' to exit)...${NC}\n"
             sleep 0.5
             trap ':' INT
@@ -6991,60 +7113,60 @@ while true; do
             fi
             trap - INT
             ;;
-        55)
+        56)
             manage_wan2gp
             ;;
-        56)
+        57)
             manage_network_services
             ;;
-        57)
+        58)
             block_internet
             ;;
-        58)
+        59)
             unblock_internet
             ;;
-        59)
+        60)
             switch_to_wayland
             ;;
-        60)
+        61)
             switch_to_x11
             ;;
-        61)
+        62)
             close_all_desktop_apps
             ;;
-        62)
+        63)
             manage_system_maintenance
             ;;
-        63)
+        64)
             launch_geexlab_demos
             ;;
-        64)
+        65)
             burn_iso_to_usb
             ;;
-        65)
+        66)
             manage_system_motd_menu
             ;;
-        66)
+        67)
             manage_ai_models
             ;;
-        67)
+        68)
             run_bash_cli
             ;;
-        68)
+        69)
             manage_themes
             ;;
-        69)
+        70)
             manage_installation_and_config
             ;;
-        70)
+        71)
             reboot_system
             ;;
-        71|0|[qQ]|[eE][xX][iI][tT])
+        72|0|[qQ]|[eE][xX][iI][tT])
             echo -e "\n${BOLD}${GREEN}Exiting Mix Archive Manager. Goodbye!${NC}\n"
             exit 0
             ;;
         *)
-            echo -e "\n${RED}Invalid option! Please enter a number between 1 and 71 (or 'q' to exit).${NC}"
+            echo -e "\n${RED}Invalid option! Please enter a number between 1 and 72 (or 'q' to exit).${NC}"
             sleep 2
             ;;
     esac
