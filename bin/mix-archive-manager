@@ -3,7 +3,30 @@
 # Helper: mix-archive-manager
 # Purpose: Launch Mix Archive Manager cleanly from codebase or archive directory
 # ==============================================================================
-CODEBASE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# Resolve symlinks so CODEBASE_DIR is accurate regardless of invocation path (e.g. ~/.local/bin)
+_RESOLVED_SRC="${BASH_SOURCE[0]}"
+while [ -h "$_RESOLVED_SRC" ]; do
+    _RESOLVED_DIR="$(cd -P "$(dirname "$_RESOLVED_SRC")" >/dev/null 2>&1 && pwd)"
+    _RESOLVED_SRC="$(readlink "$_RESOLVED_SRC")"
+    [[ $_RESOLVED_SRC != /* ]] && _RESOLVED_SRC="$_RESOLVED_DIR/$_RESOLVED_SRC"
+done
+_BIN_DIR="$(cd -P "$(dirname "$_RESOLVED_SRC")" >/dev/null 2>&1 && pwd)"
+CODEBASE_DIR="$(cd -P "$_BIN_DIR/.." >/dev/null 2>&1 && pwd)"
+
+# Fallback candidate search if not found
+if [ ! -f "$CODEBASE_DIR/Mix_Archive_Manager.sh" ]; then
+    for _c in \
+        "/var/home/mplanetarian/MP_Mix_Manager_v0.2" \
+        "$HOME/MP_Mix_Manager_v0.2" \
+        "/var/home/mplanetarian/MP_Mix_Manager_v0.1" \
+        "$HOME/MP_Mix_Manager_v0.1"; do
+        if [ -f "$_c/Mix_Archive_Manager.sh" ]; then
+            CODEBASE_DIR="$_c"
+            break
+        fi
+    done
+fi
+unset _RESOLVED_SRC _RESOLVED_DIR _BIN_DIR _c
 
 # Load configuration if available
 if [ -f "$CODEBASE_DIR/config.env" ]; then

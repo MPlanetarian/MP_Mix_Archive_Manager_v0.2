@@ -123,7 +123,27 @@ save_theme() {
 
 load_theme
 MANAGER_START_EPOCH="$(date +%s)"
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Resolve symlinks so SCRIPT_DIR correctly points to codebase directory
+_RESOLVED_SRC="${BASH_SOURCE[0]}"
+while [ -h "$_RESOLVED_SRC" ]; do
+    _RESOLVED_DIR="$(cd -P "$(dirname "$_RESOLVED_SRC")" >/dev/null 2>&1 && pwd)"
+    _RESOLVED_SRC="$(readlink "$_RESOLVED_SRC")"
+    [[ $_RESOLVED_SRC != /* ]] && _RESOLVED_SRC="$_RESOLVED_DIR/$_RESOLVED_SRC"
+done
+SCRIPT_DIR="$(cd -P "$(dirname "$_RESOLVED_SRC")" >/dev/null 2>&1 && pwd)"
+if [ ! -d "$SCRIPT_DIR/scripts" ]; then
+    for _c in \
+        "/var/home/mplanetarian/MP_Mix_Manager_v0.2" \
+        "$HOME/MP_Mix_Manager_v0.2" \
+        "/var/home/mplanetarian/MP_Mix_Manager_v0.1" \
+        "$HOME/MP_Mix_Manager_v0.1"; do
+        if [ -d "$_c/scripts" ]; then
+            SCRIPT_DIR="$_c"
+            break
+        fi
+    done
+fi
+unset _RESOLVED_SRC _RESOLVED_DIR _c
 export PATH="$SCRIPT_DIR/bin:$SCRIPT_DIR:$HOME/.local/bin:$HOME/bin:/usr/local/bin:/usr/local/sbin:/opt/homebrew/bin:$PATH"
 
 # OS Platform Detection (Linux, macOS, Windows 10/11, FreeBSD)
