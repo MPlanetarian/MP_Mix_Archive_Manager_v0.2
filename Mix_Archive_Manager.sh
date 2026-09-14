@@ -123,9 +123,9 @@ save_theme() {
 
 load_theme
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-export PATH="$SCRIPT_DIR/bin:$SCRIPT_DIR:$HOME/.local/bin:$HOME/bin:/usr/local/bin:/opt/homebrew/bin:$PATH"
+export PATH="$SCRIPT_DIR/bin:$SCRIPT_DIR:$HOME/.local/bin:$HOME/bin:/usr/local/bin:/usr/local/sbin:/opt/homebrew/bin:$PATH"
 
-# OS Platform Detection (Linux, macOS, Windows 10/11)
+# OS Platform Detection (Linux, macOS, Windows 10/11, FreeBSD)
 OS_TYPE="linux"
 case "$(uname -s)" in
     Darwin*)
@@ -133,6 +133,9 @@ case "$(uname -s)" in
         ;;
     CYGWIN*|MINGW*|MSYS*)
         OS_TYPE="windows"
+        ;;
+    FreeBSD*)
+        OS_TYPE="freebsd"
         ;;
     Linux*)
         if grep -qi microsoft /proc/version 2>/dev/null; then
@@ -1761,6 +1764,69 @@ manage_wan2gp() {
     done
 }
 
+_control_net_service() {
+    local action="$1" # start, stop, restart
+    local target="$2" # all, ssh, smb, ftp
+
+    if command -v systemctl >/dev/null 2>&1; then
+        case "$target" in
+            all) sudo systemctl "$action" sshd smb nmb wsdd vsftpd 2>/dev/null || true ;;
+            ssh) sudo systemctl "$action" sshd ;;
+            smb) sudo systemctl "$action" smb nmb wsdd ;;
+            ftp) sudo systemctl "$action" vsftpd ;;
+        esac
+    elif [ "$OS_TYPE" = "freebsd" ] || command -v service >/dev/null 2>&1; then
+        case "$target" in
+            all)
+                sudo service sshd "$action" 2>/dev/null || true
+                sudo service samba_server "$action" 2>/dev/null || sudo service smbd "$action" 2>/dev/null || true
+                sudo service vsftpd "$action" 2>/dev/null || sudo service ftpd "$action" 2>/dev/null || true
+                ;;
+            ssh) sudo service sshd "$action" 2>/dev/null || true ;;
+            smb) sudo service samba_server "$action" 2>/dev/null || sudo service smbd "$action" 2>/dev/null || true ;;
+            ftp) sudo service vsftpd "$action" 2>/dev/null || sudo service ftpd "$action" 2>/dev/null || true ;;
+        esac
+    elif [ "$OS_TYPE" = "macos" ]; then
+        case "$target" in
+            all)
+                sudo systemsetup -setremotelogin "$([ "$action" = "stop" ] && echo "off" || echo "on")" 2>/dev/null || true
+                if [ "$action" = "start" ]; then sudo launchctl load -w /System/Library/LaunchDaemons/com.apple.smbd.plist 2>/dev/null || true
+                elif [ "$action" = "stop" ]; then sudo launchctl unload -w /System/Library/LaunchDaemons/com.apple.smbd.plist 2>/dev/null || true
+                fi
+                ;;
+            ssh)
+                if [ "$action" = "start" ]; then sudo systemsetup -setremotelogin on 2>/dev/null || sudo launchctl load -w /System/Library/LaunchDaemons/ssh.plist 2>/dev/null
+                elif [ "$action" = "stop" ]; then sudo systemsetup -setremotelogin off 2>/dev/null || sudo launchctl unload -w /System/Library/LaunchDaemons/ssh.plist 2>/dev/null
+                else sudo launchctl stop com.openssh.sshd 2>/dev/null; sudo launchctl start com.openssh.sshd 2>/dev/null; fi
+                ;;
+            smb)
+                if [ "$action" = "start" ]; then sudo launchctl load -w /System/Library/LaunchDaemons/com.apple.smbd.plist 2>/dev/null
+                elif [ "$action" = "stop" ]; then sudo launchctl unload -w /System/Library/LaunchDaemons/com.apple.smbd.plist 2>/dev/null
+                else sudo launchctl unload -w /System/Library/LaunchDaemons/com.apple.smbd.plist 2>/dev/null; sleep 0.5; sudo launchctl load -w /System/Library/LaunchDaemons/com.apple.smbd.plist 2>/dev/null; fi
+                ;;
+            ftp)
+                echo -e "${YELLOW}macOS does not provide a built-in FTP daemon in modern versions.${NC}"
+                ;;
+        esac
+    elif [ "$OS_TYPE" = "windows" ] || [ "$OS_TYPE" = "wsl" ]; then
+        if command -v powershell.exe >/dev/null 2>&1; then
+            local ps_action="Start-Service"
+            [ "$action" = "stop" ] && ps_action="Stop-Service"
+            [ "$action" = "restart" ] && ps_action="Restart-Service"
+            case "$target" in
+                all) powershell.exe -NoProfile -Command "$ps_action -Name 'sshd','LanmanServer' -ErrorAction SilentlyContinue" 2>/dev/null || true ;;
+                ssh) powershell.exe -NoProfile -Command "$ps_action -Name 'sshd' -ErrorAction SilentlyContinue" 2>/dev/null || true ;;
+                smb) powershell.exe -NoProfile -Command "$ps_action -Name 'LanmanServer' -ErrorAction SilentlyContinue" 2>/dev/null || true ;;
+                ftp) powershell.exe -NoProfile -Command "$ps_action -Name 'ftpsvc' -ErrorAction SilentlyContinue" 2>/dev/null || true ;;
+            esac
+        else
+            echo -e "${YELLOW}Please manage Windows Services using services.msc.${NC}"
+        fi
+    else
+        echo -e "${RED}No supported service manager found (systemctl or service).${NC}"
+    fi
+}
+
 manage_network_services() {
     while true; do
         clear
@@ -1771,29 +1837,29 @@ manage_network_services() {
         echo ""
 
         local ssh_status="${BOLD}${RED}○ STOPPED${NC}"
-        if systemctl is-active --quiet sshd || pgrep -x sshd >/dev/null; then
+        if (command -v systemctl >/dev/null 2>&1 && systemctl is-active --quiet sshd 2>/dev/null) || pgrep -x sshd >/dev/null; then
             local ssh_pids
             ssh_pids=$(pgrep -x sshd | tr '\n' ' ')
             ssh_status="${BOLD}${GREEN}● RUNNING${NC} (Port 22, PID: ${ssh_pids})"
         fi
 
         local smb_status="${BOLD}${RED}○ STOPPED${NC}"
-        if systemctl is-active --quiet smb || pgrep -x smbd >/dev/null; then
+        if (command -v systemctl >/dev/null 2>&1 && systemctl is-active --quiet smb 2>/dev/null) || pgrep -x smbd >/dev/null; then
             local smb_pids
             smb_pids=$(pgrep -x smbd | tr '\n' ' ')
             smb_status="${BOLD}${GREEN}● RUNNING${NC} (Ports 139, 445, PID: ${smb_pids})"
         fi
 
         local ftp_status="${BOLD}${RED}○ STOPPED${NC}"
-        if systemctl is-active --quiet vsftpd || pgrep -x vsftpd >/dev/null; then
+        if (command -v systemctl >/dev/null 2>&1 && systemctl is-active --quiet vsftpd 2>/dev/null) || pgrep -x vsftpd >/dev/null || pgrep -x ftpd >/dev/null; then
             local ftp_pids
-            ftp_pids=$(pgrep -x vsftpd | tr '\n' ' ')
+            ftp_pids=$( (pgrep -x vsftpd 2>/dev/null || pgrep -x ftpd 2>/dev/null) | tr '\n' ' ')
             ftp_status="${BOLD}${GREEN}● RUNNING${NC} (Port 21, PID: ${ftp_pids})"
         fi
 
         echo -e "  SSH Server (sshd):          ${ssh_status}"
         echo -e "  Samba Share (smbd/wsdd):    ${smb_status}"
-        echo -e "  FTP Server (vsftpd):        ${ftp_status}"
+        echo -e "  FTP Server (vsftpd/ftpd):   ${ftp_status}"
         echo ""
         echo -e "${BOLD}Bulk Actions (All Services):${NC}"
         echo -e "  ${BOLD}${CYAN}1)${NC} ${GREEN}Start All Services${NC}   (SSH, SMB, FTP)"
@@ -1805,7 +1871,7 @@ manage_network_services() {
         echo -e "  ${BOLD}${CYAN}5)${NC} Stop SSH                ${BOLD}${CYAN}8)${NC} Stop Samba (SMB)         ${BOLD}${CYAN}11)${NC} Stop FTP"
         echo -e "  ${BOLD}${CYAN}6)${NC} Restart SSH             ${BOLD}${CYAN}9)${NC} Restart Samba (SMB)      ${BOLD}${CYAN}12)${NC} Restart FTP"
         echo ""
-        echo -e "  ${BOLD}${CYAN}13)${NC} View Detailed Service Status (${GREEN}systemctl status${NC})"
+        echo -e "  ${BOLD}${CYAN}13)${NC} View Detailed Service Status"
         echo -e "  ${BOLD}${CYAN}14)${NC} Return to Main Menu"
         echo ""
         read -r -p "Enter choice [1-14]: " s_choice
@@ -1813,79 +1879,97 @@ manage_network_services() {
         case $s_choice in
             1)
                 echo -e "\n${BOLD}${GREEN}Starting all network services (SSH, SMB, FTP)...${NC}\n"
-                sudo systemctl start sshd smb nmb wsdd vsftpd
+                _control_net_service "start" "all"
                 sleep 1
                 press_enter
                 ;;
             2)
                 echo -e "\n${BOLD}${RED}Stopping all network services (SSH, SMB, FTP)...${NC}\n"
-                sudo systemctl stop sshd smb nmb wsdd vsftpd
+                _control_net_service "stop" "all"
                 sleep 1
                 press_enter
                 ;;
             3)
                 echo -e "\n${BOLD}${YELLOW}Restarting all network services (SSH, SMB, FTP)...${NC}\n"
-                sudo systemctl restart sshd smb nmb wsdd vsftpd
+                _control_net_service "restart" "all"
                 sleep 1
                 press_enter
                 ;;
             4)
                 echo -e "\n${BOLD}${GREEN}Starting SSH Server (sshd)...${NC}\n"
-                sudo systemctl start sshd
+                _control_net_service "start" "ssh"
                 sleep 1
                 press_enter
                 ;;
             5)
                 echo -e "\n${BOLD}${RED}Stopping SSH Server (sshd)...${NC}\n"
-                sudo systemctl stop sshd
+                _control_net_service "stop" "ssh"
                 sleep 1
                 press_enter
                 ;;
             6)
                 echo -e "\n${BOLD}${YELLOW}Restarting SSH Server (sshd)...${NC}\n"
-                sudo systemctl restart sshd
+                _control_net_service "restart" "ssh"
                 sleep 1
                 press_enter
                 ;;
             7)
                 echo -e "\n${BOLD}${GREEN}Starting Samba Server (smb, nmb, wsdd)...${NC}\n"
-                sudo systemctl start smb nmb wsdd
+                _control_net_service "start" "smb"
                 sleep 1
                 press_enter
                 ;;
             8)
                 echo -e "\n${BOLD}${RED}Stopping Samba Server (smb, nmb, wsdd)...${NC}\n"
-                sudo systemctl stop smb nmb wsdd
+                _control_net_service "stop" "smb"
                 sleep 1
                 press_enter
                 ;;
             9)
                 echo -e "\n${BOLD}${YELLOW}Restarting Samba Server (smb, nmb, wsdd)...${NC}\n"
-                sudo systemctl restart smb nmb wsdd
+                _control_net_service "restart" "smb"
                 sleep 1
                 press_enter
                 ;;
             10)
                 echo -e "\n${BOLD}${GREEN}Starting FTP Server (vsftpd)...${NC}\n"
-                sudo systemctl start vsftpd
+                _control_net_service "start" "ftp"
                 sleep 1
                 press_enter
                 ;;
             11)
                 echo -e "\n${BOLD}${RED}Stopping FTP Server (vsftpd)...${NC}\n"
-                sudo systemctl stop vsftpd
+                _control_net_service "stop" "ftp"
                 sleep 1
                 press_enter
                 ;;
             12)
                 echo -e "\n${BOLD}${YELLOW}Restarting FTP Server (vsftpd)...${NC}\n"
-                sudo systemctl restart vsftpd
+                _control_net_service "restart" "ftp"
                 sleep 1
                 press_enter
                 ;;
             13)
                 echo -e "\n${BOLD}${BLUE}=== DETAILED NETWORK SERVICES STATUS ===${NC}\n"
-                systemctl status sshd smb wsdd vsftpd --no-pager -l
+                if command -v systemctl >/dev/null 2>&1; then
+                    systemctl status sshd smb wsdd vsftpd --no-pager -l
+                elif [ "$OS_TYPE" = "freebsd" ] || command -v service >/dev/null 2>&1; then
+                    echo -e "${CYAN}--- SSH Server ---${NC}"
+                    service sshd status 2>/dev/null || true
+                    echo -e "\n${CYAN}--- Samba File Sharing ---${NC}"
+                    service samba_server status 2>/dev/null || service smbd status 2>/dev/null || true
+                    echo -e "\n${CYAN}--- FTP Server ---${NC}"
+                    service vsftpd status 2>/dev/null || service ftpd status 2>/dev/null || true
+                elif [ "$OS_TYPE" = "macos" ]; then
+                    echo -e "${CYAN}--- SSH Server ---${NC}"
+                    sudo systemsetup -getremotelogin 2>/dev/null || launchctl list | grep ssh || true
+                    echo -e "\n${CYAN}--- Samba File Sharing ---${NC}"
+                    launchctl list | grep smbd || true
+                elif [ "$OS_TYPE" = "windows" ] || [ "$OS_TYPE" = "wsl" ]; then
+                    if command -v powershell.exe >/dev/null 2>&1; then
+                        powershell.exe -NoProfile -Command "Get-Service -Name 'sshd','LanmanServer','ftpsvc' -ErrorAction SilentlyContinue | Format-Table -AutoSize" 2>/dev/null || true
+                    fi
+                fi
                 echo ""
                 press_enter
                 ;;
@@ -1908,6 +1992,8 @@ manage_system_maintenance() {
             echo -e "${BOLD}${MAGENTA}         macOS SYSTEM MAINTENANCE & CLEANUP       ${NC}"
         elif [ "$OS_TYPE" = "windows" ] || [ "$OS_TYPE" = "wsl" ]; then
             echo -e "${BOLD}${MAGENTA}       WINDOWS 10/11 MAINTENANCE & CLEANUP        ${NC}"
+        elif [ "$OS_TYPE" = "freebsd" ]; then
+            echo -e "${BOLD}${MAGENTA}        FreeBSD SYSTEM MAINTENANCE & CLEANUP      ${NC}"
         else
             echo -e "${BOLD}${MAGENTA}       BAZZITE SYSTEM MAINTENANCE & CLEANUP       ${NC}"
         fi
@@ -2011,6 +2097,62 @@ manage_system_maintenance() {
                     powershell.exe -Command "Clear-RecycleBin -Force -ErrorAction SilentlyContinue" 2>/dev/null || true
                     cmd.exe /c "winget upgrade --all" 2>/dev/null || true
                     echo -e "${GREEN}✓ Windows maintenance suite finished!${NC}"
+                    press_enter
+                    ;;
+                6|0|[qQ])
+                    return 0
+                    ;;
+                *)
+                    echo -e "\n${RED}Invalid choice!${NC}"
+                    sleep 1.2
+                    ;;
+            esac
+        elif [ "$OS_TYPE" = "freebsd" ]; then
+            local pkg_count="N/A"
+            if command -v pkg >/dev/null 2>&1; then
+                pkg_count=$(pkg info 2>/dev/null | wc -l | tr -d ' ')
+            fi
+            echo -e "  FreeBSD Version:             ${GREEN}$(uname -r) ($(uname -m))${NC}"
+            echo -e "  Packages Installed (pkg):    ${CYAN}${pkg_count}${NC}"
+            echo ""
+            echo -e "${BOLD}Select a maintenance operation:${NC}"
+            echo -e "  ${BOLD}${CYAN}1)${NC} Clean Package Caches & Old Deps (${GREEN}pkg clean -a && pkg autoremove${NC})"
+            echo -e "  ${BOLD}${CYAN}2)${NC} Full FreeBSD Package Upgrade (${GREEN}pkg upgrade${NC})"
+            echo -e "  ${BOLD}${CYAN}3)${NC} Audit Installed Packages for Vulnerabilities (${GREEN}pkg audit -F${NC})"
+            echo -e "  ${BOLD}${CYAN}4)${NC} Clear User Caches & /tmp (${GREEN}rm -rf ~/.cache/* /tmp/*${NC})"
+            echo -e "  ${BOLD}${CYAN}5)${NC} ${BOLD}${YELLOW}Run Complete FreeBSD Maintenance Suite${NC}"
+            echo -e "  ${BOLD}${CYAN}6)${NC} Return to Main Menu"
+            echo ""
+            read -r -p "Enter choice [1-6]: " m_choice
+            case "$m_choice" in
+                1)
+                    echo -e "\n${BOLD}${YELLOW}Cleaning pkg caches...${NC}\n"
+                    sudo pkg clean -a -y && sudo pkg autoremove -y || pkg clean -a -y
+                    press_enter
+                    ;;
+                2)
+                    echo -e "\n${BOLD}${YELLOW}Upgrading FreeBSD packages...${NC}\n"
+                    sudo pkg upgrade || pkg upgrade
+                    press_enter
+                    ;;
+                3)
+                    echo -e "\n${BOLD}${YELLOW}Auditing FreeBSD packages...${NC}\n"
+                    pkg audit -F
+                    press_enter
+                    ;;
+                4)
+                    echo -e "\n${BOLD}${YELLOW}Clearing user cache and /tmp...${NC}\n"
+                    rm -rf ~/.cache/* 2>/dev/null || true
+                    echo -e "${GREEN}✓ User caches cleared.${NC}"
+                    press_enter
+                    ;;
+                5)
+                    echo -e "\n${BOLD}${GREEN}=== RUNNING COMPLETE FreeBSD CLEANUP SUITE ===${NC}\n"
+                    sudo pkg clean -a -y 2>/dev/null || true
+                    sudo pkg autoremove -y 2>/dev/null || true
+                    pkg audit -F 2>/dev/null || true
+                    rm -rf ~/.cache/* 2>/dev/null || true
+                    echo -e "${GREEN}✓ FreeBSD maintenance suite finished!${NC}"
                     press_enter
                     ;;
                 6|0|[qQ])
@@ -2639,6 +2781,631 @@ launch_or_install_flatpak_app() {
     launch_gui_app "$app_name" "$bin_name" "$app_id" "$mac_app_name" "$brew_cask" "$win_exe" "$winget_id"
 }
 
+launch_logic_pro() {
+    local file="${1:-}"
+    if [ "$OS_TYPE" != "macos" ]; then
+        echo -e "\n${BOLD}${RED}⚠️  Apple Logic Pro is exclusively available on macOS.${NC}"
+        echo -e "${YELLOW}To work with audio projects on Linux/Windows, REAPER or Audacity is recommended.${NC}"
+        press_enter
+        return 1
+    fi
+    echo -e "\n${BOLD}${YELLOW}Launching Apple Logic Pro...${NC}\n"
+    if [ -n "$file" ] && [ -f "$file" ]; then
+        if open -a "Logic Pro" "$file" 2>/dev/null || open -a "Logic Pro X" "$file" 2>/dev/null; then
+            echo -e "${GREEN}✓ Opened '$(basename "$file")' in Apple Logic Pro.${NC}"
+            sleep 1.2
+            return 0
+        fi
+    else
+        if open -a "Logic Pro" 2>/dev/null || open -a "Logic Pro X" 2>/dev/null; then
+            echo -e "${GREEN}✓ Apple Logic Pro launched.${NC}"
+            sleep 1.2
+            return 0
+        fi
+    fi
+    echo -e "${RED}Error: Apple Logic Pro was not found in /Applications.${NC}"
+    press_enter
+    return 1
+}
+
+launch_garageband() {
+    local file="${1:-}"
+    if [ "$OS_TYPE" != "macos" ]; then
+        echo -e "\n${BOLD}${RED}⚠️  Apple GarageBand is exclusively available on macOS.${NC}"
+        press_enter
+        return 1
+    fi
+    echo -e "\n${BOLD}${YELLOW}Launching Apple GarageBand...${NC}\n"
+    if [ -n "$file" ] && [ -f "$file" ]; then
+        if open -a "GarageBand" "$file" 2>/dev/null; then
+            echo -e "${GREEN}✓ Opened '$(basename "$file")' in Apple GarageBand.${NC}"
+            sleep 1.2
+            return 0
+        fi
+    else
+        if open -a "GarageBand" 2>/dev/null; then
+            echo -e "${GREEN}✓ Apple GarageBand launched.${NC}"
+            sleep 1.2
+            return 0
+        fi
+    fi
+    echo -e "${RED}Error: Apple GarageBand was not found in /Applications.${NC}"
+    press_enter
+    return 1
+}
+
+launch_traktor() {
+    if [ "$OS_TYPE" = "macos" ]; then
+        echo -e "\n${BOLD}${YELLOW}Launching Native Instruments Traktor Pro on macOS...${NC}\n"
+        if open -a "Traktor Pro 4" 2>/dev/null || open -a "Traktor Pro 3" 2>/dev/null || open -a "Traktor" 2>/dev/null; then
+            echo -e "${GREEN}✓ Traktor Pro launched successfully.${NC}"
+            sleep 1.2
+            return 0
+        else
+            echo -e "${RED}Traktor Pro was not found in /Applications.${NC}"
+            press_enter
+            return 1
+        fi
+    elif [ "$OS_TYPE" = "windows" ] || [ "$OS_TYPE" = "wsl" ]; then
+        echo -e "\n${BOLD}${YELLOW}Launching Native Instruments Traktor Pro on Windows...${NC}\n"
+        local traktor_paths=(
+            "/c/Program Files/Native Instruments/Traktor Pro 4/Traktor.exe"
+            "/c/Program Files/Native Instruments/Traktor Pro 3/Traktor.exe"
+            "/c/Program Files/Native Instruments/Traktor 2/Traktor.exe"
+            "/c/Program Files (x86)/Native Instruments/Traktor Pro 3/Traktor.exe"
+        )
+        for p in "${traktor_paths[@]}"; do
+            if [ -f "$p" ]; then
+                local win_p
+                win_p="$(cygpath -w "$p" 2>/dev/null || wslpath -w "$p" 2>/dev/null || echo "$p")"
+                cmd.exe /c start "" "$win_p" >/dev/null 2>&1 &
+                echo -e "${GREEN}✓ Traktor Pro launched successfully.${NC}"
+                sleep 1.2
+                return 0
+            fi
+        done
+        if command -v cmd.exe >/dev/null 2>&1 && cmd.exe /c "where Traktor.exe" >/dev/null 2>&1; then
+            cmd.exe /c start "" "Traktor.exe" >/dev/null 2>&1 &
+            echo -e "${GREEN}✓ Traktor Pro launched successfully.${NC}"
+            sleep 1.2
+            return 0
+        fi
+        echo -e "${RED}Traktor Pro was not found in standard Program Files directories.${NC}"
+        press_enter
+        return 1
+    else
+        echo -e "\n${BOLD}${RED}═══════════════════════════════════════════════════════════════════════════════${NC}"
+        echo -e "${BOLD}${RED}            ⚠️  PLATFORM NOT SUPPORTED FOR TRAKTOR PRO ⚠️                      ${NC}"
+        echo -e "${BOLD}${RED}═══════════════════════════════════════════════════════════════════════════════${NC}"
+        echo -e "  • ${BOLD}Platform:${NC}           $(uname -s)"
+        echo -e "  • ${BOLD}Status:${NC}             ${RED}Unsupported by Native Instruments${NC}"
+        echo -e "  • ${BOLD}Compatibility:${NC}      Native Instruments Traktor Pro is officially supported"
+        echo -e "                          on ${BOLD}${GREEN}macOS${NC} and ${BOLD}${CYAN}Windows${NC} only."
+        echo -e "  • ${BOLD}Recommended Alternative:${NC}"
+        echo -e "                          For Linux & FreeBSD DJing, ${BOLD}${GREEN}Mixxx${NC} is the industry standard"
+        echo -e "                          open-source DJ platform (Flatpak: org.mixxx.Mixxx, pkg: mixxx)."
+        echo -e "${BOLD}${RED}═══════════════════════════════════════════════════════════════════════════════${NC}\n"
+        press_enter
+        return 1
+    fi
+}
+
+launch_fl_studio() {
+    local file="${1:-}"
+    echo -e "\n${BOLD}${YELLOW}Launching Image-Line FL Studio (Fruity Loops)...${NC}\n"
+
+    # 1. macOS Platform
+    if [ "$OS_TYPE" = "macos" ]; then
+        local fl_mac_apps=("FL Studio 2024" "FL Studio 21" "FL Studio 20" "FL Studio")
+        for app in "${fl_mac_apps[@]}"; do
+            if [ -d "/Applications/${app}.app" ] || [ -d "$HOME/Applications/${app}.app" ]; then
+                if [ -n "$file" ] && [ -f "$file" ]; then
+                    open -a "$app" "$file" >/dev/null 2>&1 &
+                    echo -e "${GREEN}✓ Opened '$(basename "$file")' in ${app}.${NC}"
+                else
+                    open -a "$app" >/dev/null 2>&1 &
+                    echo -e "${GREEN}✓ ${app} launched on macOS.${NC}"
+                fi
+                sleep 1.2
+                return 0
+            fi
+        done
+        if [ -n "$file" ]; then
+            open -a "FL Studio" "$file" 2>/dev/null && return 0
+        else
+            open -a "FL Studio" 2>/dev/null && return 0
+        fi
+        echo -e "${RED}FL Studio was not found in /Applications.${NC}"
+        press_enter
+        return 1
+
+    # 2. Windows / WSL Platform
+    elif [ "$OS_TYPE" = "windows" ] || [ "$OS_TYPE" = "wsl" ]; then
+        local fl_win_paths=(
+            "/c/Program Files/Image-Line/FL Studio 2024/FL64.exe"
+            "/c/Program Files/Image-Line/FL Studio 21/FL64.exe"
+            "/c/Program Files/Image-Line/FL Studio 20/FL64.exe"
+            "/c/Program Files (x86)/Image-Line/FL Studio 20/FL.exe"
+        )
+        local win_file=""
+        [ -n "$file" ] && [ -f "$file" ] && win_file="$(cygpath -w "$file" 2>/dev/null || wslpath -w "$file" 2>/dev/null || echo "$file")"
+
+        for p in "${fl_win_paths[@]}"; do
+            if [ -f "$p" ]; then
+                local win_p
+                win_p="$(cygpath -w "$p" 2>/dev/null || wslpath -w "$p" 2>/dev/null || echo "$p")"
+                if [ -n "$win_file" ]; then
+                    cmd.exe /c start "" "$win_p" "$win_file" >/dev/null 2>&1 &
+                else
+                    cmd.exe /c start "" "$win_p" >/dev/null 2>&1 &
+                fi
+                echo -e "${GREEN}✓ FL Studio launched on Windows.${NC}"
+                sleep 1.2
+                return 0
+            fi
+        done
+
+        if command -v cmd.exe >/dev/null 2>&1 && cmd.exe /c "where FL64.exe" >/dev/null 2>&1; then
+            if [ -n "$win_file" ]; then
+                cmd.exe /c start "" "FL64.exe" "$win_file" >/dev/null 2>&1 &
+            else
+                cmd.exe /c start "" "FL64.exe" >/dev/null 2>&1 &
+            fi
+            echo -e "${GREEN}✓ FL Studio launched on Windows.${NC}"
+            sleep 1.2
+            return 0
+        fi
+
+        echo -e "${RED}FL Studio was not found in Program Files or PATH on Windows.${NC}"
+        press_enter
+        return 1
+
+    # 3. Linux Platform (via Wine, Bottles, or Native Wrapper)
+    else
+        if command -v flstudio >/dev/null 2>&1; then
+            nohup flstudio ${file:+"$file"} >/dev/null 2>&1 &
+            echo -e "${GREEN}✓ FL Studio launched (native wrapper).${NC}"
+            sleep 1.2
+            return 0
+        elif command -v fl-studio >/dev/null 2>&1; then
+            nohup fl-studio ${file:+"$file"} >/dev/null 2>&1 &
+            echo -e "${GREEN}✓ FL Studio launched (native wrapper).${NC}"
+            sleep 1.2
+            return 0
+        fi
+
+        if command -v bottles-cli >/dev/null 2>&1; then
+            if bottles-cli list bottles 2>/dev/null | grep -qi "fl.*studio"; then
+                local b_name
+                b_name=$(bottles-cli list bottles 2>/dev/null | grep -i "fl.*studio" | head -n 1 | awk -F: '{print $1}' | tr -d ' ')
+                nohup bottles-cli run -b "$b_name" -p "FL Studio" >/dev/null 2>&1 &
+                echo -e "${GREEN}✓ FL Studio launched via Bottles bottle: $b_name.${NC}"
+                sleep 1.2
+                return 0
+            fi
+        elif command -v flatpak >/dev/null 2>&1 && flatpak info com.usebottles.bottles >/dev/null 2>&1; then
+            if flatpak run --command=bottles-cli com.usebottles.bottles list bottles 2>/dev/null | grep -qi "fl.*studio"; then
+                flatpak run --command=bottles-cli com.usebottles.bottles run -b "FL Studio" -p "FL Studio" >/dev/null 2>&1 &
+                echo -e "${GREEN}✓ FL Studio launched via Bottles Flatpak.${NC}"
+                sleep 1.2
+                return 0
+            fi
+        fi
+
+        local wine_fl_paths=(
+            "$HOME/.wine/drive_c/Program Files/Image-Line/FL Studio 2024/FL64.exe"
+            "$HOME/.wine/drive_c/Program Files/Image-Line/FL Studio 21/FL64.exe"
+            "$HOME/.wine/drive_c/Program Files/Image-Line/FL Studio 20/FL64.exe"
+            "$HOME/.local/share/bottles/bottles/FL-Studio/drive_c/Program Files/Image-Line/FL Studio 21/FL64.exe"
+            "$HOME/.var/app/com.usebottles.bottles/data/bottles/bottles/FL-Studio/drive_c/Program Files/Image-Line/FL Studio 21/FL64.exe"
+        )
+        for wp in "${wine_fl_paths[@]}"; do
+            if [ -f "$wp" ] && command -v wine >/dev/null 2>&1; then
+                nohup wine "$wp" ${file:+"$file"} >/dev/null 2>&1 &
+                echo -e "${GREEN}✓ FL Studio launched via Wine.${NC}"
+                sleep 1.2
+                return 0
+            fi
+        done
+
+        echo -e "${YELLOW}FL Studio is not currently installed or detected on this system.${NC}"
+        echo -e "FL Studio is supported on Linux through ${BOLD}Bottles${NC} or ${BOLD}Wine${NC}."
+        echo -e "Options:"
+        echo -e "  1. Install ${CYAN}Bottles${NC} (flatpak install flathub com.usebottles.bottles) and run FL Studio installer."
+        echo -e "  2. Or run: ${CYAN}wine \"FL_Studio_Installer.exe\"${NC}"
+        press_enter
+        return 1
+    fi
+}
+
+launch_winamp() {
+    local file="${1:-}"
+    if [ "$OS_TYPE" = "windows" ] || [ "$OS_TYPE" = "wsl" ]; then
+        echo -e "\n${BOLD}${YELLOW}Launching Winamp on Windows...${NC}\n"
+        local win_file=""
+        [ -n "$file" ] && [ -f "$file" ] && win_file="$(cygpath -w "$file" 2>/dev/null || wslpath -w "$file" 2>/dev/null || echo "$file")"
+
+        local winamp_paths=(
+            "/c/Program Files (x86)/Winamp/winamp.exe"
+            "/c/Program Files/Winamp/winamp.exe"
+            "$LOCALAPPDATA/Programs/Winamp/winamp.exe"
+        )
+        for p in "${winamp_paths[@]}"; do
+            if [ -f "$p" ]; then
+                local win_p
+                win_p="$(cygpath -w "$p" 2>/dev/null || wslpath -w "$p" 2>/dev/null || echo "$p")"
+                if [ -n "$win_file" ]; then
+                    cmd.exe /c start "" "$win_p" "$win_file" >/dev/null 2>&1 &
+                else
+                    cmd.exe /c start "" "$win_p" >/dev/null 2>&1 &
+                fi
+                echo -e "${GREEN}✓ Winamp launched on Windows.${NC}"
+                sleep 1.2
+                return 0
+            fi
+        done
+        if command -v cmd.exe >/dev/null 2>&1 && cmd.exe /c "where winamp.exe" >/dev/null 2>&1; then
+            if [ -n "$win_file" ]; then
+                cmd.exe /c start "" "winamp.exe" "$win_file" >/dev/null 2>&1 &
+            else
+                cmd.exe /c start "" "winamp.exe" >/dev/null 2>&1 &
+            fi
+            echo -e "${GREEN}✓ Winamp launched on Windows.${NC}"
+            sleep 1.2
+            return 0
+        fi
+        echo -e "${RED}Winamp was not found on Windows.${NC}"
+        press_enter
+        return 1
+    else
+        echo -e "\n${BOLD}${RED}⚠️  Winamp is a native Windows application.${NC}"
+        echo -e "${YELLOW}On Linux & FreeBSD, retro Winamp skin support is available via cliamp retro terminal player or Audacious (audacious -k).${NC}"
+        press_enter
+        return 1
+    fi
+}
+
+launch_foobar2000() {
+    local file="${1:-}"
+    if [ "$OS_TYPE" = "macos" ]; then
+        echo -e "\n${BOLD}${YELLOW}Launching foobar2000 on macOS...${NC}\n"
+        if [ -n "$file" ] && [ -f "$file" ]; then
+            if open -a "foobar2000" "$file" 2>/dev/null; then
+                echo -e "${GREEN}✓ Opened '$(basename "$file")' in foobar2000.${NC}"
+                sleep 1.2
+                return 0
+            fi
+        else
+            if open -a "foobar2000" 2>/dev/null; then
+                echo -e "${GREEN}✓ foobar2000 launched on macOS.${NC}"
+                sleep 1.2
+                return 0
+            fi
+        fi
+        echo -e "${RED}foobar2000 was not found in /Applications.${NC}"
+        echo -e "Install with Homebrew: ${CYAN}brew install --cask foobar2000${NC}"
+        press_enter
+        return 1
+    elif [ "$OS_TYPE" = "windows" ] || [ "$OS_TYPE" = "wsl" ]; then
+        echo -e "\n${BOLD}${YELLOW}Launching foobar2000 on Windows...${NC}\n"
+        local win_file=""
+        [ -n "$file" ] && [ -f "$file" ] && win_file="$(cygpath -w "$file" 2>/dev/null || wslpath -w "$file" 2>/dev/null || echo "$file")"
+
+        local fb_paths=(
+            "/c/Program Files/foobar2000/foobar2000.exe"
+            "/c/Program Files (x86)/foobar2000/foobar2000.exe"
+            "$LOCALAPPDATA/Programs/foobar2000/foobar2000.exe"
+        )
+        for p in "${fb_paths[@]}"; do
+            if [ -f "$p" ]; then
+                local win_p
+                win_p="$(cygpath -w "$p" 2>/dev/null || wslpath -w "$p" 2>/dev/null || echo "$p")"
+                if [ -n "$win_file" ]; then
+                    cmd.exe /c start "" "$win_p" "$win_file" >/dev/null 2>&1 &
+                else
+                    cmd.exe /c start "" "$win_p" >/dev/null 2>&1 &
+                fi
+                echo -e "${GREEN}✓ foobar2000 launched on Windows.${NC}"
+                sleep 1.2
+                return 0
+            fi
+        done
+        if command -v cmd.exe >/dev/null 2>&1 && cmd.exe /c "where foobar2000.exe" >/dev/null 2>&1; then
+            if [ -n "$win_file" ]; then
+                cmd.exe /c start "" "foobar2000.exe" "$win_file" >/dev/null 2>&1 &
+            else
+                cmd.exe /c start "" "foobar2000.exe" >/dev/null 2>&1 &
+            fi
+            echo -e "${GREEN}✓ foobar2000 launched on Windows.${NC}"
+            sleep 1.2
+            return 0
+        fi
+        echo -e "${RED}foobar2000 was not found on Windows.${NC}"
+        echo -e "Install with winget: ${CYAN}winget install foobar2000.foobar2000${NC}"
+        press_enter
+        return 1
+    else
+        echo -e "\n${YELLOW}foobar2000 is officially supported on macOS and Windows.${NC}"
+        echo -e "On Linux/FreeBSD, Strawberry Music Player, VLC, or cliamp is recommended."
+        press_enter
+        return 1
+    fi
+}
+
+launch_apple_music() {
+    local file="${1:-}"
+    if [ "$OS_TYPE" != "macos" ]; then
+        echo -e "\n${BOLD}${RED}⚠️  Apple Music is exclusively available on macOS.${NC}"
+        press_enter
+        return 1
+    fi
+    echo -e "\n${BOLD}${YELLOW}Launching Apple Music...${NC}\n"
+    if [ -n "$file" ] && [ -f "$file" ]; then
+        open -a "Music" "$file" >/dev/null 2>&1 &
+        echo -e "${GREEN}✓ Opened '$(basename "$file")' in Apple Music.${NC}"
+    else
+        open -a "Music" >/dev/null 2>&1 &
+        echo -e "${GREEN}✓ Apple Music launched.${NC}"
+    fi
+    sleep 1.2
+    return 0
+}
+
+launch_apple_podcasts() {
+    if [ "$OS_TYPE" != "macos" ]; then
+        echo -e "\n${BOLD}${RED}⚠️  Apple Podcasts is exclusively available on macOS.${NC}"
+        press_enter
+        return 1
+    fi
+    echo -e "\n${BOLD}${YELLOW}Launching Apple Podcasts...${NC}\n"
+    open -a "Podcasts" >/dev/null 2>&1 &
+    echo -e "${GREEN}✓ Apple Podcasts launched.${NC}"
+    sleep 1.2
+    return 0
+}
+
+open_mix_in_daw() {
+    clear
+    echo -e "${BOLD}${MAGENTA}======================================================================${NC}"
+    echo -e "${BOLD}${MAGENTA}            OPEN MIX AUDIO FILE (WAV/FLAC) IN DAW                     ${NC}"
+    echo -e "${BOLD}${MAGENTA}   (REAPER, Apple Logic Pro, GarageBand, FL Studio, Audacity, etc.)   ${NC}"
+    echo -e "${BOLD}${MAGENTA}======================================================================${NC}\n"
+
+    shopt -s nullglob nocaseglob
+    local wav_candidates=(
+        "${ARCHIVE_DIR}"/*.wav
+        "$PWD"/*.wav
+        "/run/media/$USER/WD BLACK B/MIX_ARCHIVE/CONVERTED_WAV_FILES"/*.wav
+        "/run/media/$USER/WD BLACK B/MIX_ARCHIVE"/*.wav
+        "${OUTPUT_DIR}"/*.flac
+        "$PWD"/*.flac
+    )
+    shopt -u nullglob nocaseglob
+
+    local selected_file=""
+
+    echo -e "${BOLD}How would you like to select the mix to open?${NC}"
+    echo -e "  ${BOLD}${CYAN}1)${NC} Search mix by keyword or episode number (e.g., 033, 041, Who am I)"
+    echo -e "  ${BOLD}${CYAN}2)${NC} Select from mixes currently in archiver (${#wav_candidates[@]} available)"
+    echo -e "  ${BOLD}${CYAN}3)${NC} Enter custom audio file path manually"
+    echo -e "  ${BOLD}${CYAN}0)${NC} Cancel and return\n"
+    read -r -p "Enter choice [0-3]: " s_method
+
+    case "$s_method" in
+        1)
+            read -r -p "Enter search query: " query
+            [ -z "$query" ] && return 0
+            local matches=()
+            for f in "${wav_candidates[@]}"; do
+                if echo "$(basename "$f")" | grep -qi "$query"; then
+                    matches+=("$f")
+                fi
+            done
+            if [ ${#matches[@]} -eq 0 ]; then
+                echo -e "\n${RED}No mixes found matching '${query}'.${NC}"
+                press_enter
+                return 1
+            fi
+            echo -e "\n${BOLD}Matching Mixes:${NC}"
+            for i in "${!matches[@]}"; do
+                echo -e "  ${CYAN}$((i + 1)))${NC} $(basename "${matches[$i]}")"
+            done
+            read -r -p "Select mix number [1-${#matches[@]}]: " pick
+            if [[ "$pick" =~ ^[0-9]+$ ]] && [ "$pick" -ge 1 ] && [ "$pick" -le "${#matches[@]}" ]; then
+                selected_file="${matches[$((pick - 1))]}"
+            else
+                echo -e "${RED}Invalid selection.${NC}"
+                sleep 1
+                return 1
+            fi
+            ;;
+        2)
+            if [ ${#wav_candidates[@]} -eq 0 ]; then
+                echo -e "\n${YELLOW}No audio files found in archive directories.${NC}"
+                press_enter
+                return 1
+            fi
+            echo -e "\n${BOLD}Available Mixes in Archiver:${NC}"
+            local max_show=30
+            for i in "${!wav_candidates[@]}"; do
+                [ "$i" -ge "$max_show" ] && break
+                echo -e "  ${CYAN}$((i + 1)))${NC} $(basename "${wav_candidates[$i]}")"
+            done
+            read -r -p "Select mix number [1-${#wav_candidates[@]}]: " pick
+            if [[ "$pick" =~ ^[0-9]+$ ]] && [ "$pick" -ge 1 ] && [ "$pick" -le "${#wav_candidates[@]}" ]; then
+                selected_file="${wav_candidates[$((pick - 1))]}"
+            else
+                echo -e "${RED}Invalid selection.${NC}"
+                sleep 1
+                return 1
+            fi
+            ;;
+        3)
+            read -r -p "Enter absolute path to WAV or FLAC file: " selected_file
+            if [ ! -f "$selected_file" ]; then
+                echo -e "${RED}Error: File does not exist!${NC}"
+                press_enter
+                return 1
+            fi
+            ;;
+        0|[qQ])
+            return 0
+            ;;
+        *)
+            echo -e "${RED}Invalid choice!${NC}"
+            sleep 1
+            return 1
+            ;;
+    esac
+
+    [ -z "$selected_file" ] && return 0
+
+    echo -e "\n${BOLD}Selected Mix:${NC} ${GREEN}$(basename "$selected_file")${NC}"
+    echo -e "Full Path:    ${CYAN}${selected_file}${NC}\n"
+
+    echo -e "${BOLD}Select target DAW / Audio Editor to open this mix in:${NC}"
+    echo -e "  ${BOLD}${CYAN}1)${NC} Cockos REAPER DAW          ${DIM}(Cross-Platform: Linux, macOS, Windows, FreeBSD)${NC}"
+    echo -e "  ${BOLD}${CYAN}2)${NC} Apple Logic Pro             ${DIM}(macOS Exclusive)${NC}"
+    echo -e "  ${BOLD}${CYAN}3)${NC} Apple GarageBand            ${DIM}(macOS Exclusive)${NC}"
+    echo -e "  ${BOLD}${CYAN}4)${NC} Image-Line FL Studio (Fruity Loops) ${DIM}(macOS, Windows, Linux via Wine)${NC}"
+    echo -e "  ${BOLD}${CYAN}5)${NC} Audacity Audio Editor       ${DIM}(Cross-Platform: Linux, macOS, Windows, FreeBSD)${NC}"
+    echo -e "  ${BOLD}${CYAN}6)${NC} Ardour Digital Audio Workstation"
+    echo -e "  ${BOLD}${CYAN}7)${NC} Bitwig Studio"
+    echo -e "  ${BOLD}${CYAN}0)${NC} Cancel\n"
+    read -r -p "Enter choice [0-7]: " daw_pick
+
+    case "$daw_pick" in
+        1)
+            echo -e "\n${BOLD}${YELLOW}Opening mix in Cockos REAPER...${NC}\n"
+            if [ "$OS_TYPE" = "macos" ]; then
+                open -a "REAPER" "$selected_file" >/dev/null 2>&1 &
+            elif [ "$OS_TYPE" = "windows" ] || [ "$OS_TYPE" = "wsl" ]; then
+                local win_p
+                win_p="$(cygpath -w "$selected_file" 2>/dev/null || wslpath -w "$selected_file" 2>/dev/null || echo "$selected_file")"
+                cmd.exe /c start "" "reaper.exe" "$win_p" >/dev/null 2>&1 &
+            elif command -v reaper >/dev/null 2>&1; then
+                nohup reaper "$selected_file" >/dev/null 2>&1 &
+            elif flatpak list 2>/dev/null | grep -q "fm.reaper.Reaper"; then
+                nohup flatpak run fm.reaper.Reaper "$selected_file" >/dev/null 2>&1 &
+            else
+                echo -e "${RED}REAPER is not installed.${NC}"
+                press_enter
+                return 1
+            fi
+            echo -e "${GREEN}✓ Mix dispatched to REAPER.${NC}"
+            sleep 1.2
+            ;;
+        2)
+            launch_logic_pro "$selected_file"
+            ;;
+        3)
+            launch_garageband "$selected_file"
+            ;;
+        4)
+            launch_fl_studio "$selected_file"
+            ;;
+        5)
+            echo -e "\n${BOLD}${YELLOW}Opening mix in Audacity...${NC}\n"
+            play_audio_file "audacity" "$selected_file"
+            echo -e "${GREEN}✓ Mix dispatched to Audacity.${NC}"
+            sleep 1.2
+            ;;
+        6)
+            if [ "$OS_TYPE" = "macos" ]; then
+                open -a "Ardour" "$selected_file" 2>/dev/null &
+            elif command -v ardour >/dev/null 2>&1; then
+                nohup ardour "$selected_file" >/dev/null 2>&1 &
+            elif flatpak list 2>/dev/null | grep -q "org.ardour.Ardour"; then
+                nohup flatpak run org.ardour.Ardour "$selected_file" >/dev/null 2>&1 &
+            fi
+            echo -e "${GREEN}✓ Mix dispatched to Ardour.${NC}"
+            sleep 1.2
+            ;;
+        7)
+            if [ "$OS_TYPE" = "macos" ]; then
+                open -a "Bitwig Studio" "$selected_file" 2>/dev/null &
+            elif command -v bitwig-studio >/dev/null 2>&1; then
+                nohup bitwig-studio "$selected_file" >/dev/null 2>&1 &
+            elif flatpak list 2>/dev/null | grep -q "com.bitwig.BitwigStudio"; then
+                nohup flatpak run com.bitwig.BitwigStudio "$selected_file" >/dev/null 2>&1 &
+            fi
+            echo -e "${GREEN}✓ Mix dispatched to Bitwig Studio.${NC}"
+            sleep 1.2
+            ;;
+        0|[qQ])
+            return 0
+            ;;
+        *)
+            echo -e "${RED}Invalid choice!${NC}"
+            sleep 1
+            ;;
+    esac
+}
+
+manage_spek_generation() {
+    local script="$SCRIPT_DIR/generate_spek.sh"
+    [ ! -f "$script" ] && script="./generate_spek.sh"
+    [ ! -f "$script" ] && script="$SCRIPT_DIR/scripts/generate_spek.sh"
+
+    while true; do
+        clear
+        echo -e "${BOLD}${MAGENTA}======================================================================${NC}"
+        echo -e "${BOLD}${MAGENTA}       ACOUSTIC SPECTRUM ANALYSER & SPECTROGRAM SUITE (SPEK)          ${NC}"
+        echo -e "${BOLD}${MAGENTA}         Cross-Platform: Linux • macOS • Windows • FreeBSD            ${NC}"
+        echo -e "${BOLD}${MAGENTA}======================================================================${NC}\n"
+
+        echo -e "${BOLD}Select a Spectrogram Generation Option:${NC}"
+        echo -e "  ${BOLD}${CYAN}1)${NC} Generate Spek for Single Mix (${GREEN}Search or Select from Archive & Auto-Open${NC})"
+        echo -e "  ${BOLD}${CYAN}2)${NC} Batch Generate Speks for all FLACs in ${BOLD}FLAC_CONVERTED_OUTPUTS/${NC}"
+        echo -e "  ${BOLD}${CYAN}3)${NC} Batch Generate Speks for all WAVs in ${BOLD}CONVERTED_WAV_FILES/${NC}"
+        echo -e "  ${BOLD}${CYAN}4)${NC} Batch Generate Speks for all Audio Files in Current Directory ($PWD)"
+        echo -e "  ${BOLD}${CYAN}5)${NC} Launch Native Spek GUI Application (${GREEN}Spek.app / spek.exe / spek${NC})"
+        echo -e "  ${BOLD}${CYAN}6)${NC} Browse Generated Spectrograms in ${BOLD}SPEK_OUTPUTS/${NC}"
+        echo -e "  ${BOLD}${CYAN}0)${NC} Return to Main Menu\n"
+        read -r -p "Enter choice [0-6]: " sp_choice
+
+        case "$sp_choice" in
+            1)
+                echo ""
+                bash "$script"
+                press_enter
+                ;;
+            2)
+                echo -e "\n${BOLD}${YELLOW}Batch generating spectrograms for FLAC_CONVERTED_OUTPUTS/...${NC}\n"
+                bash "$script" -d "FLAC_CONVERTED_OUTPUTS" -o "SPEK_OUTPUTS"
+                press_enter
+                ;;
+            3)
+                echo -e "\n${BOLD}${YELLOW}Batch generating spectrograms for CONVERTED_WAV_FILES/...${NC}\n"
+                bash "$script" -d "CONVERTED_WAV_FILES" -o "SPEK_OUTPUTS"
+                press_enter
+                ;;
+            4)
+                echo -e "\n${BOLD}${YELLOW}Batch generating spectrograms for Current Directory ($PWD)...${NC}\n"
+                bash "$script" -d "$PWD" -o "SPEK_OUTPUTS"
+                press_enter
+                ;;
+            5)
+                echo ""
+                bash "$script" -g
+                press_enter
+                ;;
+            6)
+                echo -e "\n${CYAN}Opening SPEK_OUTPUTS/ directory...${NC}"
+                open_path "$PWD/SPEK_OUTPUTS"
+                sleep 1
+                ;;
+            0|[qQ])
+                return 0
+                ;;
+            *)
+                echo -e "\n${RED}Invalid choice!${NC}"
+                sleep 1.2
+                ;;
+        esac
+    done
+}
+
 manage_daws() {
     while true; do
         clear
@@ -2656,6 +3423,10 @@ manage_daws() {
         local lmms_badge="${YELLOW}[AVAILABLE]${NC}"
         local bitwig_badge="${YELLOW}[AVAILABLE]${NC}"
         local bespoke_badge="${YELLOW}[AVAILABLE]${NC}"
+        local logic_badge="${YELLOW}[macOS Only]${NC}"
+        local garage_badge="${YELLOW}[macOS Only]${NC}"
+        local fl_badge="${YELLOW}[AVAILABLE]${NC}"
+        local traktor_badge="${YELLOW}[macOS & Windows Only]${NC}"
 
         is_app_installed "reaper" "fm.reaper.Reaper" "REAPER" "REAPER (x64)/reaper.exe" && reaper_badge="${GREEN}✓ INSTALLED${NC}"
         is_app_installed "audacity" "org.audacityteam.Audacity" "Audacity" "Audacity/Audacity.exe" && audacity_badge="${GREEN}✓ INSTALLED${NC}"
@@ -2664,21 +3435,52 @@ manage_daws() {
         is_app_installed "bitwig-studio" "com.bitwig.BitwigStudio" "Bitwig Studio" "Bitwig Studio/bin/BitwigStudio.exe" && bitwig_badge="${GREEN}✓ INSTALLED${NC}"
         is_app_installed "bespokesynth" "com.bespokesynth.BespokeSynth" "BespokeSynth" "BespokeSynth/BespokeSynth.exe" && bespoke_badge="${GREEN}✓ INSTALLED${NC}"
 
-        echo -e "${BOLD}Select a DAW or Audio Editor to launch (or install):${NC}"
-        echo -e "  ${BOLD}${CYAN}1)${NC} Launch REAPER DAW (${reaper_badge}${NC})"
-        echo -e "  ${BOLD}${CYAN}2)${NC} Launch Audacity Audio Editor (${audacity_badge}${NC})"
-        echo -e "  ${BOLD}${CYAN}3)${NC} Launch / Install Ardour DAW (${ardour_badge}${NC})"
-        echo -e "  ${BOLD}${CYAN}4)${NC} Launch / Install LMMS Studio (${lmms_badge}${NC})"
-        echo -e "  ${BOLD}${CYAN}5)${NC} Launch / Install Bitwig Studio (${bitwig_badge}${NC})"
-        echo -e "  ${BOLD}${CYAN}6)${NC} Launch / Install Bespoke Synth (${bespoke_badge}${NC})"
         if [ "$OS_TYPE" = "macos" ]; then
-            echo -e "  ${BOLD}${CYAN}7)${NC} Launch Apple Logic Pro / GarageBand"
+            if [ -d "/Applications/Logic Pro.app" ] || [ -d "/Applications/Logic Pro X.app" ] || osascript -e 'id of application "Logic Pro"' >/dev/null 2>&1; then
+                logic_badge="${GREEN}✓ INSTALLED${NC}"
+            else
+                logic_badge="${RED}[NOT INSTALLED]${NC}"
+            fi
+            if [ -d "/Applications/GarageBand.app" ] || osascript -e 'id of application "GarageBand"' >/dev/null 2>&1; then
+                garage_badge="${GREEN}✓ INSTALLED${NC}"
+            else
+                garage_badge="${RED}[NOT INSTALLED]${NC}"
+            fi
+            if [ -d "/Applications/Traktor Pro 4.app" ] || [ -d "/Applications/Traktor Pro 3.app" ] || [ -d "/Applications/Traktor.app" ]; then
+                traktor_badge="${GREEN}✓ INSTALLED${NC}"
+            else
+                traktor_badge="${RED}[NOT INSTALLED]${NC}"
+            fi
+            if [ -d "/Applications/FL Studio 2024.app" ] || [ -d "/Applications/FL Studio 21.app" ] || [ -d "/Applications/FL Studio.app" ]; then
+                fl_badge="${GREEN}✓ INSTALLED${NC}"
+            fi
         elif [ "$OS_TYPE" = "windows" ] || [ "$OS_TYPE" = "wsl" ]; then
-            echo -e "  ${BOLD}${CYAN}7)${NC} Launch FL Studio (Image-Line)"
+            if [ -f "/c/Program Files/Native Instruments/Traktor Pro 4/Traktor.exe" ] || [ -f "/c/Program Files/Native Instruments/Traktor Pro 3/Traktor.exe" ]; then
+                traktor_badge="${GREEN}✓ INSTALLED${NC}"
+            else
+                traktor_badge="${YELLOW}[AVAILABLE]${NC}"
+            fi
+            if [ -f "/c/Program Files/Image-Line/FL Studio 2024/FL64.exe" ] || [ -f "/c/Program Files/Image-Line/FL Studio 21/FL64.exe" ]; then
+                fl_badge="${GREEN}✓ INSTALLED${NC}"
+            fi
         fi
-        echo -e "  ${BOLD}${CYAN}0)${NC} Return to Main Menu"
+
+        echo -e "${BOLD}Select a DAW or Audio Editor to launch (or install):${NC}"
+        echo -e "  ${BOLD}${CYAN} 1)${NC} Launch REAPER DAW (${reaper_badge}${NC})"
+        echo -e "  ${BOLD}${CYAN} 2)${NC} Launch Audacity Audio Editor (${audacity_badge}${NC})"
+        echo -e "  ${BOLD}${CYAN} 3)${NC} Launch / Install Ardour DAW (${ardour_badge}${NC})"
+        echo -e "  ${BOLD}${CYAN} 4)${NC} Launch / Install LMMS Studio (${lmms_badge}${NC})"
+        echo -e "  ${BOLD}${CYAN} 5)${NC} Launch / Install Bitwig Studio (${bitwig_badge}${NC})"
+        echo -e "  ${BOLD}${CYAN} 6)${NC} Launch / Install Bespoke Synth (${bespoke_badge}${NC})"
+        echo -e "  ${BOLD}${CYAN} 7)${NC} Launch Apple Logic Pro (${logic_badge}${NC})"
+        echo -e "  ${BOLD}${CYAN} 8)${NC} Launch Apple GarageBand (${garage_badge}${NC})"
+        echo -e "  ${BOLD}${CYAN} 9)${NC} Launch Image-Line FL Studio / Fruity Loops (${fl_badge}${NC})"
+        echo -e "  ${BOLD}${CYAN}10)${NC} Launch Native Instruments Traktor Pro (${traktor_badge}${NC})"
+        echo -e "  ${BOLD}${BLUE}────────────────────────────────────────────────────${NC}"
+        echo -e "  ${BOLD}${CYAN}11)${NC} ${BOLD}${GREEN}Open Mix WAV/FLAC Audio File in DAW...${NC} (Reaper, Logic Pro, FL Studio)"
+        echo -e "  ${BOLD}${CYAN} 0)${NC} Return to Main Menu"
         echo ""
-        read -r -p "Enter choice [0-7]: " d_choice
+        read -r -p "Enter choice [0-11]: " d_choice
 
         case "$d_choice" in
             1)
@@ -2700,13 +3502,19 @@ manage_daws() {
                 launch_gui_app "Bespoke Synth" "bespokesynth" "com.bespokesynth.BespokeSynth" "BespokeSynth" "bespoke-synth" "BespokeSynth/BespokeSynth.exe" ""
                 ;;
             7)
-                if [ "$OS_TYPE" = "macos" ]; then
-                    open -a "Logic Pro" 2>/dev/null || open -a "GarageBand" 2>/dev/null || echo -e "${RED}Neither Logic Pro nor GarageBand found.${NC}"
-                    sleep 1.2
-                elif [ "$OS_TYPE" = "windows" ] || [ "$OS_TYPE" = "wsl" ]; then
-                    cmd.exe /c start "" "FL64.exe" 2>/dev/null || cmd.exe /c start "" "C:\\Program Files\\Image-Line\\FL Studio 2024\\FL64.exe" 2>/dev/null || cmd.exe /c start "" "C:\\Program Files\\Image-Line\\FL Studio 21\\FL64.exe" 2>/dev/null || echo -e "${RED}FL Studio executable not found.${NC}"
-                    sleep 1.2
-                fi
+                launch_logic_pro
+                ;;
+            8)
+                launch_garageband
+                ;;
+            9)
+                launch_fl_studio
+                ;;
+            10)
+                launch_traktor
+                ;;
+            11)
+                open_mix_in_daw
                 ;;
             0|[qQ])
                 return 0
@@ -2781,6 +3589,37 @@ play_audio_file() {
             if command -v mpv >/dev/null 2>&1; then
                 nohup mpv "$file" >/dev/null 2>&1 &
             fi
+            ;;
+        winamp)
+            launch_winamp "$file"
+            ;;
+        foobar2000)
+            launch_foobar2000 "$file"
+            ;;
+        music|apple_music)
+            launch_apple_music "$file"
+            ;;
+        garageband)
+            launch_garageband "$file"
+            ;;
+        logic|logic_pro)
+            launch_logic_pro "$file"
+            ;;
+        reaper)
+            if [ "$OS_TYPE" = "macos" ]; then
+                open -a "REAPER" "$file" >/dev/null 2>&1 &
+            elif [ "$OS_TYPE" = "windows" ] || [ "$OS_TYPE" = "wsl" ]; then
+                local win_p
+                win_p="$(cygpath -w "$file" 2>/dev/null || wslpath -w "$file" 2>/dev/null || echo "$file")"
+                cmd.exe /c start "" "reaper.exe" "$win_p" >/dev/null 2>&1 &
+            elif command -v reaper >/dev/null 2>&1; then
+                nohup reaper "$file" >/dev/null 2>&1 &
+            elif flatpak list 2>/dev/null | grep -q "fm.reaper.Reaper"; then
+                nohup flatpak run fm.reaper.Reaper "$file" >/dev/null 2>&1 &
+            fi
+            ;;
+        flstudio|fl_studio)
+            launch_fl_studio "$file"
             ;;
         *)
             if command -v "$player" >/dev/null 2>&1; then
@@ -2921,6 +3760,12 @@ configure_audio_player_and_startup() {
         (command -v audacity >/dev/null 2>&1 || flatpak list 2>/dev/null | grep -q "org.audacityteam.Audacity") && audacity_st="${GREEN}Installed${NC}"
         local mpv_st="Not Installed"
         command -v mpv >/dev/null 2>&1 && mpv_st="${GREEN}Installed${NC}"
+        local foobar_st="Not Installed"
+        (command -v foobar2000 >/dev/null 2>&1 || [ -d "/Applications/foobar2000.app" ] || [ -f "/c/Program Files/foobar2000/foobar2000.exe" ]) && foobar_st="${GREEN}Installed${NC}"
+        local winamp_st="Not Installed"
+        ([ -f "/c/Program Files (x86)/Winamp/winamp.exe" ] || [ -f "/c/Program Files/Winamp/winamp.exe" ] || command -v winamp >/dev/null 2>&1) && winamp_st="${GREEN}Installed${NC}"
+        local music_st="Not Installed"
+        ([ "$OS_TYPE" = "macos" ] && osascript -e 'id of application "Music"' >/dev/null 2>&1) && music_st="${GREEN}Installed${NC}"
 
         echo -e "  ${BOLD}Current Settings:${NC}"
         echo -e "  • Default Audio Player:          ${BOLD}${GREEN}${DEFAULT_AUDIO_PLAYER:-cliamp}${NC}"
@@ -2941,22 +3786,25 @@ configure_audio_player_and_startup() {
         echo -e "  • Config File Location:          ${DIM}${SCRIPT_DIR}/config.env${NC}\n"
 
         echo -e "${BOLD}Select Player or Setting to Change:${NC}"
-        echo -e "  ${BOLD}${CYAN}1)${NC} Set Default Player to: ${BOLD}cliamp${NC} (Retro Terminal Player) [${cliamp_st}]"
-        echo -e "  ${BOLD}${CYAN}2)${NC} Set Default Player to: ${BOLD}Strawberry${NC} (Music Player) [${straw_st}]"
-        echo -e "  ${BOLD}${CYAN}3)${NC} Set Default Player to: ${BOLD}VLC Media Player${NC} [${vlc_st}]"
-        echo -e "  ${BOLD}${CYAN}4)${NC} Set Default Player to: ${BOLD}Haruna Media Player${NC} [${haruna_st}]"
-        echo -e "  ${BOLD}${CYAN}5)${NC} Set Default Player to: ${BOLD}Kodi Entertainment Center${NC} [${kodi_st}]"
-        echo -e "  ${BOLD}${CYAN}6)${NC} Set Default Player to: ${BOLD}Audacity Audio Editor${NC} [${audacity_st}]"
-        echo -e "  ${BOLD}${CYAN}7)${NC} Set Default Player to: ${BOLD}mpv Video/Audio Player${NC} [${mpv_st}]"
-        echo -e "  ${BOLD}${CYAN}8)${NC} Set Custom Audio Player Command / Binary"
+        echo -e "  ${BOLD}${CYAN} 1)${NC} Set Default Player to: ${BOLD}cliamp${NC} (Retro Terminal Player) [${cliamp_st}]"
+        echo -e "  ${BOLD}${CYAN} 2)${NC} Set Default Player to: ${BOLD}Strawberry${NC} (Music Player) [${straw_st}]"
+        echo -e "  ${BOLD}${CYAN} 3)${NC} Set Default Player to: ${BOLD}VLC Media Player${NC} [${vlc_st}]"
+        echo -e "  ${BOLD}${CYAN} 4)${NC} Set Default Player to: ${BOLD}Haruna Media Player${NC} [${haruna_st}]"
+        echo -e "  ${BOLD}${CYAN} 5)${NC} Set Default Player to: ${BOLD}Kodi Entertainment Center${NC} [${kodi_st}]"
+        echo -e "  ${BOLD}${CYAN} 6)${NC} Set Default Player to: ${BOLD}foobar2000${NC} (macOS & Windows) [${foobar_st}]"
+        echo -e "  ${BOLD}${CYAN} 7)${NC} Set Default Player to: ${BOLD}Winamp${NC} (Windows) [${winamp_st}]"
+        echo -e "  ${BOLD}${CYAN} 8)${NC} Set Default Player to: ${BOLD}Apple Music${NC} (macOS) [${music_st}]"
+        echo -e "  ${BOLD}${CYAN} 9)${NC} Set Default Player to: ${BOLD}Audacity Audio Editor${NC} [${audacity_st}]"
+        echo -e "  ${BOLD}${CYAN}10)${NC} Set Default Player to: ${BOLD}mpv Video/Audio Player${NC} [${mpv_st}]"
+        echo -e "  ${BOLD}${CYAN}11)${NC} Set Custom Audio Player Command / Binary"
         echo -e "  ${BOLD}${BLUE}──────────────────────────────────────────────────────────────────${NC}"
-        echo -e "  ${BOLD}${CYAN}9)${NC} Toggle Auto-Play Mix on Startup (${ap_badge})"
-        echo -e "  ${BOLD}${CYAN}10)${NC} Toggle Auto-Show Cover Art on Startup (${cov_badge})"
-        echo -e "  ${BOLD}${CYAN}11)${NC} Toggle Auto-Show Tracklist on Startup (${tl_badge})"
-        echo -e "  ${BOLD}${CYAN}12)${NC} Toggle Startup Mix Selection (Latest vs Random)"
-        echo -e "  ${BOLD}${CYAN}13)${NC} Test-Play Latest Mix Right Now in Default Player (${DEFAULT_AUDIO_PLAYER})"
-        echo -e "  ${BOLD}${CYAN}0)${NC} Return to Main Menu\n"
-        read -r -p "Enter choice [0-13]: " set_choice
+        echo -e "  ${BOLD}${CYAN}12)${NC} Toggle Auto-Play Mix on Startup (${ap_badge})"
+        echo -e "  ${BOLD}${CYAN}13)${NC} Toggle Auto-Show Cover Art on Startup (${cov_badge})"
+        echo -e "  ${BOLD}${CYAN}14)${NC} Toggle Auto-Show Tracklist on Startup (${tl_badge})"
+        echo -e "  ${BOLD}${CYAN}15)${NC} Toggle Startup Mix Selection (Latest vs Random)"
+        echo -e "  ${BOLD}${CYAN}16)${NC} Test-Play Latest Mix Right Now in Default Player (${DEFAULT_AUDIO_PLAYER})"
+        echo -e "  ${BOLD}${CYAN} 0)${NC} Return to Main Menu\n"
+        read -r -p "Enter choice [0-16]: " set_choice
 
         case "$set_choice" in
             1)
@@ -2990,18 +3838,36 @@ configure_audio_player_and_startup() {
                 sleep 1
                 ;;
             6)
+                DEFAULT_AUDIO_PLAYER="foobar2000"
+                save_config_setting "DEFAULT_AUDIO_PLAYER" "foobar2000"
+                echo -e "\n${GREEN}✓ Default audio player set to 'foobar2000' and saved to config.env!${NC}"
+                sleep 1
+                ;;
+            7)
+                DEFAULT_AUDIO_PLAYER="winamp"
+                save_config_setting "DEFAULT_AUDIO_PLAYER" "winamp"
+                echo -e "\n${GREEN}✓ Default audio player set to 'winamp' and saved to config.env!${NC}"
+                sleep 1
+                ;;
+            8)
+                DEFAULT_AUDIO_PLAYER="music"
+                save_config_setting "DEFAULT_AUDIO_PLAYER" "music"
+                echo -e "\n${GREEN}✓ Default audio player set to 'music' (Apple Music) and saved to config.env!${NC}"
+                sleep 1
+                ;;
+            9)
                 DEFAULT_AUDIO_PLAYER="audacity"
                 save_config_setting "DEFAULT_AUDIO_PLAYER" "audacity"
                 echo -e "\n${GREEN}✓ Default audio player set to 'audacity' and saved to config.env!${NC}"
                 sleep 1
                 ;;
-            7)
+            10)
                 DEFAULT_AUDIO_PLAYER="mpv"
                 save_config_setting "DEFAULT_AUDIO_PLAYER" "mpv"
                 echo -e "\n${GREEN}✓ Default audio player set to 'mpv' and saved to config.env!${NC}"
                 sleep 1
                 ;;
-            8)
+            11)
                 read -r -p "Enter custom audio player executable command: " cust_p
                 if [ -n "$cust_p" ]; then
                     DEFAULT_AUDIO_PLAYER="$cust_p"
@@ -3010,7 +3876,7 @@ configure_audio_player_and_startup() {
                     sleep 1.2
                 fi
                 ;;
-            9)
+            12)
                 if [ "${AUTO_PLAY_ON_STARTUP:-true}" = "true" ]; then
                     AUTO_PLAY_ON_STARTUP="false"
                 else
@@ -3020,7 +3886,7 @@ configure_audio_player_and_startup() {
                 echo -e "\n${GREEN}✓ Startup autoplay toggled to: ${AUTO_PLAY_ON_STARTUP}!${NC}"
                 sleep 1
                 ;;
-            10)
+            13)
                 if [ "${AUTO_SHOW_COVER_ON_STARTUP:-true}" = "true" ]; then
                     AUTO_SHOW_COVER_ON_STARTUP="false"
                 else
@@ -3030,7 +3896,7 @@ configure_audio_player_and_startup() {
                 echo -e "\n${GREEN}✓ Auto-show cover art toggled to: ${AUTO_SHOW_COVER_ON_STARTUP}!${NC}"
                 sleep 1
                 ;;
-            11)
+            14)
                 if [ "${AUTO_SHOW_TRACKLIST_ON_STARTUP:-true}" = "true" ]; then
                     AUTO_SHOW_TRACKLIST_ON_STARTUP="false"
                 else
@@ -3040,7 +3906,7 @@ configure_audio_player_and_startup() {
                 echo -e "\n${GREEN}✓ Auto-show tracklist toggled to: ${AUTO_SHOW_TRACKLIST_ON_STARTUP}!${NC}"
                 sleep 1
                 ;;
-            12)
+            15)
                 if [ "${AUTO_PLAY_MIX_SELECTION:-latest}" = "latest" ]; then
                     AUTO_PLAY_MIX_SELECTION="random"
                 else
@@ -3050,7 +3916,7 @@ configure_audio_player_and_startup() {
                 echo -e "\n${GREEN}✓ Startup mix selection toggled to: ${AUTO_PLAY_MIX_SELECTION}!${NC}"
                 sleep 1
                 ;;
-            13)
+            16)
                 echo -e "\n${BOLD}${YELLOW}Testing startup playback right now with player: ${DEFAULT_AUDIO_PLAYER}...${NC}\n"
                 execute_startup_autoplay
                 press_enter
@@ -3091,17 +3957,35 @@ manage_audio_players() {
             echo -e "  --------------------------------------------------"
         fi
 
+        local fb_badge="${YELLOW}[macOS & Windows]${NC}"
+        local wa_badge="${YELLOW}[Windows Only]${NC}"
+        local am_badge="${YELLOW}[macOS Only]${NC}"
+        local ap_badge="${YELLOW}[macOS Only]${NC}"
+        if [ "$OS_TYPE" = "macos" ]; then
+            [ -d "/Applications/foobar2000.app" ] && fb_badge="${GREEN}✓ INSTALLED${NC}"
+            am_badge="${GREEN}✓ macOS APP${NC}"
+            ap_badge="${GREEN}✓ macOS APP${NC}"
+        elif [ "$OS_TYPE" = "windows" ] || [ "$OS_TYPE" = "wsl" ]; then
+            ([ -f "/c/Program Files/foobar2000/foobar2000.exe" ] || command -v foobar2000.exe >/dev/null 2>&1) && fb_badge="${GREEN}✓ INSTALLED${NC}"
+            ([ -f "/c/Program Files (x86)/Winamp/winamp.exe" ] || [ -f "/c/Program Files/Winamp/winamp.exe" ] || command -v winamp.exe >/dev/null 2>&1) && wa_badge="${GREEN}✓ INSTALLED${NC}"
+        fi
+
         echo -e "${BOLD}Select an Audio Player to launch / manage:${NC}"
-        echo -e "  ${BOLD}${CYAN}1)${NC} cliamp Music Player & Current Track Info (${GREEN}Now Playing Path, Controls & Launch${NC})"
-        echo -e "  ${BOLD}${CYAN}2)${NC} Launch Strawberry Music Player (New Window) (${GREEN}strawberry${NC})"
-        echo -e "  ${BOLD}${CYAN}3)${NC} Launch VLC Media Player (${GREEN}vlc / org.videolan.VLC${NC})"
-        echo -e "  ${BOLD}${CYAN}4)${NC} Launch Haruna Media Player (${GREEN}org.kde.haruna${NC})"
-        echo -e "  ${BOLD}${CYAN}5)${NC} Launch Kodi Entertainment Center (${GREEN}tv.kodi.Kodi${NC})"
-        echo -e "  ${BOLD}${CYAN}6)${NC} Show Connected USB MIDI Devices (${GREEN}list-midi-devices${NC})"
-        echo -e "  ${BOLD}${CYAN}7)${NC} Configure Default Audio Player & Startup Autoplay (${GREEN}Current: ${DEFAULT_AUDIO_PLAYER:-cliamp}${NC})"
-        echo -e "  ${BOLD}${CYAN}0)${NC} Return to Main Menu"
+        echo -e "  ${BOLD}${CYAN} 1)${NC} cliamp Music Player & Current Track Info (${GREEN}Now Playing Path, Controls & Launch${NC})"
+        echo -e "  ${BOLD}${CYAN} 2)${NC} Launch Strawberry Music Player (New Window) (${GREEN}strawberry${NC})"
+        echo -e "  ${BOLD}${CYAN} 3)${NC} Launch VLC Media Player (${GREEN}vlc / org.videolan.VLC${NC})"
+        echo -e "  ${BOLD}${CYAN} 4)${NC} Launch Haruna Media Player (${GREEN}org.kde.haruna${NC})"
+        echo -e "  ${BOLD}${CYAN} 5)${NC} Launch Kodi Entertainment Center (${GREEN}tv.kodi.Kodi${NC})"
+        echo -e "  ${BOLD}${CYAN} 6)${NC} Launch foobar2000 Player (${fb_badge})"
+        echo -e "  ${BOLD}${CYAN} 7)${NC} Launch Winamp Player (${wa_badge})"
+        echo -e "  ${BOLD}${CYAN} 8)${NC} Launch Apple Music Player (${am_badge})"
+        echo -e "  ${BOLD}${CYAN} 9)${NC} Launch Apple Podcasts App (${ap_badge})"
+        echo -e "  ${BOLD}${CYAN}10)${NC} Launch Audacity Audio Editor (${GREEN}audacity${NC})"
+        echo -e "  ${BOLD}${CYAN}11)${NC} Show Connected USB MIDI Devices (${GREEN}list-midi-devices${NC})"
+        echo -e "  ${BOLD}${CYAN}12)${NC} Configure Default Audio Player & Startup Autoplay (${GREEN}Current: ${DEFAULT_AUDIO_PLAYER:-cliamp}${NC})"
+        echo -e "  ${BOLD}${CYAN} 0)${NC} Return to Main Menu"
         echo ""
-        read -r -p "Enter choice [0-6]: " p_choice
+        read -r -p "Enter choice [0-12]: " p_choice
 
         case "$p_choice" in
             1)
@@ -3120,9 +4004,24 @@ manage_audio_players() {
                 launch_kodi
                 ;;
             6)
-                list_usb_midi_devices
+                launch_foobar2000
                 ;;
             7)
+                launch_winamp
+                ;;
+            8)
+                launch_apple_music
+                ;;
+            9)
+                launch_apple_podcasts
+                ;;
+            10)
+                launch_audacity
+                ;;
+            11)
+                list_usb_midi_devices
+                ;;
+            12)
                 configure_audio_player_and_startup
                 ;;
             0|[qQ])
@@ -3269,7 +4168,7 @@ get_system_perf_stats() {
     if [ -f /proc/loadavg ]; then
         read -r l1 l5 l15 _ < /proc/loadavg
         cpu_info="${l1} (1m), ${l5} (5m)"
-    elif [ "$OS_TYPE" = "macos" ]; then
+    elif [ "$OS_TYPE" = "macos" ] || [ "$OS_TYPE" = "freebsd" ]; then
         local load
         load=$(sysctl -n vm.loadavg 2>/dev/null | awk '{print $2, $3}')
         [ -n "$load" ] && cpu_info="${load}" || cpu_info="Active"
@@ -3287,6 +4186,19 @@ get_system_perf_stats() {
             mem_total_g=$(awk "BEGIN {printf \"%.1f\", $mem_total/1048576}")
             mem_used_g=$(awk "BEGIN {printf \"%.1f\", $mem_used/1048576}")
             mem_pct=$(( (mem_used * 100) / mem_total ))
+            ram_info="${mem_used_g}G/${mem_total_g}G (${mem_pct}%)"
+        fi
+    elif [ "$OS_TYPE" = "freebsd" ]; then
+        local mem_bytes page_size free_pages mem_total_g mem_used_g mem_pct
+        mem_bytes=$(sysctl -n hw.physmem 2>/dev/null)
+        page_size=$(sysctl -n hw.pagesize 2>/dev/null || echo 4096)
+        free_pages=$(sysctl -n vm.stats.vm.v_free_count 2>/dev/null || echo 0)
+        if [ -n "$mem_bytes" ] && [ "$mem_bytes" -gt 0 ]; then
+            local free_bytes=$(( free_pages * page_size ))
+            local used_bytes=$(( mem_bytes - free_bytes ))
+            mem_total_g=$(awk "BEGIN {printf \"%.1f\", $mem_bytes/1073741824}")
+            mem_used_g=$(awk "BEGIN {printf \"%.1f\", $used_bytes/1073741824}")
+            mem_pct=$(( (used_bytes * 100) / mem_bytes ))
             ram_info="${mem_used_g}G/${mem_total_g}G (${mem_pct}%)"
         fi
     fi
@@ -4111,6 +5023,8 @@ reboot_system() {
                 shutdown.exe /r /t 0 2>/dev/null || shutdown /r /t 0
             elif [ "$OS_TYPE" = "wsl" ]; then
                 cmd.exe /c shutdown /r /t 0 2>/dev/null || wsl.exe --shutdown
+            elif [ "$OS_TYPE" = "freebsd" ]; then
+                shutdown -r now || sudo shutdown -r now || reboot
             else
                 if command -v systemctl >/dev/null 2>&1; then
                     systemctl reboot || sudo reboot || reboot
@@ -4142,6 +5056,10 @@ get_os_badge() {
         else
             echo -e "${BOLD}${CYAN}🪟 Windows:${NC} ${win_ver}"
         fi
+    elif [ "$OS_TYPE" = "freebsd" ]; then
+        local fbsd_ver
+        fbsd_ver=$(uname -r)
+        echo -e "${BOLD}${RED}😈 FreeBSD:${NC} ${fbsd_ver} ($(uname -m))"
     else
         echo -e "${BOLD}${CYAN}🐧 Kernel:${NC} $(uname -r)"
     fi
@@ -4198,79 +5116,85 @@ while true; do
     echo -e "  ${BOLD}${CYAN}17)${NC} Launch MusicBrainz Picard Meta Tag Editor (${GREEN}Auto-install if missing${NC})"
     
     echo -e "\n  ${BOLD}${BLUE}─── [ SECTION 3: AUDIO PLAYBACK, DAWS & SOUND SUITE ] ───────${NC}"
-    echo -e "  ${BOLD}${CYAN}18)${NC} Digital Audio Workstations (DAWs) Menu (${GREEN}Reaper, Ardour, LMMS, Bitwig...${NC})"
-    echo -e "  ${BOLD}${CYAN}19)${NC} Launch Audacity Audio Editor (${GREEN}audacity${NC})"
-    echo -e "  ${BOLD}${CYAN}20)${NC} Launch Audio Players Menu (${GREEN}cliamp, Strawberry, VLC, Haruna, Kodi${NC})"
-    echo -e "  ${BOLD}${CYAN}21)${NC} Configure Default Audio Player & Startup Autoplay (${GREEN}Current: ${DEFAULT_AUDIO_PLAYER:-cliamp}${NC})"
-    echo -e "  ${BOLD}${CYAN}22)${NC} cliamp Music Player & Track Control (${GREEN}Now Playing Path, Controls & Launch${NC})"
-    echo -e "  ${BOLD}${CYAN}23)${NC} Launch Strawberry Music Player (New Window) (${GREEN}strawberry${NC})"
-    echo -e "  ${BOLD}${CYAN}24)${NC} Launch VLC Media Player (${GREEN}vlc / org.videolan.VLC${NC})"
-    echo -e "  ${BOLD}${CYAN}25)${NC} Launch Haruna Media Player (${GREEN}org.kde.haruna${NC})"
-    echo -e "  ${BOLD}${CYAN}26)${NC} Launch Kodi Entertainment Center (${GREEN}tv.kodi.Kodi${NC})"
-    echo -e "  ${BOLD}${CYAN}27)${NC} Show Connected USB MIDI Devices (${GREEN}list-midi-devices${NC})"
+    echo -e "  ${BOLD}${CYAN}18)${NC} Digital Audio Workstations (DAWs) Menu (${GREEN}Reaper, Logic Pro, FL Studio, Traktor, Ardour, Bitwig...${NC})"
+    echo -e "  ${BOLD}${CYAN}19)${NC} Open Mix WAV/FLAC Audio File in DAW (${GREEN}Direct Mix Search/Select & Dispatch${NC})"
+    echo -e "  ${BOLD}${CYAN}20)${NC} Generate Acoustic Spectrograms (Spek) (${GREEN}1080p Spectrum Analysis & Lossless Verification${NC})"
+    echo -e "  ${BOLD}${CYAN}21)${NC} Launch Audacity Audio Editor (${GREEN}audacity${NC})"
+    echo -e "  ${BOLD}${CYAN}22)${NC} Launch Audio Players Menu (${GREEN}cliamp, Strawberry, VLC, foobar2000, Winamp, Apple Music...${NC})"
+    echo -e "  ${BOLD}${CYAN}23)${NC} Configure Default Audio Player & Startup Autoplay (${GREEN}Current: ${DEFAULT_AUDIO_PLAYER:-cliamp}${NC})"
+    echo -e "  ${BOLD}${CYAN}24)${NC} cliamp Music Player & Track Control (${GREEN}Now Playing Path, Controls & Launch${NC})"
+    echo -e "  ${BOLD}${CYAN}25)${NC} Launch Strawberry Music Player (New Window) (${GREEN}strawberry${NC})"
+    echo -e "  ${BOLD}${CYAN}26)${NC} Launch VLC Media Player (${GREEN}vlc / org.videolan.VLC${NC})"
+    echo -e "  ${BOLD}${CYAN}27)${NC} Launch Haruna Media Player (${GREEN}org.kde.haruna${NC})"
+    echo -e "  ${BOLD}${CYAN}28)${NC} Launch Kodi Entertainment Center (${GREEN}tv.kodi.Kodi${NC})"
+    echo -e "  ${BOLD}${CYAN}29)${NC} Show Connected USB MIDI Devices (${GREEN}list-midi-devices${NC})"
     
     echo -e "\n  ${BOLD}${BLUE}─── [ SECTION 4: VIDEO PRODUCTION, ART & VISUAL MEDIA ] ─────${NC}"
-    echo -e "  ${BOLD}${CYAN}28)${NC} Generate YouTube Video (4K UHD, 1080p, 720p with NVENC/Hardware)"
-    echo -e "  ${BOLD}${CYAN}29)${NC} Cut Video File (.mp4 / .mkv) (${GREEN}Cut_Video.sh${NC})"
-    echo -e "  ${BOLD}${CYAN}30)${NC} Launch Video Playlists (NFT Videos (VLC))"
-    echo -e "  ${BOLD}${CYAN}31)${NC} Launch VLC Video Player (${GREEN}vlc${NC})"
-    echo -e "  ${BOLD}${CYAN}32)${NC} Launch GIMP Image Editor (${GREEN}gimp / org.gimp.GIMP${NC})"
-    echo -e "  ${BOLD}${CYAN}33)${NC} Convert Cover Art & Resize / Byte Target (${GREEN}1MB Podcast, WebP/JPG/PNG, Sizes${NC})"
-    echo -e "  ${BOLD}${CYAN}34)${NC} View Cover Art by Mix Number (External Viewer)"
-    echo -e "  ${BOLD}${CYAN}35)${NC} Launch Electric Sheep Generative Screensaver (${GREEN}electricsheep / infinidream${NC})"
+    echo -e "  ${BOLD}${CYAN}30)${NC} Generate YouTube Video (4K UHD, 1080p, 720p with NVENC/Hardware)"
+    echo -e "  ${BOLD}${CYAN}31)${NC} Cut Video File (.mp4 / .mkv) (${GREEN}Cut_Video.sh${NC})"
+    echo -e "  ${BOLD}${CYAN}32)${NC} Launch Video Playlists (NFT Videos (VLC))"
+    echo -e "  ${BOLD}${CYAN}33)${NC} Launch VLC Video Player (${GREEN}vlc${NC})"
+    echo -e "  ${BOLD}${CYAN}34)${NC} Launch GIMP Image Editor (${GREEN}gimp / org.gimp.GIMP${NC})"
+    echo -e "  ${BOLD}${CYAN}35)${NC} Convert Cover Art & Resize / Byte Target (${GREEN}1MB Podcast, WebP/JPG/PNG, Sizes${NC})"
+    echo -e "  ${BOLD}${CYAN}36)${NC} View Cover Art by Mix Number (External Viewer)"
+    echo -e "  ${BOLD}${CYAN}37)${NC} Launch Electric Sheep Generative Screensaver (${GREEN}electricsheep / infinidream${NC})"
     
     echo -e "\n  ${BOLD}${BLUE}─── [ SECTION 5: LIVE MONITORS & SYSTEM DIAGNOSTICS ] ───────${NC}"
-    echo -e "  ${BOLD}${CYAN}36)${NC} Launch Live Tracklist Monitor (${GREEN}SOF_Live_Tracker.sh${NC})"
-    echo -e "  ${BOLD}${CYAN}37)${NC} Launch Live File Transfer Monitor (${GREEN}transfer-monitor${NC})"
-    echo -e "  ${BOLD}${CYAN}38)${NC} Launch Chrome Upload Monitor (${GREEN}Podcast Connect / Web Uploads${NC})"
-    echo -e "  ${BOLD}${CYAN}39)${NC} View Advanced Archive Statistics (${GREEN}SOF_Archive_Stats.sh${NC})"
-    echo -e "  ${BOLD}${CYAN}40)${NC} View Running Background Tasks"
-    echo -e "  ${BOLD}${CYAN}41)${NC} Launch Resource Monitor (${GREEN}btop${NC})"
-    echo -e "  ${BOLD}${CYAN}42)${NC} Launch GPU Process Monitor (${GREEN}nvtop${NC})"
-    echo -e "  ${BOLD}${CYAN}43)${NC} Launch System Process Monitor (${GREEN}top${NC})"
+    echo -e "  ${BOLD}${CYAN}38)${NC} Launch Live Tracklist Monitor (${GREEN}SOF_Live_Tracker.sh${NC})"
+    echo -e "  ${BOLD}${CYAN}39)${NC} Launch Live File Transfer Monitor (${GREEN}transfer-monitor${NC})"
+    echo -e "  ${BOLD}${CYAN}40)${NC} Launch Chrome Upload Monitor (${GREEN}Podcast Connect / Web Uploads${NC})"
+    echo -e "  ${BOLD}${CYAN}41)${NC} View Advanced Archive Statistics (${GREEN}SOF_Archive_Stats.sh${NC})"
+    echo -e "  ${BOLD}${CYAN}42)${NC} View Running Background Tasks"
+    echo -e "  ${BOLD}${CYAN}43)${NC} Launch Resource Monitor (${GREEN}btop${NC})"
+    echo -e "  ${BOLD}${CYAN}44)${NC} Launch GPU Process Monitor (${GREEN}nvtop${NC})"
+    echo -e "  ${BOLD}${CYAN}45)${NC} Launch System Process Monitor (${GREEN}top${NC})"
     
     echo -e "\n  ${BOLD}${BLUE}─── [ SECTION 6: SYSTEM, NETWORK & HARDWARE MANAGEMENT ] ────${NC}"
-    echo -e "  ${BOLD}${CYAN}44)${NC} Manage WAN2GP Server (Start, Stop, Restart in Profile 2 or 4.5)"
-    echo -e "  ${BOLD}${CYAN}45)${NC} Manage Network Services (SSH, Samba, FTP - Start, Stop, Restart All)"
-    echo -e "  ${BOLD}${CYAN}46)${NC} Block Internet Access (LAN Only) (${GREEN}block-internet${NC})"
-    echo -e "  ${BOLD}${CYAN}47)${NC} Restore / Unblock Internet Access (${GREEN}unblock-internet${NC})"
+    echo -e "  ${BOLD}${CYAN}46)${NC} Manage WAN2GP Server (Start, Stop, Restart in Profile 2 or 4.5)"
+    echo -e "  ${BOLD}${CYAN}47)${NC} Manage Network Services (SSH, Samba, FTP - Start, Stop, Restart All)"
+    echo -e "  ${BOLD}${CYAN}48)${NC} Block Internet Access (LAN Only) (${GREEN}block-internet${NC})"
+    echo -e "  ${BOLD}${CYAN}49)${NC} Restore / Unblock Internet Access (${GREEN}unblock-internet${NC})"
     if [ "$OS_TYPE" = "macos" ]; then
-        echo -e "  ${BOLD}${CYAN}48)${NC} Open macOS Display Settings (${GREEN}Displays, Arrangement & HDR${NC})"
-        echo -e "  ${BOLD}${CYAN}49)${NC} Open macOS Audio MIDI Setup (${GREEN}Sample Rates & Output Devices${NC})"
+        echo -e "  ${BOLD}${CYAN}50)${NC} Open macOS Display Settings (${GREEN}Displays, Arrangement & HDR${NC})"
+        echo -e "  ${BOLD}${CYAN}51)${NC} Open macOS Audio MIDI Setup (${GREEN}Sample Rates & Output Devices${NC})"
     elif [ "$OS_TYPE" = "windows" ] || [ "$OS_TYPE" = "wsl" ]; then
-        echo -e "  ${BOLD}${CYAN}48)${NC} Open Windows Display Settings (${GREEN}ms-settings:display - HDR & Scale${NC})"
-        echo -e "  ${BOLD}${CYAN}49)${NC} Open Windows Sound Settings (${GREEN}control.exe mmsys.cpl${NC})"
+        echo -e "  ${BOLD}${CYAN}50)${NC} Open Windows Display Settings (${GREEN}ms-settings:display - HDR & Scale${NC})"
+        echo -e "  ${BOLD}${CYAN}51)${NC} Open Windows Sound Settings (${GREEN}control.exe mmsys.cpl${NC})"
     else
-        echo -e "  ${BOLD}${CYAN}48)${NC} Switch Desktop to Plasma Wayland (HDR Gaming on Hisense & Steam BPM)"
-        echo -e "  ${BOLD}${CYAN}49)${NC} Switch Desktop to Plasma X11 (Workstation 4-Screen Defasten)"
+        echo -e "  ${BOLD}${CYAN}50)${NC} Switch Desktop to Plasma Wayland (HDR Gaming on Hisense & Steam BPM)"
+        echo -e "  ${BOLD}${CYAN}51)${NC} Switch Desktop to Plasma X11 (Workstation 4-Screen Defasten)"
     fi
-    echo -e "  ${BOLD}${CYAN}50)${NC} Close All Desktop Applications (Keep Manager Open)"
+    echo -e "  ${BOLD}${CYAN}52)${NC} Close All Desktop Applications (Keep Manager Open)"
     if [ "$OS_TYPE" = "macos" ]; then
-        echo -e "  ${BOLD}${CYAN}51)${NC} macOS System Maintenance & Cleanup (${GREEN}brew cleanup, purge RAM, caches${NC})"
+        echo -e "  ${BOLD}${CYAN}53)${NC} macOS System Maintenance & Cleanup (${GREEN}brew cleanup, purge RAM, caches${NC})"
     elif [ "$OS_TYPE" = "windows" ] || [ "$OS_TYPE" = "wsl" ]; then
-        echo -e "  ${BOLD}${CYAN}51)${NC} Windows System Maintenance & Cleanup (${GREEN}winget upgrade, clean temp, TRIM${NC})"
+        echo -e "  ${BOLD}${CYAN}53)${NC} Windows System Maintenance & Cleanup (${GREEN}winget upgrade, clean temp, TRIM${NC})"
+    elif [ "$OS_TYPE" = "freebsd" ]; then
+        echo -e "  ${BOLD}${CYAN}53)${NC} FreeBSD System Maintenance & Cleanup (${GREEN}pkg upgrade, pkg clean, autoremove, audit${NC})"
     else
-        echo -e "  ${BOLD}${CYAN}51)${NC} Bazzite System Maintenance & Cleanup (${GREEN}ujust clean-system, update, trim, logs${NC})"
+        echo -e "  ${BOLD}${CYAN}53)${NC} Bazzite System Maintenance & Cleanup (${GREEN}ujust clean-system, update, trim, logs${NC})"
     fi
-    echo -e "  ${BOLD}${CYAN}52)${NC} Launch GeeXLab Demo Launcher (${GREEN}FurMark_linux64/demo_launcher.sh${NC})"
-    echo -e "  ${BOLD}${CYAN}53)${NC} Burn ISO Image to USB Drive (${GREEN}dd / diskutil with safety checks${NC})"
+    echo -e "  ${BOLD}${CYAN}54)${NC} Launch GeeXLab Demo Launcher (${GREEN}FurMark_linux64/demo_launcher.sh${NC})"
+    echo -e "  ${BOLD}${CYAN}55)${NC} Burn ISO Image to USB Drive (${GREEN}dd / diskutil with safety checks${NC})"
     
     echo -e "\n  ${BOLD}${BLUE}─── [ SECTION 7: AI, SHELL CLI & SETTINGS ] ──────────────────${NC}"
-    echo -e "  ${BOLD}${CYAN}54)${NC} Launch AI Assistant / Models (${GREEN}Claude Opus, Claude Sonnet, GPT-OSS, Gemini${NC})"
-    echo -e "  ${BOLD}${CYAN}55)${NC} Run Bash CLI Commands (${GREEN}Interactive Shell & Direct Runner${NC})"
-    echo -e "  ${BOLD}${CYAN}56)${NC} Manager Themes & Color Palette Switcher (${GREEN}8 Themes + Classic${NC})"
+    echo -e "  ${BOLD}${CYAN}56)${NC} Launch AI Assistant / Models (${GREEN}Claude Opus, Claude Sonnet, GPT-OSS, Gemini${NC})"
+    echo -e "  ${BOLD}${CYAN}57)${NC} Run Bash CLI Commands (${GREEN}Interactive Shell & Direct Runner${NC})"
+    echo -e "  ${BOLD}${CYAN}58)${NC} Manager Themes & Color Palette Switcher (${GREEN}8 Themes + Classic${NC})"
     if [ "$OS_TYPE" = "macos" ]; then
-        echo -e "  ${BOLD}${CYAN}57)${NC} Reboot System (${RED}macOS restart with confirmation${NC})"
+        echo -e "  ${BOLD}${CYAN}59)${NC} Reboot System (${RED}macOS restart with confirmation${NC})"
     elif [ "$OS_TYPE" = "windows" ] || [ "$OS_TYPE" = "wsl" ]; then
-        echo -e "  ${BOLD}${CYAN}57)${NC} Reboot System (${RED}Windows restart with confirmation${NC})"
+        echo -e "  ${BOLD}${CYAN}59)${NC} Reboot System (${RED}Windows restart with confirmation${NC})"
+    elif [ "$OS_TYPE" = "freebsd" ]; then
+        echo -e "  ${BOLD}${CYAN}59)${NC} Reboot System (${RED}FreeBSD restart with confirmation${NC})"
     else
-        echo -e "  ${BOLD}${CYAN}57)${NC} Reboot System (${RED}systemctl reboot with confirmation${NC})"
+        echo -e "  ${BOLD}${CYAN}59)${NC} Reboot System (${RED}systemctl reboot with confirmation${NC})"
     fi
     
     echo -e "\n  ${BOLD}${BLUE}──────────────────────────────────────────────────────────────${NC}"
-    echo -e "  ${BOLD}${CYAN}58)${NC} Exit Manager ${DIM}(or 0 / q)${NC}"
+    echo -e "  ${BOLD}${CYAN}60)${NC} Exit Manager ${DIM}(or 0 / q)${NC}"
     echo ""
-    read -r -p "Enter choice [1-58, or q to exit]: " choice
+    read -r -p "Enter choice [1-60, or q to exit]: " choice
     
     case $choice in
         1)
@@ -4343,59 +5267,65 @@ while true; do
             manage_daws
             ;;
         19)
-            launch_audacity
+            open_mix_in_daw
             ;;
         20)
-            manage_audio_players
+            manage_spek_generation
             ;;
         21)
-            configure_audio_player_and_startup
+            launch_audacity
             ;;
         22)
-            manage_cliamp
+            manage_audio_players
             ;;
         23)
-            launch_strawberry
+            configure_audio_player_and_startup
             ;;
         24)
-            launch_vlc
+            manage_cliamp
             ;;
         25)
-            launch_haruna
+            launch_strawberry
             ;;
         26)
-            launch_kodi
+            launch_vlc
             ;;
         27)
-            list_usb_midi_devices
+            launch_haruna
             ;;
         28)
-            generate_youtube_video
+            launch_kodi
             ;;
         29)
+            list_usb_midi_devices
+            ;;
+        30)
+            generate_youtube_video
+            ;;
+        31)
             cut_video_clip
             press_enter
             ;;
-        30)
+        32)
             launch_video_playlists
             ;;
-        31)
+        33)
             launch_vlc
             ;;
-        32)
+        34)
             launch_gimp
             ;;
-        33)
+        35)
             manage_cover_converter
             ;;
-        34)
+        36)
             view_cover
             press_enter
             ;;
-        35)
+        37)
             launch_electricsheep
             ;;
-        36)
+        38)
             echo -e "\n${BOLD}${YELLOW}Launching Live Tracklist Monitor (Press Ctrl+C to return to menu)...${NC}\n"
             sleep 1
             trap ':' INT
@@ -4403,7 +5333,7 @@ while true; do
             trap - INT
             press_enter
             ;;
-        37)
+        39)
             echo -e "\n${BOLD}${YELLOW}Launching Live File Transfer Monitor (Press Ctrl+C to return to menu)...${NC}\n"
             sleep 1
             trap ':' INT
@@ -4417,7 +5347,7 @@ while true; do
             trap - INT
             press_enter
             ;;
-        38)
+        40)
             echo -e "\n${BOLD}${YELLOW}Launching Chrome Upload Monitor (Press Ctrl+C to return to menu)...${NC}\n"
             sleep 1
             trap ':' INT
@@ -4439,17 +5369,17 @@ while true; do
             trap - INT
             press_enter
             ;;
-        39)
+        41)
             echo -e "\n${BOLD}${YELLOW}Loading Advanced Archive Statistics...${NC}\n"
             sleep 0.5
             run_sub_script "SOF_Archive_Stats.sh"
             press_enter
             ;;
-        40)
+        42)
             view_tasks
             press_enter
             ;;
-        41)
+        43)
             echo -e "\n${BOLD}${YELLOW}Launching btop Resource Monitor (Press 'q' to exit)...${NC}\n"
             sleep 0.5
             trap ':' INT
@@ -4461,7 +5391,7 @@ while true; do
             fi
             trap - INT
             ;;
-        42)
+        44)
             echo -e "\n${BOLD}${YELLOW}Launching nvtop GPU Monitor (Press 'q' to exit)...${NC}\n"
             sleep 0.5
             trap ':' INT
@@ -4473,7 +5403,7 @@ while true; do
             fi
             trap - INT
             ;;
-        43)
+        45)
             echo -e "\n${BOLD}${YELLOW}Launching top Process Monitor (Press 'q' to exit)...${NC}\n"
             sleep 0.5
             trap ':' INT
@@ -4485,54 +5415,54 @@ while true; do
             fi
             trap - INT
             ;;
-        44)
+        46)
             manage_wan2gp
             ;;
-        45)
+        47)
             manage_network_services
             ;;
-        46)
+        48)
             block_internet
             ;;
-        47)
+        49)
             unblock_internet
             ;;
-        48)
+        50)
             switch_to_wayland
             ;;
-        49)
+        51)
             switch_to_x11
             ;;
-        50)
+        52)
             close_all_desktop_apps
             ;;
-        51)
+        53)
             manage_system_maintenance
             ;;
-        52)
+        54)
             launch_geexlab_demos
             ;;
-        53)
+        55)
             burn_iso_to_usb
             ;;
-        54)
+        56)
             manage_ai_models
             ;;
-        55)
+        57)
             run_bash_cli
             ;;
-        56)
+        58)
             manage_themes
             ;;
-        57)
+        59)
             reboot_system
             ;;
-        58|0|[qQ]|[eE][xX][iI][tT])
+        60|0|[qQ]|[eE][xX][iI][tT])
             echo -e "\n${BOLD}${GREEN}Exiting Mix Archive Manager. Goodbye!${NC}\n"
             exit 0
             ;;
         *)
-            echo -e "\n${RED}Invalid option! Please enter a number between 1 and 58 (or 'q' to exit).${NC}"
+            echo -e "\n${RED}Invalid option! Please enter a number between 1 and 60 (or 'q' to exit).${NC}"
             sleep 2
             ;;
     esac

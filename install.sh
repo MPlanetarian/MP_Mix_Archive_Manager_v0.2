@@ -36,6 +36,10 @@ case "$(uname -s)" in
         HOST_OS="windows"
         echo -e "      Platform:     ${GREEN}Microsoft Windows${NC} (Git Bash / MSYS2)"
         ;;
+    FreeBSD*)
+        HOST_OS="freebsd"
+        echo -e "      Platform:     ${GREEN}FreeBSD${NC} ($(uname -r), $(uname -m))"
+        ;;
     Linux*)
         if grep -qi microsoft /proc/version 2>/dev/null; then
             HOST_OS="wsl"
@@ -115,6 +119,10 @@ if [ ${#MISSING_TOOLS[@]} -gt 0 ]; then
         echo -e "${YELLOW}      To install missing dependencies on Windows using winget, run:${NC}"
         echo -e "${CYAN}      winget install Gyan.FFmpeg Rclone.Rclone jqlang.jq${NC}"
         echo -e "${DIM}      Optional GUI apps: winget install VideoLAN.VLC Audacity.Audacity MusicBrainz.Picard GIMP.GIMP Cockos.REAPER${NC}"
+    elif [ "$HOST_OS" = "freebsd" ]; then
+        echo -e "${YELLOW}      To install missing dependencies on FreeBSD using pkg, run:${NC}"
+        echo -e "${CYAN}      pkg install -y ${MISSING_TOOLS[*]} spek btop${NC}"
+        echo -e "${DIM}      Optional GUI apps: pkg install -y vlc audacity spek gimp reaper${NC}"
     else
         echo -e "${YELLOW}      To install missing dependencies on Linux, run:${NC}"
         echo -e "${CYAN}      brew install ${MISSING_TOOLS[*]}${NC}  (or use your system package manager)"
