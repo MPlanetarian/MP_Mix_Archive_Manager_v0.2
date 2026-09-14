@@ -4521,6 +4521,216 @@ manage_tracklists() {
     done
 }
 
+manage_promo_outreach() {
+    local py_script=""
+    for s in "$SCRIPT_DIR/send_promo_email.py" "$SCRIPT_DIR/scripts/send_promo_email.py" "./send_promo_email.py"; do
+        if [ -f "$s" ]; then py_script="$s"; break; fi
+    done
+
+    if [ -z "$py_script" ]; then
+        echo -e "\n${RED}Error: send_promo_email.py not found!${NC}"
+        press_enter
+        return 1
+    fi
+
+    while true; do
+        clear
+        echo -e "${BOLD}${MAGENTA}======================================================================${NC}"
+        echo -e "${BOLD}${MAGENTA}             PROMOTIONAL & PUBLISHER OUTREACH SYSTEM                  ${NC}"
+        echo -e "${BOLD}${MAGENTA}         (Promoters, Podcast Publishers, Radio & Labels)              ${NC}"
+        echo -e "${BOLD}${MAGENTA}======================================================================${NC}\n"
+
+        local contact_count="0"
+        local contacts_file="$SCRIPT_DIR/assets/promo_contacts.json"
+        if [ ! -f "$contacts_file" ] && [ -f "./assets/promo_contacts.json" ]; then
+            contacts_file="./assets/promo_contacts.json"
+        fi
+        if [ -f "$contacts_file" ]; then
+            contact_count=$(grep -c '"email":' "$contacts_file" 2>/dev/null || echo "0")
+        fi
+
+        echo -e "  Sender Name:          ${GREEN}${PROMO_SENDER_NAME:-MPlanetarian}${NC}"
+        echo -e "  Sender Email:         ${CYAN}${PROMO_SENDER_EMAIL:-Not Set (Direct desktop mailto/preview)}${NC}"
+        echo -e "  SMTP Outgoing Server: ${YELLOW}${SMTP_HOST:-None Configured (Mail client / Browser preview)}${NC}"
+        echo -e "  Outreach Contacts:    ${GREEN}${contact_count} contacts in address book${NC}"
+        echo ""
+        echo -e "${BOLD}Send Enquiries & Promotional Pitches:${NC}"
+        echo -e "  ${BOLD}${CYAN} 1)${NC} ${GREEN}Interactive Outreach Wizard${NC} (Step-by-step custom email builder)"
+        echo -e "  ${BOLD}${CYAN} 2)${NC} Pitch Episode to Podcast Publishers & Syndicators (${CYAN}Apple Podcasts, DI.FM, Proton...${NC})"
+        echo -e "  ${BOLD}${CYAN} 3)${NC} Send Booking / Guest Mix Enquiry to Promoters & Venues (${CYAN}Clubs, Festivals...${NC})"
+        echo -e "  ${BOLD}${CYAN} 4)${NC} Send New Episode Press & Promo Release Blast"
+        echo -e "  ${BOLD}${CYAN} 5)${NC} Send Track Support Courtesy Notice to Labels & Producers"
+        echo -e "  ${BOLD}${CYAN} 6)${NC} Submit Radio Guest Mix & Syndication Proposal"
+        echo ""
+        echo -e "${BOLD}Tools, Contacts & Preferences:${NC}"
+        echo -e "  ${BOLD}${CYAN} 7)${NC} Preview HTML & Plaintext Email in Browser & Terminal"
+        echo -e "  ${BOLD}${CYAN} 8)${NC} Browse & Search Outreach Contacts Book"
+        echo -e "  ${BOLD}${CYAN} 9)${NC} Add New Contact (Promoter, Publisher, Label, Radio, Press)"
+        echo -e "  ${BOLD}${CYAN}10)${NC} View Sent Email History & Delivery Logs"
+        echo -e "  ${BOLD}${CYAN}11)${NC} Configure Sender Profile & SMTP Server Settings"
+        echo ""
+        echo -e "  ${BOLD}${CYAN}12)${NC} Return to Main Menu\n"
+        read -r -p "Enter choice [1-12]: " p_choice
+
+        case "$p_choice" in
+            1)
+                python3 "$py_script" --interactive
+                press_enter
+                ;;
+            2)
+                echo -e "\n${BOLD}${CYAN}=== PITCH TO PODCAST PUBLISHERS & SYNDICATORS ===${NC}\n"
+                read -r -p "Enter episode number or keyword (or ENTER for latest): " ep_q
+                read -r -p "Enter recipient email (or ENTER to select from saved publishers): " to_email
+                local extra_args=()
+                if [ -n "$to_email" ]; then
+                    extra_args+=(--to "$to_email")
+                else
+                    extra_args+=(--category publisher)
+                fi
+                [ -n "$ep_q" ] && extra_args+=(--episode "$ep_q")
+                python3 "$py_script" --template podcast_publisher "${extra_args[@]}" --interactive
+                press_enter
+                ;;
+            3)
+                echo -e "\n${BOLD}${CYAN}=== PROMOTER & VENUE BOOKING ENQUIRY ===${NC}\n"
+                read -r -p "Enter episode number or keyword (or ENTER for latest): " ep_q
+                read -r -p "Enter recipient email (or ENTER to select from saved promoters): " to_email
+                local extra_args=()
+                if [ -n "$to_email" ]; then
+                    extra_args+=(--to "$to_email")
+                else
+                    extra_args+=(--category promoter)
+                fi
+                [ -n "$ep_q" ] && extra_args+=(--episode "$ep_q")
+                python3 "$py_script" --template promoter_booking "${extra_args[@]}" --interactive
+                press_enter
+                ;;
+            4)
+                echo -e "\n${BOLD}${CYAN}=== NEW EPISODE PROMO RELEASE BLAST ===${NC}\n"
+                read -r -p "Enter episode number or keyword (or ENTER for latest): " ep_q
+                read -r -p "Enter recipient email (or ENTER to select from press/media contacts): " to_email
+                local extra_args=()
+                if [ -n "$to_email" ]; then
+                    extra_args+=(--to "$to_email")
+                else
+                    extra_args+=(--category press)
+                fi
+                [ -n "$ep_q" ] && extra_args+=(--episode "$ep_q")
+                python3 "$py_script" --template episode_promo "${extra_args[@]}" --interactive
+                press_enter
+                ;;
+            5)
+                echo -e "\n${BOLD}${CYAN}=== TRACK SUPPORT COURTESY NOTICE TO LABELS ===${NC}\n"
+                read -r -p "Enter episode number or keyword (or ENTER for latest): " ep_q
+                read -r -p "Enter label / artist email (or ENTER to select from saved labels): " to_email
+                local extra_args=()
+                if [ -n "$to_email" ]; then
+                    extra_args+=(--to "$to_email")
+                else
+                    extra_args+=(--category label)
+                fi
+                [ -n "$ep_q" ] && extra_args+=(--episode "$ep_q")
+                python3 "$py_script" --template track_support "${extra_args[@]}" --interactive
+                press_enter
+                ;;
+            6)
+                echo -e "\n${BOLD}${CYAN}=== RADIO GUEST MIX & SYNDICATION PROPOSAL ===${NC}\n"
+                read -r -p "Enter episode number or keyword (or ENTER for latest): " ep_q
+                read -r -p "Enter station / show email (or ENTER to select from saved radio stations): " to_email
+                local extra_args=()
+                if [ -n "$to_email" ]; then
+                    extra_args+=(--to "$to_email")
+                else
+                    extra_args+=(--category radio)
+                fi
+                [ -n "$ep_q" ] && extra_args+=(--episode "$ep_q")
+                python3 "$py_script" --template radio_guestmix "${extra_args[@]}" --interactive
+                press_enter
+                ;;
+            7)
+                echo -e "\n${BOLD}${CYAN}=== PREVIEW EMAIL IN WEB BROWSER ===${NC}\n"
+                python3 "$py_script" --list-templates
+                read -r -p "Enter template name [podcast_publisher]: " t_name
+                t_name="${t_name:-podcast_publisher}"
+                read -r -p "Enter episode number or keyword (or ENTER for latest): " ep_q
+                local prev_args=(--template "$t_name" --preview)
+                [ -n "$ep_q" ] && prev_args+=(--episode "$ep_q")
+                python3 "$py_script" "${prev_args[@]}"
+                press_enter
+                ;;
+            8)
+                python3 "$py_script" --list-contacts
+                press_enter
+                ;;
+            9)
+                python3 "$py_script" --add-contact
+                press_enter
+                ;;
+            10)
+                local log_file="$SCRIPT_DIR/assets/promo_logs/sent_promo_emails.log"
+                if [ ! -f "$log_file" ] && [ -f "./assets/promo_logs/sent_promo_emails.log" ]; then
+                    log_file="./assets/promo_logs/sent_promo_emails.log"
+                fi
+                echo -e "\n${BOLD}${CYAN}=== OUTREACH & DELIVERY LOGS ===${NC}\n"
+                if [ -f "$log_file" ] && [ -s "$log_file" ]; then
+                    tail -n 35 "$log_file"
+                else
+                    echo -e "${DIM}No sent emails or drafts logged yet.${NC}"
+                fi
+                echo ""
+                press_enter
+                ;;
+            11)
+                echo -e "\n${BOLD}${CYAN}=== CONFIGURE SENDER PROFILE & SMTP SERVER ===${NC}\n"
+                read -r -p "Sender Full Name [${PROMO_SENDER_NAME:-MPlanetarian}]: " new_name
+                read -r -p "Sender Email Address [${PROMO_SENDER_EMAIL}]: " new_email
+                read -r -p "SMTP Host (e.g. smtp.gmail.com) [${SMTP_HOST}]: " new_host
+                read -r -p "SMTP Port [${SMTP_PORT:-587}]: " new_port
+                read -r -p "SMTP Username / Login Email [${SMTP_USER}]: " new_user
+                read -r -s -p "SMTP Password / App Password (leave blank to keep existing): " new_pass
+                echo ""
+
+                local cfg_file="$SCRIPT_DIR/config.env"
+                if [ ! -f "$cfg_file" ] && [ -f "./config.env" ]; then cfg_file="./config.env"; fi
+
+                if [ -n "$new_name" ]; then
+                    PROMO_SENDER_NAME="$new_name"
+                    sed -i "s|^PROMO_SENDER_NAME=.*|PROMO_SENDER_NAME=\"$new_name\"|" "$cfg_file" 2>/dev/null || true
+                fi
+                if [ -n "$new_email" ]; then
+                    PROMO_SENDER_EMAIL="$new_email"
+                    sed -i "s|^PROMO_SENDER_EMAIL=.*|PROMO_SENDER_EMAIL=\"$new_email\"|" "$cfg_file" 2>/dev/null || true
+                fi
+                if [ -n "$new_host" ]; then
+                    SMTP_HOST="$new_host"
+                    sed -i "s|^SMTP_HOST=.*|SMTP_HOST=\"$new_host\"|" "$cfg_file" 2>/dev/null || true
+                fi
+                if [ -n "$new_port" ]; then
+                    SMTP_PORT="$new_port"
+                    sed -i "s|^SMTP_PORT=.*|SMTP_PORT=\"$new_port\"|" "$cfg_file" 2>/dev/null || true
+                fi
+                if [ -n "$new_user" ]; then
+                    SMTP_USER="$new_user"
+                    sed -i "s|^SMTP_USER=.*|SMTP_USER=\"$new_user\"|" "$cfg_file" 2>/dev/null || true
+                fi
+                if [ -n "$new_pass" ]; then
+                    SMTP_PASSWORD="$new_pass"
+                    sed -i "s|^SMTP_PASSWORD=.*|SMTP_PASSWORD=\"$new_pass\"|" "$cfg_file" 2>/dev/null || true
+                fi
+                echo -e "\n${GREEN}✔ Outreach settings updated in ${cfg_file}!${NC}"
+                press_enter
+                ;;
+            12|[qQ])
+                return 0
+                ;;
+            *)
+                echo -e "\n${RED}Invalid option!${NC}"
+                sleep 1.2
+                ;;
+        esac
+    done
+}
+
 search_and_play_mix() {
     clear
     echo -e "${BOLD}${MAGENTA}======================================================================${NC}"
@@ -5108,93 +5318,94 @@ while true; do
     echo -e "  ${BOLD}${CYAN}11)${NC} Show Mix Storage Drive Space Remaining (${GREEN}Mix Drive Only${NC})"
     echo -e "  ${BOLD}${CYAN}12)${NC} Refresh Archive Status & File Counts (Rescan WAVs, FLACs & Tracklists)"
     
-    echo -e "\n  ${BOLD}${BLUE}─── [ SECTION 2: TRACKLIST & METADATA MANAGEMENT ] ──────────${NC}"
+    echo -e "\n  ${BOLD}${BLUE}─── [ SECTION 2: TRACKLIST, METADATA & PROMOTION ] ──────────${NC}"
     echo -e "  ${BOLD}${CYAN}13)${NC} Tracklist Management Suite (${GREEN}Browse, Search, View, Export HTML & PDF${NC})"
     echo -e "  ${BOLD}${CYAN}14)${NC} Search for Mix & Auto-Play with Live Tracklist View (${GREEN}cliamp Window${NC})"
     echo -e "  ${BOLD}${CYAN}15)${NC} Scan & Generate Missing Tracklists (${GREEN}Check_Find_Tracklists.sh${NC})"
     echo -e "  ${BOLD}${CYAN}16)${NC} Generate Master Tracklist HTML Index (${GREEN}Generate_Master_Tracklist.sh${NC})"
     echo -e "  ${BOLD}${CYAN}17)${NC} Launch MusicBrainz Picard Meta Tag Editor (${GREEN}Auto-install if missing${NC})"
+    echo -e "  ${BOLD}${CYAN}18)${NC} Promotional & Publisher Outreach Emails (${GREEN}Promoters, Publishers, Radio, Labels${NC})"
     
     echo -e "\n  ${BOLD}${BLUE}─── [ SECTION 3: AUDIO PLAYBACK, DAWS & SOUND SUITE ] ───────${NC}"
-    echo -e "  ${BOLD}${CYAN}18)${NC} Digital Audio Workstations (DAWs) Menu (${GREEN}Reaper, Logic Pro, FL Studio, Traktor, Ardour, Bitwig...${NC})"
-    echo -e "  ${BOLD}${CYAN}19)${NC} Open Mix WAV/FLAC Audio File in DAW (${GREEN}Direct Mix Search/Select & Dispatch${NC})"
-    echo -e "  ${BOLD}${CYAN}20)${NC} Generate Acoustic Spectrograms (Spek) (${GREEN}1080p Spectrum Analysis & Lossless Verification${NC})"
-    echo -e "  ${BOLD}${CYAN}21)${NC} Launch Audacity Audio Editor (${GREEN}audacity${NC})"
-    echo -e "  ${BOLD}${CYAN}22)${NC} Launch Audio Players Menu (${GREEN}cliamp, Strawberry, VLC, foobar2000, Winamp, Apple Music...${NC})"
-    echo -e "  ${BOLD}${CYAN}23)${NC} Configure Default Audio Player & Startup Autoplay (${GREEN}Current: ${DEFAULT_AUDIO_PLAYER:-cliamp}${NC})"
-    echo -e "  ${BOLD}${CYAN}24)${NC} cliamp Music Player & Track Control (${GREEN}Now Playing Path, Controls & Launch${NC})"
-    echo -e "  ${BOLD}${CYAN}25)${NC} Launch Strawberry Music Player (New Window) (${GREEN}strawberry${NC})"
-    echo -e "  ${BOLD}${CYAN}26)${NC} Launch VLC Media Player (${GREEN}vlc / org.videolan.VLC${NC})"
-    echo -e "  ${BOLD}${CYAN}27)${NC} Launch Haruna Media Player (${GREEN}org.kde.haruna${NC})"
-    echo -e "  ${BOLD}${CYAN}28)${NC} Launch Kodi Entertainment Center (${GREEN}tv.kodi.Kodi${NC})"
-    echo -e "  ${BOLD}${CYAN}29)${NC} Show Connected USB MIDI Devices (${GREEN}list-midi-devices${NC})"
+    echo -e "  ${BOLD}${CYAN}19)${NC} Digital Audio Workstations (DAWs) Menu (${GREEN}Reaper, Logic Pro, FL Studio, Traktor, Ardour, Bitwig...${NC})"
+    echo -e "  ${BOLD}${CYAN}20)${NC} Open Mix WAV/FLAC Audio File in DAW (${GREEN}Direct Mix Search/Select & Dispatch${NC})"
+    echo -e "  ${BOLD}${CYAN}21)${NC} Generate Acoustic Spectrograms (Spek) (${GREEN}1080p Spectrum Analysis & Lossless Verification${NC})"
+    echo -e "  ${BOLD}${CYAN}22)${NC} Launch Audacity Audio Editor (${GREEN}audacity${NC})"
+    echo -e "  ${BOLD}${CYAN}23)${NC} Launch Audio Players Menu (${GREEN}cliamp, Strawberry, VLC, foobar2000, Winamp, Apple Music...${NC})"
+    echo -e "  ${BOLD}${CYAN}24)${NC} Configure Default Audio Player & Startup Autoplay (${GREEN}Current: ${DEFAULT_AUDIO_PLAYER:-cliamp}${NC})"
+    echo -e "  ${BOLD}${CYAN}25)${NC} cliamp Music Player & Track Control (${GREEN}Now Playing Path, Controls & Launch${NC})"
+    echo -e "  ${BOLD}${CYAN}26)${NC} Launch Strawberry Music Player (New Window) (${GREEN}strawberry${NC})"
+    echo -e "  ${BOLD}${CYAN}27)${NC} Launch VLC Media Player (${GREEN}vlc / org.videolan.VLC${NC})"
+    echo -e "  ${BOLD}${CYAN}28)${NC} Launch Haruna Media Player (${GREEN}org.kde.haruna${NC})"
+    echo -e "  ${BOLD}${CYAN}29)${NC} Launch Kodi Entertainment Center (${GREEN}tv.kodi.Kodi${NC})"
+    echo -e "  ${BOLD}${CYAN}30)${NC} Show Connected USB MIDI Devices (${GREEN}list-midi-devices${NC})"
     
     echo -e "\n  ${BOLD}${BLUE}─── [ SECTION 4: VIDEO PRODUCTION, ART & VISUAL MEDIA ] ─────${NC}"
-    echo -e "  ${BOLD}${CYAN}30)${NC} Generate YouTube Video (4K UHD, 1080p, 720p with NVENC/Hardware)"
-    echo -e "  ${BOLD}${CYAN}31)${NC} Cut Video File (.mp4 / .mkv) (${GREEN}Cut_Video.sh${NC})"
-    echo -e "  ${BOLD}${CYAN}32)${NC} Launch Video Playlists (NFT Videos (VLC))"
-    echo -e "  ${BOLD}${CYAN}33)${NC} Launch VLC Video Player (${GREEN}vlc${NC})"
-    echo -e "  ${BOLD}${CYAN}34)${NC} Launch GIMP Image Editor (${GREEN}gimp / org.gimp.GIMP${NC})"
-    echo -e "  ${BOLD}${CYAN}35)${NC} Convert Cover Art & Resize / Byte Target (${GREEN}1MB Podcast, WebP/JPG/PNG, Sizes${NC})"
-    echo -e "  ${BOLD}${CYAN}36)${NC} View Cover Art by Mix Number (External Viewer)"
-    echo -e "  ${BOLD}${CYAN}37)${NC} Launch Electric Sheep Generative Screensaver (${GREEN}electricsheep / infinidream${NC})"
+    echo -e "  ${BOLD}${CYAN}31)${NC} Generate YouTube Video (4K UHD, 1080p, 720p with NVENC/Hardware)"
+    echo -e "  ${BOLD}${CYAN}32)${NC} Cut Video File (.mp4 / .mkv) (${GREEN}Cut_Video.sh${NC})"
+    echo -e "  ${BOLD}${CYAN}33)${NC} Launch Video Playlists (NFT Videos (VLC))"
+    echo -e "  ${BOLD}${CYAN}34)${NC} Launch VLC Video Player (${GREEN}vlc${NC})"
+    echo -e "  ${BOLD}${CYAN}35)${NC} Launch GIMP Image Editor (${GREEN}gimp / org.gimp.GIMP${NC})"
+    echo -e "  ${BOLD}${CYAN}36)${NC} Convert Cover Art & Resize / Byte Target (${GREEN}1MB Podcast, WebP/JPG/PNG, Sizes${NC})"
+    echo -e "  ${BOLD}${CYAN}37)${NC} View Cover Art by Mix Number (External Viewer)"
+    echo -e "  ${BOLD}${CYAN}38)${NC} Launch Electric Sheep Generative Screensaver (${GREEN}electricsheep / infinidream${NC})"
     
     echo -e "\n  ${BOLD}${BLUE}─── [ SECTION 5: LIVE MONITORS & SYSTEM DIAGNOSTICS ] ───────${NC}"
-    echo -e "  ${BOLD}${CYAN}38)${NC} Launch Live Tracklist Monitor (${GREEN}SOF_Live_Tracker.sh${NC})"
-    echo -e "  ${BOLD}${CYAN}39)${NC} Launch Live File Transfer Monitor (${GREEN}transfer-monitor${NC})"
-    echo -e "  ${BOLD}${CYAN}40)${NC} Launch Chrome Upload Monitor (${GREEN}Podcast Connect / Web Uploads${NC})"
-    echo -e "  ${BOLD}${CYAN}41)${NC} View Advanced Archive Statistics (${GREEN}SOF_Archive_Stats.sh${NC})"
-    echo -e "  ${BOLD}${CYAN}42)${NC} View Running Background Tasks"
-    echo -e "  ${BOLD}${CYAN}43)${NC} Launch Resource Monitor (${GREEN}btop${NC})"
-    echo -e "  ${BOLD}${CYAN}44)${NC} Launch GPU Process Monitor (${GREEN}nvtop${NC})"
-    echo -e "  ${BOLD}${CYAN}45)${NC} Launch System Process Monitor (${GREEN}top${NC})"
+    echo -e "  ${BOLD}${CYAN}39)${NC} Launch Live Tracklist Monitor (${GREEN}SOF_Live_Tracker.sh${NC})"
+    echo -e "  ${BOLD}${CYAN}40)${NC} Launch Live File Transfer Monitor (${GREEN}transfer-monitor${NC})"
+    echo -e "  ${BOLD}${CYAN}41)${NC} Launch Chrome Upload Monitor (${GREEN}Podcast Connect / Web Uploads${NC})"
+    echo -e "  ${BOLD}${CYAN}42)${NC} View Advanced Archive Statistics (${GREEN}SOF_Archive_Stats.sh${NC})"
+    echo -e "  ${BOLD}${CYAN}43)${NC} View Running Background Tasks"
+    echo -e "  ${BOLD}${CYAN}44)${NC} Launch Resource Monitor (${GREEN}btop${NC})"
+    echo -e "  ${BOLD}${CYAN}45)${NC} Launch GPU Process Monitor (${GREEN}nvtop${NC})"
+    echo -e "  ${BOLD}${CYAN}46)${NC} Launch System Process Monitor (${GREEN}top${NC})"
     
     echo -e "\n  ${BOLD}${BLUE}─── [ SECTION 6: SYSTEM, NETWORK & HARDWARE MANAGEMENT ] ────${NC}"
-    echo -e "  ${BOLD}${CYAN}46)${NC} Manage WAN2GP Server (Start, Stop, Restart in Profile 2 or 4.5)"
-    echo -e "  ${BOLD}${CYAN}47)${NC} Manage Network Services (SSH, Samba, FTP - Start, Stop, Restart All)"
-    echo -e "  ${BOLD}${CYAN}48)${NC} Block Internet Access (LAN Only) (${GREEN}block-internet${NC})"
-    echo -e "  ${BOLD}${CYAN}49)${NC} Restore / Unblock Internet Access (${GREEN}unblock-internet${NC})"
+    echo -e "  ${BOLD}${CYAN}47)${NC} Manage WAN2GP Server (Start, Stop, Restart in Profile 2 or 4.5)"
+    echo -e "  ${BOLD}${CYAN}48)${NC} Manage Network Services (SSH, Samba, FTP - Start, Stop, Restart All)"
+    echo -e "  ${BOLD}${CYAN}49)${NC} Block Internet Access (LAN Only) (${GREEN}block-internet${NC})"
+    echo -e "  ${BOLD}${CYAN}50)${NC} Restore / Unblock Internet Access (${GREEN}unblock-internet${NC})"
     if [ "$OS_TYPE" = "macos" ]; then
-        echo -e "  ${BOLD}${CYAN}50)${NC} Open macOS Display Settings (${GREEN}Displays, Arrangement & HDR${NC})"
-        echo -e "  ${BOLD}${CYAN}51)${NC} Open macOS Audio MIDI Setup (${GREEN}Sample Rates & Output Devices${NC})"
+        echo -e "  ${BOLD}${CYAN}51)${NC} Open macOS Display Settings (${GREEN}Displays, Arrangement & HDR${NC})"
+        echo -e "  ${BOLD}${CYAN}52)${NC} Open macOS Audio MIDI Setup (${GREEN}Sample Rates & Output Devices${NC})"
     elif [ "$OS_TYPE" = "windows" ] || [ "$OS_TYPE" = "wsl" ]; then
-        echo -e "  ${BOLD}${CYAN}50)${NC} Open Windows Display Settings (${GREEN}ms-settings:display - HDR & Scale${NC})"
-        echo -e "  ${BOLD}${CYAN}51)${NC} Open Windows Sound Settings (${GREEN}control.exe mmsys.cpl${NC})"
+        echo -e "  ${BOLD}${CYAN}51)${NC} Open Windows Display Settings (${GREEN}ms-settings:display - HDR & Scale${NC})"
+        echo -e "  ${BOLD}${CYAN}52)${NC} Open Windows Sound Settings (${GREEN}control.exe mmsys.cpl${NC})"
     else
-        echo -e "  ${BOLD}${CYAN}50)${NC} Switch Desktop to Plasma Wayland (HDR Gaming on Hisense & Steam BPM)"
-        echo -e "  ${BOLD}${CYAN}51)${NC} Switch Desktop to Plasma X11 (Workstation 4-Screen Defasten)"
+        echo -e "  ${BOLD}${CYAN}51)${NC} Switch Desktop to Plasma Wayland (HDR Gaming on Hisense & Steam BPM)"
+        echo -e "  ${BOLD}${CYAN}52)${NC} Switch Desktop to Plasma X11 (Workstation 4-Screen Defasten)"
     fi
-    echo -e "  ${BOLD}${CYAN}52)${NC} Close All Desktop Applications (Keep Manager Open)"
+    echo -e "  ${BOLD}${CYAN}53)${NC} Close All Desktop Applications (Keep Manager Open)"
     if [ "$OS_TYPE" = "macos" ]; then
-        echo -e "  ${BOLD}${CYAN}53)${NC} macOS System Maintenance & Cleanup (${GREEN}brew cleanup, purge RAM, caches${NC})"
+        echo -e "  ${BOLD}${CYAN}54)${NC} macOS System Maintenance & Cleanup (${GREEN}brew cleanup, purge RAM, caches${NC})"
     elif [ "$OS_TYPE" = "windows" ] || [ "$OS_TYPE" = "wsl" ]; then
-        echo -e "  ${BOLD}${CYAN}53)${NC} Windows System Maintenance & Cleanup (${GREEN}winget upgrade, clean temp, TRIM${NC})"
+        echo -e "  ${BOLD}${CYAN}54)${NC} Windows System Maintenance & Cleanup (${GREEN}winget upgrade, clean temp, TRIM${NC})"
     elif [ "$OS_TYPE" = "freebsd" ]; then
-        echo -e "  ${BOLD}${CYAN}53)${NC} FreeBSD System Maintenance & Cleanup (${GREEN}pkg upgrade, pkg clean, autoremove, audit${NC})"
+        echo -e "  ${BOLD}${CYAN}54)${NC} FreeBSD System Maintenance & Cleanup (${GREEN}pkg upgrade, pkg clean, autoremove, audit${NC})"
     else
-        echo -e "  ${BOLD}${CYAN}53)${NC} Bazzite System Maintenance & Cleanup (${GREEN}ujust clean-system, update, trim, logs${NC})"
+        echo -e "  ${BOLD}${CYAN}54)${NC} Bazzite System Maintenance & Cleanup (${GREEN}ujust clean-system, update, trim, logs${NC})"
     fi
-    echo -e "  ${BOLD}${CYAN}54)${NC} Launch GeeXLab Demo Launcher (${GREEN}FurMark_linux64/demo_launcher.sh${NC})"
-    echo -e "  ${BOLD}${CYAN}55)${NC} Burn ISO Image to USB Drive (${GREEN}dd / diskutil with safety checks${NC})"
+    echo -e "  ${BOLD}${CYAN}55)${NC} Launch GeeXLab Demo Launcher (${GREEN}FurMark_linux64/demo_launcher.sh${NC})"
+    echo -e "  ${BOLD}${CYAN}56)${NC} Burn ISO Image to USB Drive (${GREEN}dd / diskutil with safety checks${NC})"
     
     echo -e "\n  ${BOLD}${BLUE}─── [ SECTION 7: AI, SHELL CLI & SETTINGS ] ──────────────────${NC}"
-    echo -e "  ${BOLD}${CYAN}56)${NC} Launch AI Assistant / Models (${GREEN}Claude Opus, Claude Sonnet, GPT-OSS, Gemini${NC})"
-    echo -e "  ${BOLD}${CYAN}57)${NC} Run Bash CLI Commands (${GREEN}Interactive Shell & Direct Runner${NC})"
-    echo -e "  ${BOLD}${CYAN}58)${NC} Manager Themes & Color Palette Switcher (${GREEN}8 Themes + Classic${NC})"
+    echo -e "  ${BOLD}${CYAN}57)${NC} Launch AI Assistant / Models (${GREEN}Claude Opus, Claude Sonnet, GPT-OSS, Gemini${NC})"
+    echo -e "  ${BOLD}${CYAN}58)${NC} Run Bash CLI Commands (${GREEN}Interactive Shell & Direct Runner${NC})"
+    echo -e "  ${BOLD}${CYAN}59)${NC} Manager Themes & Color Palette Switcher (${GREEN}8 Themes + Classic${NC})"
     if [ "$OS_TYPE" = "macos" ]; then
-        echo -e "  ${BOLD}${CYAN}59)${NC} Reboot System (${RED}macOS restart with confirmation${NC})"
+        echo -e "  ${BOLD}${CYAN}60)${NC} Reboot System (${RED}macOS restart with confirmation${NC})"
     elif [ "$OS_TYPE" = "windows" ] || [ "$OS_TYPE" = "wsl" ]; then
-        echo -e "  ${BOLD}${CYAN}59)${NC} Reboot System (${RED}Windows restart with confirmation${NC})"
+        echo -e "  ${BOLD}${CYAN}60)${NC} Reboot System (${RED}Windows restart with confirmation${NC})"
     elif [ "$OS_TYPE" = "freebsd" ]; then
-        echo -e "  ${BOLD}${CYAN}59)${NC} Reboot System (${RED}FreeBSD restart with confirmation${NC})"
+        echo -e "  ${BOLD}${CYAN}60)${NC} Reboot System (${RED}FreeBSD restart with confirmation${NC})"
     else
-        echo -e "  ${BOLD}${CYAN}59)${NC} Reboot System (${RED}systemctl reboot with confirmation${NC})"
+        echo -e "  ${BOLD}${CYAN}60)${NC} Reboot System (${RED}systemctl reboot with confirmation${NC})"
     fi
     
     echo -e "\n  ${BOLD}${BLUE}──────────────────────────────────────────────────────────────${NC}"
-    echo -e "  ${BOLD}${CYAN}60)${NC} Exit Manager ${DIM}(or 0 / q)${NC}"
+    echo -e "  ${BOLD}${CYAN}61)${NC} Exit Manager ${DIM}(or 0 / q)${NC}"
     echo ""
-    read -r -p "Enter choice [1-60, or q to exit]: " choice
+    read -r -p "Enter choice [1-61, or q to exit]: " choice
     
     case $choice in
         1)
@@ -5264,68 +5475,71 @@ while true; do
             launch_or_install_picard
             ;;
         18)
-            manage_daws
+            manage_promo_outreach
             ;;
         19)
-            open_mix_in_daw
+            manage_daws
             ;;
         20)
-            manage_spek_generation
+            open_mix_in_daw
             ;;
         21)
-            launch_audacity
+            manage_spek_generation
             ;;
         22)
-            manage_audio_players
+            launch_audacity
             ;;
         23)
-            configure_audio_player_and_startup
+            manage_audio_players
             ;;
         24)
-            manage_cliamp
+            configure_audio_player_and_startup
             ;;
         25)
-            launch_strawberry
+            manage_cliamp
             ;;
         26)
-            launch_vlc
+            launch_strawberry
             ;;
         27)
-            launch_haruna
+            launch_vlc
             ;;
         28)
-            launch_kodi
+            launch_haruna
             ;;
         29)
-            list_usb_midi_devices
+            launch_kodi
             ;;
         30)
-            generate_youtube_video
+            list_usb_midi_devices
             ;;
         31)
+            generate_youtube_video
+            ;;
+        32)
             cut_video_clip
             press_enter
             ;;
-        32)
+        33)
             launch_video_playlists
             ;;
-        33)
+        34)
             launch_vlc
             ;;
-        34)
+        35)
             launch_gimp
             ;;
-        35)
+        36)
             manage_cover_converter
             ;;
-        36)
+        37)
             view_cover
             press_enter
             ;;
-        37)
+        38)
             launch_electricsheep
             ;;
-        38)
+        39)
             echo -e "\n${BOLD}${YELLOW}Launching Live Tracklist Monitor (Press Ctrl+C to return to menu)...${NC}\n"
             sleep 1
             trap ':' INT
@@ -5333,7 +5547,7 @@ while true; do
             trap - INT
             press_enter
             ;;
-        39)
+        40)
             echo -e "\n${BOLD}${YELLOW}Launching Live File Transfer Monitor (Press Ctrl+C to return to menu)...${NC}\n"
             sleep 1
             trap ':' INT
@@ -5347,7 +5561,7 @@ while true; do
             trap - INT
             press_enter
             ;;
-        40)
+        41)
             echo -e "\n${BOLD}${YELLOW}Launching Chrome Upload Monitor (Press Ctrl+C to return to menu)...${NC}\n"
             sleep 1
             trap ':' INT
@@ -5369,17 +5583,17 @@ while true; do
             trap - INT
             press_enter
             ;;
-        41)
+        42)
             echo -e "\n${BOLD}${YELLOW}Loading Advanced Archive Statistics...${NC}\n"
             sleep 0.5
             run_sub_script "SOF_Archive_Stats.sh"
             press_enter
             ;;
-        42)
+        43)
             view_tasks
             press_enter
             ;;
-        43)
+        44)
             echo -e "\n${BOLD}${YELLOW}Launching btop Resource Monitor (Press 'q' to exit)...${NC}\n"
             sleep 0.5
             trap ':' INT
@@ -5391,7 +5605,7 @@ while true; do
             fi
             trap - INT
             ;;
-        44)
+        45)
             echo -e "\n${BOLD}${YELLOW}Launching nvtop GPU Monitor (Press 'q' to exit)...${NC}\n"
             sleep 0.5
             trap ':' INT
@@ -5403,7 +5617,7 @@ while true; do
             fi
             trap - INT
             ;;
-        45)
+        46)
             echo -e "\n${BOLD}${YELLOW}Launching top Process Monitor (Press 'q' to exit)...${NC}\n"
             sleep 0.5
             trap ':' INT
@@ -5415,54 +5629,54 @@ while true; do
             fi
             trap - INT
             ;;
-        46)
+        47)
             manage_wan2gp
             ;;
-        47)
+        48)
             manage_network_services
             ;;
-        48)
+        49)
             block_internet
             ;;
-        49)
+        50)
             unblock_internet
             ;;
-        50)
+        51)
             switch_to_wayland
             ;;
-        51)
+        52)
             switch_to_x11
             ;;
-        52)
+        53)
             close_all_desktop_apps
             ;;
-        53)
+        54)
             manage_system_maintenance
             ;;
-        54)
+        55)
             launch_geexlab_demos
             ;;
-        55)
+        56)
             burn_iso_to_usb
             ;;
-        56)
+        57)
             manage_ai_models
             ;;
-        57)
+        58)
             run_bash_cli
             ;;
-        58)
+        59)
             manage_themes
             ;;
-        59)
+        60)
             reboot_system
             ;;
-        60|0|[qQ]|[eE][xX][iI][tT])
+        61|0|[qQ]|[eE][xX][iI][tT])
             echo -e "\n${BOLD}${GREEN}Exiting Mix Archive Manager. Goodbye!${NC}\n"
             exit 0
             ;;
         *)
-            echo -e "\n${RED}Invalid option! Please enter a number between 1 and 60 (or 'q' to exit).${NC}"
+            echo -e "\n${RED}Invalid option! Please enter a number between 1 and 61 (or 'q' to exit).${NC}"
             sleep 2
             ;;
     esac

@@ -1,0 +1,83 @@
+[
+  {
+    "id": "pub-001",
+    "name": "Apple Podcasts Editorial & Curation Team",
+    "email": "podcast_curation@apple.com",
+    "organization": "Apple Podcasts",
+    "category": "publisher",
+    "notes": "Feature requests for electronic / music podcast editorial placement",
+    "last_contacted": ""
+  },
+  {
+    "id": "pub-002",
+    "name": "DI.FM Programming & Channel Directors",
+    "email": "programming@di.fm",
+    "organization": "Digitally Imported Radio (DI.FM)",
+    "category": "publisher",
+    "notes": "Syndication submissions for Trance, Progressive, and Vocal Chillout channels",
+    "last_contacted": ""
+  },
+  {
+    "id": "pub-003",
+    "name": "Proton Radio Curations",
+    "email": "curators@protonradio.com",
+    "organization": "Proton Radio Network",
+    "category": "publisher",
+    "notes": "Electronic podcast syndication and featured resident guest mix channel",
+    "last_contacted": ""
+  },
+  {
+    "id": "pro-001",
+    "name": "Talent & Booking Department",
+    "email": "bookings@clubspace.com",
+    "organization": "Club Space Miami",
+    "category": "promoter",
+    "notes": "Terrace & Club bookings; progressive / melodic journey trance sets",
+    "last_contacted": ""
+  },
+  {
+    "id": "pro-002",
+    "name": "Luminosity Events Artist Coordination",
+    "email": "info@luminosity-events.nl",
+    "organization": "Luminosity Beach Festival",
+    "category": "promoter",
+    "notes": "Pure trance & progressive festival stages; Netherlands",
+    "last_contacted": ""
+  },
+  {
+    "id": "pro-003",
+    "name": "Ministry of Sound Events Team",
+    "email": "events@ministryofsound.com",
+    "organization": "Ministry of Sound London",
+    "category": "promoter",
+    "notes": "Main room & The Box guest mixes and event support",
+    "last_contacted": ""
+  },
+  {
+    "id": "rad-001",
+    "name": "A State of Trance Guest Mix Desk",
+    "email": "promos@astateoftrance.com",
+    "organization": "Armada Music / ASOT Radio",
+    "category": "radio",
+    "notes": "Track features and service mix submissions",
+    "last_contacted": ""
+  },
+  {
+    "id": "lbl-001",
+    "name": "Anjunabeats A&R & Radio Desk",
+    "email": "contact@anjunabeats.com",
+    "organization": "Anjunabeats / Involved Group",
+    "category": "label",
+    "notes": "Track support feedback and Anjunabeats Worldwide guest mix pitch",
+    "last_contacted": ""
+  },
+  {
+    "id": "prs-001",
+    "name": "DJ Mag Reviews & Podcasts Editor",
+    "email": "editorial@djmag.com",
+    "organization": "DJ Magazine",
+    "category": "press",
+    "notes": "Podcast of the month submissions and feature interviews",
+    "last_contacted": ""
+  }
+]
