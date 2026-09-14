@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# Make_SOF_Episode_From_PNG_FLAC_Output_MP4_4K_Video.sh
-# Generates 4K UHD YouTube Video (3840x2160 @ 30fps) from FLAC Audio & Cover Image
+# Make_SOF_Episode_From_PNG_FLAC_Output_MP4_720p_Video.sh
+# Generates 720p HD YouTube Video (1280x720 @ 30fps) from FLAC Audio & Cover Image
 # Hardware Accelerated (NVENC / VideoToolbox / libx264 fallback)
 # ==============================================================================
 
@@ -61,16 +61,16 @@ fi
 
 mkdir -p "$OUTPUT_DIR"
 AUDIO_BASE=$(basename "$AUDIO_FILE")
-OUTPUT_NAME="${AUDIO_BASE%.*}_4K.mp4"
+OUTPUT_NAME="${AUDIO_BASE%.*}_720p.mp4"
 OUTPUT_FILE="$OUTPUT_DIR/$OUTPUT_NAME"
 
 FPS=30
-WIDTH=3840
-HEIGHT=2160
+WIDTH=1280
+HEIGHT=720
 
 clear
 echo -e "${BOLD}${BLUE}============================================================${NC}"
-echo -e "${BOLD}${CYAN}          YOUTUBE 4K UHD VIDEO GENERATION (2160p)           ${NC}"
+echo -e "${BOLD}${CYAN}          YOUTUBE 720p HD VIDEO GENERATION (FAST)           ${NC}"
 echo -e "${BOLD}${BLUE}============================================================${NC}"
 echo -e "  Audio File:   ${GREEN}$AUDIO_FILE${NC}"
 echo -e "  Cover Image:  ${GREEN}$IMAGE_FILE${NC}"
@@ -90,18 +90,18 @@ FADE_OUT_START=$((TOTAL_SEC - 5))
 [ "$FADE_OUT_START" -lt 0 ] && FADE_OUT_START=0
 
 echo -e "Audio Duration: ${BOLD}${AUDIO_DURATION}s${NC}"
-echo -e "Resolution:     ${BOLD}${WIDTH}x${HEIGHT} (4K UHD @ ${FPS}fps)${NC}"
+echo -e "Resolution:     ${BOLD}${WIDTH}x${HEIGHT} (720p HD @ ${FPS}fps)${NC}"
 
 # Detect optimal Video Encoder
 VCODEC="libx264"
-VPRESET_ARGS=(-preset medium -crf 20)
+VPRESET_ARGS=(-preset faster -crf 22)
 if ffmpeg -f lavfi -i color=c=black:s=256x256 -frames:v 1 -c:v h264_nvenc -f null - >/dev/null 2>&1; then
     VCODEC="h264_nvenc"
-    VPRESET_ARGS=(-preset p3 -cq 19 -g 60)
+    VPRESET_ARGS=(-preset p3 -cq 22)
     echo -e "Video Encoder:  ${BOLD}${GREEN}h264_nvenc (NVIDIA NVENC Hardware Accelerated)${NC}"
 elif [ "$(uname -s)" = "Darwin" ] && ffmpeg -f lavfi -i color=c=black:s=256x256 -frames:v 1 -c:v h264_videotoolbox -f null - >/dev/null 2>&1; then
     VCODEC="h264_videotoolbox"
-    VPRESET_ARGS=(-b:v 14000k)
+    VPRESET_ARGS=(-b:v 3500k)
     echo -e "Video Encoder:  ${BOLD}${GREEN}h264_videotoolbox (Apple Silicon Hardware Accelerated)${NC}"
 else
     echo -e "Video Encoder:  ${BOLD}${YELLOW}libx264 (CPU Software Encoder)${NC}"
@@ -118,7 +118,7 @@ fi
 
 echo -e "Transitions:    ${BOLD}5s fade-in, 5s fade-out${NC}"
 echo -e "${BLUE}------------------------------------------------------------${NC}"
-echo -e "${YELLOW}Rendering 4K UHD MP4 with FFmpeg... Please wait.${NC}\n"
+echo -e "${YELLOW}Rendering 720p MP4 with FFmpeg... Please wait.${NC}\n"
 
 ffmpeg -y \
   -err_detect ignore_err \
@@ -135,7 +135,7 @@ STATUS=$?
 
 echo -e "\n${BLUE}------------------------------------------------------------${NC}"
 if [ $STATUS -eq 0 ]; then
-    echo -e "${BOLD}${GREEN}✓ Successfully generated 4K UHD video!${NC}"
+    echo -e "${BOLD}${GREEN}✓ Successfully generated 720p video!${NC}"
     ls -lh "$OUTPUT_FILE"
 else
     echo -e "${BOLD}${RED}✗ Video rendering failed with exit code $STATUS!${NC}"

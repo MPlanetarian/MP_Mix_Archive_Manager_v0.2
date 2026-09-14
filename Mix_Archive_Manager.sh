@@ -280,6 +280,42 @@ fi
 OUTPUT_DIR="${OUTPUT_DIR:-FLAC_CONVERTED_OUTPUTS}"
 ARCHIVE_DIR="${ARCHIVE_DIR:-CONVERTED_WAV_FILES}"
 
+# Default Audio Player and Startup Autoplay Preferences
+DEFAULT_AUDIO_PLAYER="${DEFAULT_AUDIO_PLAYER:-cliamp}"
+AUTO_PLAY_ON_STARTUP="${AUTO_PLAY_ON_STARTUP:-true}"
+AUTO_SHOW_COVER_ON_STARTUP="${AUTO_SHOW_COVER_ON_STARTUP:-true}"
+AUTO_SHOW_TRACKLIST_ON_STARTUP="${AUTO_SHOW_TRACKLIST_ON_STARTUP:-true}"
+AUTO_PLAY_MIX_SELECTION="${AUTO_PLAY_MIX_SELECTION:-latest}"
+STARTUP_AUTOPLAY_EXECUTED=0
+
+save_config_setting() {
+    local key="$1"
+    local val="$2"
+    local cfg_file="$SCRIPT_DIR/config.env"
+    [ ! -f "$cfg_file" ] && cfg_file="$PWD/config.env"
+
+    python3 -c "
+import sys, re
+key = sys.argv[1]
+val = sys.argv[2]
+path = sys.argv[3]
+try:
+    with open(path, 'r', encoding='utf-8') as f:
+        c = f.read()
+    pat = rf'^[ 	]*{re.escape(key)}=.*$'
+    if re.search(pat, c, re.MULTILINE):
+        new_c = re.sub(pat, f'{key}=\"{val}\"', c, flags=re.MULTILINE)
+    else:
+        new_c = c.rstrip() + f'
+{key}=\"{val}\"
+'
+    with open(path, 'w', encoding='utf-8') as f:
+        f.write(new_c)
+except Exception:
+    pass
+" "$key" "$val" "$cfg_file" 2>/dev/null || true
+}
+
 # Determine target working archive directory across Linux, macOS, and Windows
 if [ -n "${MIX_ARCHIVE_DIR:-}" ] && [ -d "$MIX_ARCHIVE_DIR" ]; then
     cd "$MIX_ARCHIVE_DIR" || exit 1
@@ -761,24 +797,88 @@ view_cover() {
 }
 
 generate_youtube_video() {
-    echo -e "\n${BOLD}${BLUE}=== GENERATE 1080p YOUTUBE VIDEO ===${NC}"
-    
-    # Prompt for FLAC audio file
-    read -r -p "Enter the filename of the .FLAC to use: " flac_input
-    
-    # Strip surrounding quotes from drag-and-drop or copy-paste
-    flac_input=$(echo "$flac_input" | sed -e 's/^"//' -e 's/"$//' -e "s/^'//" -e "s/'$//")
-    
-    if [ -z "$flac_input" ]; then
-        echo -e "${RED}Error: FLAC file is required.${NC}"
-        return
+    clear
+    echo -e "
+${BOLD}${MAGENTA}======================================================================${NC}"
+    echo -e "${BOLD}${MAGENTA}       YOUTUBE VIDEO GENERATION SUITE (4K UHD / 1080p / 720p)         ${NC}"
+    echo -e "${BOLD}${MAGENTA}======================================================================${NC}
+"
+    echo -e "  Encodes video with hardware acceleration (NVENC / VideoToolbox / libx264)"
+    echo -e "  and studio-grade 320kbps AAC audio with smooth 5-second audio fading.
+"
+    echo -e "  ${BOLD}Select Target Resolution:${NC}"
+    echo -e "  ${BOLD}${CYAN}1)${NC} 4K UHD (3840x2160 @ 30fps) - ${GREEN}Ultra High Definition (NVENC/Hardware)${NC}"
+    echo -e "  ${BOLD}${CYAN}2)${NC} 1080p Full HD (1920x1080 @ 30fps) - ${GREEN}Standard High Definition${NC}"
+    echo -e "  ${BOLD}${CYAN}3)${NC} 720p HD (1280x720 @ 30fps) - ${YELLOW}Fast Export & Compact File Size${NC}"
+    echo -e "  ${BOLD}${CYAN}4)${NC} Launch Universal Video Generator Wizard (${GREEN}generate_youtube_video.sh${NC})"
+    echo -e "  ${BOLD}${CYAN}5)${NC} Cancel & Return to Main Menu
+"
+    read -r -p "Enter choice [1-5, default: 2]: " v_choice
+
+    local res="1080p"
+    case "$v_choice" in
+        1) res="4k" ;;
+        2) res="1080p" ;;
+        3) res="720p" ;;
+        4)
+            run_sub_script "generate_youtube_video.sh"
+            press_enter
+            return 0
+            ;;
+        5|[qQ])
+            return 0
+            ;;
+        *)
+            res="1080p"
+            ;;
+    esac
+
+    # Prompt or select FLAC
+    shopt -s nullglob nocaseglob
+    local flac_list=("$OUTPUT_DIR"/*.flac ./*.flac)
+    shopt -u nullglob nocaseglob
+
+    local flac_input=""
+    if [ ${#flac_list[@]} -gt 0 ]; then
+        echo -e "
+${BOLD}${CYAN}Available Mixes in Archive:${NC}"
+        local limit=10
+        [ ${#flac_list[@]} -lt $limit ] && limit=${#flac_list[@]}
+        for ((i=0; i<limit; i++)); do
+            printf "  %2d) %s
+" "$((i + 1))" "$(basename "${flac_list[$i]}")"
+        done
+        echo ""
+        read -r -p "Select mix number [1-${limit}] or enter custom filename: " chosen_mix
+        if [[ "$chosen_mix" =~ ^[0-9]+$ ]] && [ "$chosen_mix" -ge 1 ] && [ "$chosen_mix" -le "$limit" ]; then
+            flac_input="${flac_list[$((chosen_mix - 1))]}"
+        elif [ -n "$chosen_mix" ]; then
+            flac_input="$chosen_mix"
+        fi
     fi
-    
-    # Prompt for Cover Image
-    read -r -p "Enter the filename of the Cover PNG (leave empty for default Cover.png): " cover_input
+
+    if [ -z "$flac_input" ]; then
+        read -r -p "Enter filename/path of the audio file (.flac / .wav): " flac_input
+    fi
+
+    flac_input=$(echo "$flac_input" | sed -e 's/^"//' -e 's/"$//' -e "s/^'//" -e "s/'$//")
+    [ -z "$flac_input" ] && { echo -e "${RED}Error: Audio file is required.${NC}"; return; }
+
+    # Cover image prompt
+    read -r -p "Enter Cover PNG path (leave blank for auto-detect / Cover.png): " cover_input
     cover_input=$(echo "$cover_input" | sed -e 's/^"//' -e 's/"$//' -e "s/^'//" -e "s/'$//")
-    
-    run_sub_script "Make_SOF_Episode_From_PNG_FLAC_Output_MP4_1080p_Video.sh" "$flac_input" "$cover_input"
+
+    case "$res" in
+        4k)
+            run_sub_script "Make_SOF_Episode_From_PNG_FLAC_Output_MP4_4K_Video.sh" "$flac_input" "$cover_input" "$OUTPUT_DIR"
+            ;;
+        720p)
+            run_sub_script "Make_SOF_Episode_From_PNG_FLAC_Output_MP4_720p_Video.sh" "$flac_input" "$cover_input" "$OUTPUT_DIR"
+            ;;
+        *)
+            run_sub_script "Make_SOF_Episode_From_PNG_FLAC_Output_MP4_1080p_Video.sh" "$flac_input" "$cover_input"
+            ;;
+    esac
 }
 
 cut_video_clip() {
@@ -2619,6 +2719,353 @@ manage_daws() {
     done
 }
 
+play_audio_file() {
+    local player="${1:-${DEFAULT_AUDIO_PLAYER:-cliamp}}"
+    local file="$2"
+    [ -z "$file" ] && return 1
+
+    case "$player" in
+        cliamp)
+            local cliamp_bin="cliamp"
+            command -v cliamp >/dev/null 2>&1 || cliamp_bin="$SCRIPT_DIR/bin/cliamp"
+            [ ! -x "$cliamp_bin" ] && cliamp_bin="$HOME/.local/bin/cliamp"
+            if pgrep -x cliamp >/dev/null 2>&1; then
+                "$cliamp_bin" queue "$file" 2>/dev/null || true
+                sleep 0.3
+                "$cliamp_bin" play 2>/dev/null || true
+            else
+                local full_cmd="\"$cliamp_bin\" queue \"$file\" 2>/dev/null; \"$cliamp_bin\" --auto-play play 2>/dev/null || \"$cliamp_bin\" --auto-play"
+                launch_in_terminal "cliamp - $(basename "$file")" "$full_cmd" "window"
+            fi
+            ;;
+        strawberry)
+            if command -v strawberry >/dev/null 2>&1; then
+                nohup strawberry "$file" >/dev/null 2>&1 &
+            elif flatpak list 2>/dev/null | grep -q "org.strawberrymusicplayer.strawberry"; then
+                nohup flatpak run org.strawberrymusicplayer.strawberry "$file" >/dev/null 2>&1 &
+            elif [ "$OS_TYPE" = "macos" ]; then
+                open -a Strawberry "$file" >/dev/null 2>&1 &
+            fi
+            ;;
+        vlc)
+            if command -v vlc >/dev/null 2>&1; then
+                nohup vlc "$file" >/dev/null 2>&1 &
+            elif flatpak list 2>/dev/null | grep -q "org.videolan.VLC"; then
+                nohup flatpak run org.videolan.VLC "$file" >/dev/null 2>&1 &
+            elif [ "$OS_TYPE" = "macos" ]; then
+                open -a VLC "$file" >/dev/null 2>&1 &
+            fi
+            ;;
+        haruna)
+            if command -v haruna >/dev/null 2>&1; then
+                nohup haruna "$file" >/dev/null 2>&1 &
+            elif flatpak list 2>/dev/null | grep -q "org.kde.haruna"; then
+                nohup flatpak run org.kde.haruna "$file" >/dev/null 2>&1 &
+            fi
+            ;;
+        kodi)
+            if command -v kodi >/dev/null 2>&1; then
+                nohup kodi "$file" >/dev/null 2>&1 &
+            elif flatpak list 2>/dev/null | grep -q "tv.kodi.Kodi"; then
+                nohup flatpak run tv.kodi.Kodi "$file" >/dev/null 2>&1 &
+            fi
+            ;;
+        audacity)
+            if command -v audacity >/dev/null 2>&1; then
+                nohup audacity "$file" >/dev/null 2>&1 &
+            elif flatpak list 2>/dev/null | grep -q "org.audacityteam.Audacity"; then
+                nohup flatpak run org.audacityteam.Audacity "$file" >/dev/null 2>&1 &
+            fi
+            ;;
+        mpv)
+            if command -v mpv >/dev/null 2>&1; then
+                nohup mpv "$file" >/dev/null 2>&1 &
+            fi
+            ;;
+        *)
+            if command -v "$player" >/dev/null 2>&1; then
+                nohup "$player" "$file" >/dev/null 2>&1 &
+            else
+                play_audio_file "cliamp" "$file"
+            fi
+            ;;
+    esac
+}
+
+execute_startup_autoplay() {
+    if [ "${AUTO_PLAY_ON_STARTUP:-true}" != "true" ]; then
+        return 0
+    fi
+
+    shopt -s nullglob nocaseglob
+    local flac_candidates=(
+        "$OUTPUT_DIR"/*.flac
+        "$PWD"/*.flac
+        "/run/media/$USER/WD BLACK B/MIX_ARCHIVE/FLAC_CONVERTED_OUTPUTS"/*.flac
+        "/run/media/$USER/WD BLACK B/MIX_ARCHIVE"/*.flac
+        "$PWD"/*.wav
+    )
+    shopt -u nullglob nocaseglob
+
+    if [ ${#flac_candidates[@]} -eq 0 ]; then
+        return 0
+    fi
+
+    local selected_mix=""
+    if [ "${AUTO_PLAY_MIX_SELECTION:-latest}" = "random" ]; then
+        local rand_idx=$(( RANDOM % ${#flac_candidates[@]} ))
+        selected_mix="${flac_candidates[$rand_idx]}"
+    else
+        local sorted_mixes
+        IFS=$'\n' sorted_mixes=($(sort -V -r <<<"${flac_candidates[*]}"))
+        unset IFS
+        selected_mix="${sorted_mixes[0]}"
+    fi
+
+    [ ! -f "$selected_mix" ] && return 0
+
+    local mix_basename
+    mix_basename=$(basename "$selected_mix")
+    local mix_stem="${mix_basename%.*}"
+
+    # 1. Play in default audio player
+    local player="${DEFAULT_AUDIO_PLAYER:-cliamp}"
+    play_audio_file "$player" "$selected_mix"
+
+    # 2. Open cover art if enabled
+    local found_cover=""
+    if [ "${AUTO_SHOW_COVER_ON_STARTUP:-true}" = "true" ]; then
+        shopt -s nullglob nocaseglob
+        local cov_candidates=(
+            "COVERS/*${mix_stem}*"
+            "COVERS/"*$(echo "$mix_stem" | grep -o -E '[0-9]{3}').*
+            "$PWD/COVERS/"*.png
+            "$PWD/Cover.png"
+            "assets/Cover.png"
+        )
+        shopt -u nullglob nocaseglob
+        for c in "${cov_candidates[@]}"; do
+            if [ -f "$c" ]; then found_cover="$c"; break; fi
+        done
+        if [ -n "$found_cover" ]; then
+            open_path "$found_cover"
+        fi
+    fi
+
+    # 3. Find matching tracklist if enabled
+    local found_tl=""
+    if [ "${AUTO_SHOW_TRACKLIST_ON_STARTUP:-true}" = "true" ]; then
+        shopt -s nullglob nocaseglob
+        local tl_candidates=(
+            "${OUTPUT_DIR}/${mix_stem}.txt"
+            "${selected_mix%.*}.txt"
+            "$PWD/${mix_stem}.txt"
+            "$PWD/"*$(echo "$mix_stem" | grep -o -E '[0-9]{3}')*".txt"
+        )
+        shopt -u nullglob nocaseglob
+        for t in "${tl_candidates[@]}"; do
+            if [ -f "$t" ]; then found_tl="$t"; break; fi
+        done
+    fi
+
+    clear
+    echo -e "${BOLD}${MAGENTA}===================================================================================${NC}"
+    echo -e "${BOLD}${MAGENTA}                 🎶 AUTOMATIC STARTUP MIX PLAYBACK INITIALIZED 🎶                  ${NC}"
+    echo -e "${BOLD}${MAGENTA}===================================================================================${NC}"
+    echo -e "  • ${BOLD}Now Playing:${NC}       ${BOLD}${GREEN}${mix_basename}${NC}"
+    echo -e "  • ${BOLD}Default Player:${NC}    ${BOLD}${CYAN}${player}${NC} (Configured in config.env)"
+    if [ -n "$found_cover" ]; then
+        echo -e "  • ${BOLD}Cover Art Opened:${NC}  ${YELLOW}$(basename "$found_cover")${NC} (External Image Viewer)"
+    fi
+    echo -e "${BOLD}${MAGENTA}-----------------------------------------------------------------------------------${NC}"
+
+    if [ -n "$found_tl" ]; then
+        echo -e "\n${BOLD}${CYAN}=== TRACKLIST: $(basename "$found_tl") ===${NC}\n"
+        head -n 25 "$found_tl"
+        local total_lines
+        total_lines=$(wc -l < "$found_tl" 2>/dev/null || echo "0")
+        if [ "$total_lines" -gt 25 ]; then
+            echo -e "  ${DIM}...and $((total_lines - 25)) more tracks (View complete tracklist in Option 13)${NC}"
+        fi
+    fi
+
+    echo -e "\n${BOLD}${BLUE}───────────────────────────────────────────────────────────────────────────────────${NC}"
+    echo -e "${DIM}Startup autoplay complete. Press [Enter] for Main Menu (or continuing in 3s)...${NC}"
+    if [ -t 0 ]; then
+        if [ -e /dev/tty ]; then
+            read -r -t 3 < /dev/tty 2>/dev/null || true
+        else
+            read -r -t 3 || true
+        fi
+    fi
+}
+
+configure_audio_player_and_startup() {
+    while true; do
+        clear
+        echo -e "${BOLD}${MAGENTA}======================================================================${NC}"
+        echo -e "${BOLD}${MAGENTA}      DEFAULT AUDIO PLAYER & STARTUP AUTOPLAY CONFIGURATION           ${NC}"
+        echo -e "${BOLD}${MAGENTA}======================================================================${NC}\n"
+
+        local cliamp_st="Not Installed"
+        (command -v cliamp >/dev/null 2>&1 || [ -x "$SCRIPT_DIR/bin/cliamp" ] || [ -x "$HOME/.local/bin/cliamp" ]) && cliamp_st="${GREEN}Installed${NC}"
+        local straw_st="Not Installed"
+        (command -v strawberry >/dev/null 2>&1 || flatpak list 2>/dev/null | grep -q "org.strawberrymusicplayer.strawberry") && straw_st="${GREEN}Installed${NC}"
+        local vlc_st="Not Installed"
+        (command -v vlc >/dev/null 2>&1 || flatpak list 2>/dev/null | grep -q "org.videolan.VLC") && vlc_st="${GREEN}Installed${NC}"
+        local haruna_st="Not Installed"
+        (command -v haruna >/dev/null 2>&1 || flatpak list 2>/dev/null | grep -q "org.kde.haruna") && haruna_st="${GREEN}Installed${NC}"
+        local kodi_st="Not Installed"
+        (command -v kodi >/dev/null 2>&1 || flatpak list 2>/dev/null | grep -q "tv.kodi.Kodi") && kodi_st="${GREEN}Installed${NC}"
+        local audacity_st="Not Installed"
+        (command -v audacity >/dev/null 2>&1 || flatpak list 2>/dev/null | grep -q "org.audacityteam.Audacity") && audacity_st="${GREEN}Installed${NC}"
+        local mpv_st="Not Installed"
+        command -v mpv >/dev/null 2>&1 && mpv_st="${GREEN}Installed${NC}"
+
+        echo -e "  ${BOLD}Current Settings:${NC}"
+        echo -e "  • Default Audio Player:          ${BOLD}${GREEN}${DEFAULT_AUDIO_PLAYER:-cliamp}${NC}"
+        
+        local ap_badge="${RED}DISABLED${NC}"
+        [ "${AUTO_PLAY_ON_STARTUP:-true}" = "true" ] && ap_badge="${GREEN}ENABLED${NC}"
+        echo -e "  • Auto-Play Mix on Startup:      ${ap_badge}"
+
+        local cov_badge="${RED}DISABLED${NC}"
+        [ "${AUTO_SHOW_COVER_ON_STARTUP:-true}" = "true" ] && cov_badge="${GREEN}ENABLED${NC}"
+        echo -e "  • Auto-Show Cover Art on Boot:   ${cov_badge}"
+
+        local tl_badge="${RED}DISABLED${NC}"
+        [ "${AUTO_SHOW_TRACKLIST_ON_STARTUP:-true}" = "true" ] && tl_badge="${GREEN}ENABLED${NC}"
+        echo -e "  • Auto-Show Tracklist on Boot:   ${tl_badge}"
+
+        echo -e "  • Startup Mix Selection Mode:    ${BOLD}${CYAN}${AUTO_PLAY_MIX_SELECTION:-latest}${NC} (Latest Episode or Random)"
+        echo -e "  • Config File Location:          ${DIM}${SCRIPT_DIR}/config.env${NC}\n"
+
+        echo -e "${BOLD}Select Player or Setting to Change:${NC}"
+        echo -e "  ${BOLD}${CYAN}1)${NC} Set Default Player to: ${BOLD}cliamp${NC} (Retro Terminal Player) [${cliamp_st}]"
+        echo -e "  ${BOLD}${CYAN}2)${NC} Set Default Player to: ${BOLD}Strawberry${NC} (Music Player) [${straw_st}]"
+        echo -e "  ${BOLD}${CYAN}3)${NC} Set Default Player to: ${BOLD}VLC Media Player${NC} [${vlc_st}]"
+        echo -e "  ${BOLD}${CYAN}4)${NC} Set Default Player to: ${BOLD}Haruna Media Player${NC} [${haruna_st}]"
+        echo -e "  ${BOLD}${CYAN}5)${NC} Set Default Player to: ${BOLD}Kodi Entertainment Center${NC} [${kodi_st}]"
+        echo -e "  ${BOLD}${CYAN}6)${NC} Set Default Player to: ${BOLD}Audacity Audio Editor${NC} [${audacity_st}]"
+        echo -e "  ${BOLD}${CYAN}7)${NC} Set Default Player to: ${BOLD}mpv Video/Audio Player${NC} [${mpv_st}]"
+        echo -e "  ${BOLD}${CYAN}8)${NC} Set Custom Audio Player Command / Binary"
+        echo -e "  ${BOLD}${BLUE}──────────────────────────────────────────────────────────────────${NC}"
+        echo -e "  ${BOLD}${CYAN}9)${NC} Toggle Auto-Play Mix on Startup (${ap_badge})"
+        echo -e "  ${BOLD}${CYAN}10)${NC} Toggle Auto-Show Cover Art on Startup (${cov_badge})"
+        echo -e "  ${BOLD}${CYAN}11)${NC} Toggle Auto-Show Tracklist on Startup (${tl_badge})"
+        echo -e "  ${BOLD}${CYAN}12)${NC} Toggle Startup Mix Selection (Latest vs Random)"
+        echo -e "  ${BOLD}${CYAN}13)${NC} Test-Play Latest Mix Right Now in Default Player (${DEFAULT_AUDIO_PLAYER})"
+        echo -e "  ${BOLD}${CYAN}0)${NC} Return to Main Menu\n"
+        read -r -p "Enter choice [0-13]: " set_choice
+
+        case "$set_choice" in
+            1)
+                DEFAULT_AUDIO_PLAYER="cliamp"
+                save_config_setting "DEFAULT_AUDIO_PLAYER" "cliamp"
+                echo -e "\n${GREEN}✓ Default audio player set to 'cliamp' and saved to config.env!${NC}"
+                sleep 1
+                ;;
+            2)
+                DEFAULT_AUDIO_PLAYER="strawberry"
+                save_config_setting "DEFAULT_AUDIO_PLAYER" "strawberry"
+                echo -e "\n${GREEN}✓ Default audio player set to 'strawberry' and saved to config.env!${NC}"
+                sleep 1
+                ;;
+            3)
+                DEFAULT_AUDIO_PLAYER="vlc"
+                save_config_setting "DEFAULT_AUDIO_PLAYER" "vlc"
+                echo -e "\n${GREEN}✓ Default audio player set to 'vlc' and saved to config.env!${NC}"
+                sleep 1
+                ;;
+            4)
+                DEFAULT_AUDIO_PLAYER="haruna"
+                save_config_setting "DEFAULT_AUDIO_PLAYER" "haruna"
+                echo -e "\n${GREEN}✓ Default audio player set to 'haruna' and saved to config.env!${NC}"
+                sleep 1
+                ;;
+            5)
+                DEFAULT_AUDIO_PLAYER="kodi"
+                save_config_setting "DEFAULT_AUDIO_PLAYER" "kodi"
+                echo -e "\n${GREEN}✓ Default audio player set to 'kodi' and saved to config.env!${NC}"
+                sleep 1
+                ;;
+            6)
+                DEFAULT_AUDIO_PLAYER="audacity"
+                save_config_setting "DEFAULT_AUDIO_PLAYER" "audacity"
+                echo -e "\n${GREEN}✓ Default audio player set to 'audacity' and saved to config.env!${NC}"
+                sleep 1
+                ;;
+            7)
+                DEFAULT_AUDIO_PLAYER="mpv"
+                save_config_setting "DEFAULT_AUDIO_PLAYER" "mpv"
+                echo -e "\n${GREEN}✓ Default audio player set to 'mpv' and saved to config.env!${NC}"
+                sleep 1
+                ;;
+            8)
+                read -r -p "Enter custom audio player executable command: " cust_p
+                if [ -n "$cust_p" ]; then
+                    DEFAULT_AUDIO_PLAYER="$cust_p"
+                    save_config_setting "DEFAULT_AUDIO_PLAYER" "$cust_p"
+                    echo -e "\n${GREEN}✓ Default audio player set to '${cust_p}' and saved to config.env!${NC}"
+                    sleep 1.2
+                fi
+                ;;
+            9)
+                if [ "${AUTO_PLAY_ON_STARTUP:-true}" = "true" ]; then
+                    AUTO_PLAY_ON_STARTUP="false"
+                else
+                    AUTO_PLAY_ON_STARTUP="true"
+                fi
+                save_config_setting "AUTO_PLAY_ON_STARTUP" "$AUTO_PLAY_ON_STARTUP"
+                echo -e "\n${GREEN}✓ Startup autoplay toggled to: ${AUTO_PLAY_ON_STARTUP}!${NC}"
+                sleep 1
+                ;;
+            10)
+                if [ "${AUTO_SHOW_COVER_ON_STARTUP:-true}" = "true" ]; then
+                    AUTO_SHOW_COVER_ON_STARTUP="false"
+                else
+                    AUTO_SHOW_COVER_ON_STARTUP="true"
+                fi
+                save_config_setting "AUTO_SHOW_COVER_ON_STARTUP" "$AUTO_SHOW_COVER_ON_STARTUP"
+                echo -e "\n${GREEN}✓ Auto-show cover art toggled to: ${AUTO_SHOW_COVER_ON_STARTUP}!${NC}"
+                sleep 1
+                ;;
+            11)
+                if [ "${AUTO_SHOW_TRACKLIST_ON_STARTUP:-true}" = "true" ]; then
+                    AUTO_SHOW_TRACKLIST_ON_STARTUP="false"
+                else
+                    AUTO_SHOW_TRACKLIST_ON_STARTUP="true"
+                fi
+                save_config_setting "AUTO_SHOW_TRACKLIST_ON_STARTUP" "$AUTO_SHOW_TRACKLIST_ON_STARTUP"
+                echo -e "\n${GREEN}✓ Auto-show tracklist toggled to: ${AUTO_SHOW_TRACKLIST_ON_STARTUP}!${NC}"
+                sleep 1
+                ;;
+            12)
+                if [ "${AUTO_PLAY_MIX_SELECTION:-latest}" = "latest" ]; then
+                    AUTO_PLAY_MIX_SELECTION="random"
+                else
+                    AUTO_PLAY_MIX_SELECTION="latest"
+                fi
+                save_config_setting "AUTO_PLAY_MIX_SELECTION" "$AUTO_PLAY_MIX_SELECTION"
+                echo -e "\n${GREEN}✓ Startup mix selection toggled to: ${AUTO_PLAY_MIX_SELECTION}!${NC}"
+                sleep 1
+                ;;
+            13)
+                echo -e "\n${BOLD}${YELLOW}Testing startup playback right now with player: ${DEFAULT_AUDIO_PLAYER}...${NC}\n"
+                execute_startup_autoplay
+                press_enter
+                ;;
+            0|[qQ])
+                return 0
+                ;;
+            *)
+                echo -e "\n${RED}Invalid choice!${NC}"
+                sleep 1.2
+                ;;
+        esac
+    done
+}
+
 manage_audio_players() {
     while true; do
         clear
@@ -2651,6 +3098,7 @@ manage_audio_players() {
         echo -e "  ${BOLD}${CYAN}4)${NC} Launch Haruna Media Player (${GREEN}org.kde.haruna${NC})"
         echo -e "  ${BOLD}${CYAN}5)${NC} Launch Kodi Entertainment Center (${GREEN}tv.kodi.Kodi${NC})"
         echo -e "  ${BOLD}${CYAN}6)${NC} Show Connected USB MIDI Devices (${GREEN}list-midi-devices${NC})"
+        echo -e "  ${BOLD}${CYAN}7)${NC} Configure Default Audio Player & Startup Autoplay (${GREEN}Current: ${DEFAULT_AUDIO_PLAYER:-cliamp}${NC})"
         echo -e "  ${BOLD}${CYAN}0)${NC} Return to Main Menu"
         echo ""
         read -r -p "Enter choice [0-6]: " p_choice
@@ -2673,6 +3121,9 @@ manage_audio_players() {
                 ;;
             6)
                 list_usb_midi_devices
+                ;;
+            7)
+                configure_audio_player_and_startup
                 ;;
             0|[qQ])
                 return 0
@@ -3701,6 +4152,12 @@ get_os_badge() {
 # ==============================================================================
 
 while true; do
+    if [ "$STARTUP_AUTOPLAY_EXECUTED" -eq 0 ]; then
+        STARTUP_AUTOPLAY_EXECUTED=1
+        if [ "${AUTO_PLAY_ON_STARTUP:-true}" = "true" ]; then
+            execute_startup_autoplay
+        fi
+    fi
     clear
     echo -e "${BOLD}${MAGENTA}===================================================================================${NC}"
     echo -e "${BOLD}${MAGENTA}                     Mix Archive Manager (MP_Mix_Manager_v0.1)                     ${NC}"
@@ -3719,7 +4176,7 @@ while true; do
     echo ""
     echo -e "${BOLD}Select an operation:${NC}"
     
-    echo -e "\n  ${BOLD}${BLUE}─── [ SECTION 1: MIX ARCHIVE WORKFLOW & INGESTION ] ─────────${NC}"
+        echo -e "\n  ${BOLD}${BLUE}─── [ SECTION 1: MIX ARCHIVE WORKFLOW & INGESTION ] ─────────${NC}"
     echo -e "  ${BOLD}${CYAN} 1)${NC} Run FLAC Conversion Process (${GREEN}Make_SOF_FLAC_CONVERSION.sh${NC})"
     echo -e "  ${BOLD}${CYAN} 2)${NC} Convert Audio Formats & Bit Depths (${GREEN}WAV to MP3, OGG, AAC, ALAC, WAV 32/24/16${NC})"
     echo -e "  ${BOLD}${CYAN} 3)${NC} Retrieve Unconverted WAVs from Archive (${GREEN}MOVE_NOT_CONVERTED_WAVS.sh${NC})"
@@ -3744,75 +4201,76 @@ while true; do
     echo -e "  ${BOLD}${CYAN}18)${NC} Digital Audio Workstations (DAWs) Menu (${GREEN}Reaper, Ardour, LMMS, Bitwig...${NC})"
     echo -e "  ${BOLD}${CYAN}19)${NC} Launch Audacity Audio Editor (${GREEN}audacity${NC})"
     echo -e "  ${BOLD}${CYAN}20)${NC} Launch Audio Players Menu (${GREEN}cliamp, Strawberry, VLC, Haruna, Kodi${NC})"
-    echo -e "  ${BOLD}${CYAN}21)${NC} cliamp Music Player & Track Control (${GREEN}Now Playing Path, Controls & Launch${NC})"
-    echo -e "  ${BOLD}${CYAN}22)${NC} Launch Strawberry Music Player (New Window) (${GREEN}strawberry${NC})"
-    echo -e "  ${BOLD}${CYAN}23)${NC} Launch VLC Media Player (${GREEN}vlc / org.videolan.VLC${NC})"
-    echo -e "  ${BOLD}${CYAN}24)${NC} Launch Haruna Media Player (${GREEN}org.kde.haruna${NC})"
-    echo -e "  ${BOLD}${CYAN}25)${NC} Launch Kodi Entertainment Center (${GREEN}tv.kodi.Kodi${NC})"
-    echo -e "  ${BOLD}${CYAN}26)${NC} Show Connected USB MIDI Devices (${GREEN}list-midi-devices${NC})"
+    echo -e "  ${BOLD}${CYAN}21)${NC} Configure Default Audio Player & Startup Autoplay (${GREEN}Current: ${DEFAULT_AUDIO_PLAYER:-cliamp}${NC})"
+    echo -e "  ${BOLD}${CYAN}22)${NC} cliamp Music Player & Track Control (${GREEN}Now Playing Path, Controls & Launch${NC})"
+    echo -e "  ${BOLD}${CYAN}23)${NC} Launch Strawberry Music Player (New Window) (${GREEN}strawberry${NC})"
+    echo -e "  ${BOLD}${CYAN}24)${NC} Launch VLC Media Player (${GREEN}vlc / org.videolan.VLC${NC})"
+    echo -e "  ${BOLD}${CYAN}25)${NC} Launch Haruna Media Player (${GREEN}org.kde.haruna${NC})"
+    echo -e "  ${BOLD}${CYAN}26)${NC} Launch Kodi Entertainment Center (${GREEN}tv.kodi.Kodi${NC})"
+    echo -e "  ${BOLD}${CYAN}27)${NC} Show Connected USB MIDI Devices (${GREEN}list-midi-devices${NC})"
     
     echo -e "\n  ${BOLD}${BLUE}─── [ SECTION 4: VIDEO PRODUCTION, ART & VISUAL MEDIA ] ─────${NC}"
-    echo -e "  ${BOLD}${CYAN}27)${NC} Generate 1080p YouTube Video (${GREEN}Make_SOF_Episode_From_PNG_FLAC_Output_MP4_1080p_Video.sh${NC})"
-    echo -e "  ${BOLD}${CYAN}28)${NC} Cut Video File (.mp4 / .mkv) (${GREEN}Cut_Video.sh${NC})"
-    echo -e "  ${BOLD}${CYAN}29)${NC} Launch Video Playlists (NFT Videos (VLC))"
-    echo -e "  ${BOLD}${CYAN}30)${NC} Launch VLC Video Player (${GREEN}vlc${NC})"
-    echo -e "  ${BOLD}${CYAN}31)${NC} Launch GIMP Image Editor (${GREEN}gimp / org.gimp.GIMP${NC})"
-    echo -e "  ${BOLD}${CYAN}32)${NC} Convert Cover Art & Resize / Byte Target (${GREEN}1MB Podcast, WebP/JPG/PNG, Sizes${NC})"
-    echo -e "  ${BOLD}${CYAN}33)${NC} View Cover Art by Mix Number (External Viewer)"
-    echo -e "  ${BOLD}${CYAN}34)${NC} Launch Electric Sheep Generative Screensaver (${GREEN}electricsheep / infinidream${NC})"
+    echo -e "  ${BOLD}${CYAN}28)${NC} Generate YouTube Video (4K UHD, 1080p, 720p with NVENC/Hardware)"
+    echo -e "  ${BOLD}${CYAN}29)${NC} Cut Video File (.mp4 / .mkv) (${GREEN}Cut_Video.sh${NC})"
+    echo -e "  ${BOLD}${CYAN}30)${NC} Launch Video Playlists (NFT Videos (VLC))"
+    echo -e "  ${BOLD}${CYAN}31)${NC} Launch VLC Video Player (${GREEN}vlc${NC})"
+    echo -e "  ${BOLD}${CYAN}32)${NC} Launch GIMP Image Editor (${GREEN}gimp / org.gimp.GIMP${NC})"
+    echo -e "  ${BOLD}${CYAN}33)${NC} Convert Cover Art & Resize / Byte Target (${GREEN}1MB Podcast, WebP/JPG/PNG, Sizes${NC})"
+    echo -e "  ${BOLD}${CYAN}34)${NC} View Cover Art by Mix Number (External Viewer)"
+    echo -e "  ${BOLD}${CYAN}35)${NC} Launch Electric Sheep Generative Screensaver (${GREEN}electricsheep / infinidream${NC})"
     
     echo -e "\n  ${BOLD}${BLUE}─── [ SECTION 5: LIVE MONITORS & SYSTEM DIAGNOSTICS ] ───────${NC}"
-    echo -e "  ${BOLD}${CYAN}35)${NC} Launch Live Tracklist Monitor (${GREEN}SOF_Live_Tracker.sh${NC})"
-    echo -e "  ${BOLD}${CYAN}36)${NC} Launch Live File Transfer Monitor (${GREEN}transfer-monitor${NC})"
-    echo -e "  ${BOLD}${CYAN}37)${NC} Launch Chrome Upload Monitor (${GREEN}Podcast Connect / Web Uploads${NC})"
-    echo -e "  ${BOLD}${CYAN}38)${NC} View Advanced Archive Statistics (${GREEN}SOF_Archive_Stats.sh${NC})"
-    echo -e "  ${BOLD}${CYAN}39)${NC} View Running Background Tasks"
-    echo -e "  ${BOLD}${CYAN}40)${NC} Launch Resource Monitor (${GREEN}btop${NC})"
-    echo -e "  ${BOLD}${CYAN}41)${NC} Launch GPU Process Monitor (${GREEN}nvtop${NC})"
-    echo -e "  ${BOLD}${CYAN}42)${NC} Launch System Process Monitor (${GREEN}top${NC})"
+    echo -e "  ${BOLD}${CYAN}36)${NC} Launch Live Tracklist Monitor (${GREEN}SOF_Live_Tracker.sh${NC})"
+    echo -e "  ${BOLD}${CYAN}37)${NC} Launch Live File Transfer Monitor (${GREEN}transfer-monitor${NC})"
+    echo -e "  ${BOLD}${CYAN}38)${NC} Launch Chrome Upload Monitor (${GREEN}Podcast Connect / Web Uploads${NC})"
+    echo -e "  ${BOLD}${CYAN}39)${NC} View Advanced Archive Statistics (${GREEN}SOF_Archive_Stats.sh${NC})"
+    echo -e "  ${BOLD}${CYAN}40)${NC} View Running Background Tasks"
+    echo -e "  ${BOLD}${CYAN}41)${NC} Launch Resource Monitor (${GREEN}btop${NC})"
+    echo -e "  ${BOLD}${CYAN}42)${NC} Launch GPU Process Monitor (${GREEN}nvtop${NC})"
+    echo -e "  ${BOLD}${CYAN}43)${NC} Launch System Process Monitor (${GREEN}top${NC})"
     
     echo -e "\n  ${BOLD}${BLUE}─── [ SECTION 6: SYSTEM, NETWORK & HARDWARE MANAGEMENT ] ────${NC}"
-    echo -e "  ${BOLD}${CYAN}43)${NC} Manage WAN2GP Server (Start, Stop, Restart in Profile 2 or 4.5)"
-    echo -e "  ${BOLD}${CYAN}44)${NC} Manage Network Services (SSH, Samba, FTP - Start, Stop, Restart All)"
-    echo -e "  ${BOLD}${CYAN}45)${NC} Block Internet Access (LAN Only) (${GREEN}block-internet${NC})"
-    echo -e "  ${BOLD}${CYAN}46)${NC} Restore / Unblock Internet Access (${GREEN}unblock-internet${NC})"
+    echo -e "  ${BOLD}${CYAN}44)${NC} Manage WAN2GP Server (Start, Stop, Restart in Profile 2 or 4.5)"
+    echo -e "  ${BOLD}${CYAN}45)${NC} Manage Network Services (SSH, Samba, FTP - Start, Stop, Restart All)"
+    echo -e "  ${BOLD}${CYAN}46)${NC} Block Internet Access (LAN Only) (${GREEN}block-internet${NC})"
+    echo -e "  ${BOLD}${CYAN}47)${NC} Restore / Unblock Internet Access (${GREEN}unblock-internet${NC})"
     if [ "$OS_TYPE" = "macos" ]; then
-        echo -e "  ${BOLD}${CYAN}47)${NC} Open macOS Display Settings (${GREEN}Displays, Arrangement & HDR${NC})"
-        echo -e "  ${BOLD}${CYAN}48)${NC} Open macOS Audio MIDI Setup (${GREEN}Sample Rates & Output Devices${NC})"
+        echo -e "  ${BOLD}${CYAN}48)${NC} Open macOS Display Settings (${GREEN}Displays, Arrangement & HDR${NC})"
+        echo -e "  ${BOLD}${CYAN}49)${NC} Open macOS Audio MIDI Setup (${GREEN}Sample Rates & Output Devices${NC})"
     elif [ "$OS_TYPE" = "windows" ] || [ "$OS_TYPE" = "wsl" ]; then
-        echo -e "  ${BOLD}${CYAN}47)${NC} Open Windows Display Settings (${GREEN}ms-settings:display - HDR & Scale${NC})"
-        echo -e "  ${BOLD}${CYAN}48)${NC} Open Windows Sound Settings (${GREEN}control.exe mmsys.cpl${NC})"
+        echo -e "  ${BOLD}${CYAN}48)${NC} Open Windows Display Settings (${GREEN}ms-settings:display - HDR & Scale${NC})"
+        echo -e "  ${BOLD}${CYAN}49)${NC} Open Windows Sound Settings (${GREEN}control.exe mmsys.cpl${NC})"
     else
-        echo -e "  ${BOLD}${CYAN}47)${NC} Switch Desktop to Plasma Wayland (HDR Gaming on Hisense & Steam BPM)"
-        echo -e "  ${BOLD}${CYAN}48)${NC} Switch Desktop to Plasma X11 (Workstation 4-Screen Defasten)"
+        echo -e "  ${BOLD}${CYAN}48)${NC} Switch Desktop to Plasma Wayland (HDR Gaming on Hisense & Steam BPM)"
+        echo -e "  ${BOLD}${CYAN}49)${NC} Switch Desktop to Plasma X11 (Workstation 4-Screen Defasten)"
     fi
-    echo -e "  ${BOLD}${CYAN}49)${NC} Close All Desktop Applications (Keep Manager Open)"
+    echo -e "  ${BOLD}${CYAN}50)${NC} Close All Desktop Applications (Keep Manager Open)"
     if [ "$OS_TYPE" = "macos" ]; then
-        echo -e "  ${BOLD}${CYAN}50)${NC} macOS System Maintenance & Cleanup (${GREEN}brew cleanup, purge RAM, caches${NC})"
+        echo -e "  ${BOLD}${CYAN}51)${NC} macOS System Maintenance & Cleanup (${GREEN}brew cleanup, purge RAM, caches${NC})"
     elif [ "$OS_TYPE" = "windows" ] || [ "$OS_TYPE" = "wsl" ]; then
-        echo -e "  ${BOLD}${CYAN}50)${NC} Windows System Maintenance & Cleanup (${GREEN}winget upgrade, clean temp, TRIM${NC})"
+        echo -e "  ${BOLD}${CYAN}51)${NC} Windows System Maintenance & Cleanup (${GREEN}winget upgrade, clean temp, TRIM${NC})"
     else
-        echo -e "  ${BOLD}${CYAN}50)${NC} Bazzite System Maintenance & Cleanup (${GREEN}ujust clean-system, update, trim, logs${NC})"
+        echo -e "  ${BOLD}${CYAN}51)${NC} Bazzite System Maintenance & Cleanup (${GREEN}ujust clean-system, update, trim, logs${NC})"
     fi
-    echo -e "  ${BOLD}${CYAN}51)${NC} Launch GeeXLab Demo Launcher (${GREEN}FurMark_linux64/demo_launcher.sh${NC})"
-    echo -e "  ${BOLD}${CYAN}52)${NC} Burn ISO Image to USB Drive (${GREEN}dd / diskutil with safety checks${NC})"
+    echo -e "  ${BOLD}${CYAN}52)${NC} Launch GeeXLab Demo Launcher (${GREEN}FurMark_linux64/demo_launcher.sh${NC})"
+    echo -e "  ${BOLD}${CYAN}53)${NC} Burn ISO Image to USB Drive (${GREEN}dd / diskutil with safety checks${NC})"
     
     echo -e "\n  ${BOLD}${BLUE}─── [ SECTION 7: AI, SHELL CLI & SETTINGS ] ──────────────────${NC}"
-    echo -e "  ${BOLD}${CYAN}53)${NC} Launch AI Assistant / Models (${GREEN}Claude Opus, Claude Sonnet, GPT-OSS, Gemini${NC})"
-    echo -e "  ${BOLD}${CYAN}54)${NC} Run Bash CLI Commands (${GREEN}Interactive Shell & Direct Runner${NC})"
-    echo -e "  ${BOLD}${CYAN}55)${NC} Manager Themes & Color Palette Switcher (${GREEN}8 Themes + Classic${NC})"
+    echo -e "  ${BOLD}${CYAN}54)${NC} Launch AI Assistant / Models (${GREEN}Claude Opus, Claude Sonnet, GPT-OSS, Gemini${NC})"
+    echo -e "  ${BOLD}${CYAN}55)${NC} Run Bash CLI Commands (${GREEN}Interactive Shell & Direct Runner${NC})"
+    echo -e "  ${BOLD}${CYAN}56)${NC} Manager Themes & Color Palette Switcher (${GREEN}8 Themes + Classic${NC})"
     if [ "$OS_TYPE" = "macos" ]; then
-        echo -e "  ${BOLD}${CYAN}56)${NC} Reboot System (${RED}macOS restart with confirmation${NC})"
+        echo -e "  ${BOLD}${CYAN}57)${NC} Reboot System (${RED}macOS restart with confirmation${NC})"
     elif [ "$OS_TYPE" = "windows" ] || [ "$OS_TYPE" = "wsl" ]; then
-        echo -e "  ${BOLD}${CYAN}56)${NC} Reboot System (${RED}Windows restart with confirmation${NC})"
+        echo -e "  ${BOLD}${CYAN}57)${NC} Reboot System (${RED}Windows restart with confirmation${NC})"
     else
-        echo -e "  ${BOLD}${CYAN}56)${NC} Reboot System (${RED}systemctl reboot with confirmation${NC})"
+        echo -e "  ${BOLD}${CYAN}57)${NC} Reboot System (${RED}systemctl reboot with confirmation${NC})"
     fi
     
     echo -e "\n  ${BOLD}${BLUE}──────────────────────────────────────────────────────────────${NC}"
-    echo -e "  ${BOLD}${CYAN}57)${NC} Exit Manager ${DIM}(or 0 / q)${NC}"
+    echo -e "  ${BOLD}${CYAN}58)${NC} Exit Manager ${DIM}(or 0 / q)${NC}"
     echo ""
-    read -r -p "Enter choice [1-57, or q to exit]: " choice
+    read -r -p "Enter choice [1-58, or q to exit]: " choice
     
     case $choice in
         1)
@@ -3860,7 +4318,7 @@ while true; do
             show_mix_drive_space
             ;;
         12)
-            # Loop will naturally clear screen and refresh status
+            # Naturally clears screen and refreshes stats
             ;;
         13)
             manage_tracklists
@@ -3891,51 +4349,53 @@ while true; do
             manage_audio_players
             ;;
         21)
-            manage_cliamp
+            configure_audio_player_and_startup
             ;;
         22)
-            launch_strawberry
+            manage_cliamp
             ;;
         23)
-            launch_vlc
+            launch_strawberry
             ;;
         24)
-            launch_haruna
+            launch_vlc
             ;;
         25)
-            launch_kodi
+            launch_haruna
             ;;
         26)
-            list_usb_midi_devices
+            launch_kodi
             ;;
         27)
-            generate_youtube_video
-            press_enter
+            list_usb_midi_devices
             ;;
         28)
+            generate_youtube_video
+            ;;
+        29)
             cut_video_clip
             press_enter
             ;;
-        29)
+        30)
             launch_video_playlists
             ;;
-        30)
+        31)
             launch_vlc
             ;;
-        31)
+        32)
             launch_gimp
             ;;
-        32)
+        33)
             manage_cover_converter
             ;;
-        33)
+        34)
             view_cover
             press_enter
             ;;
-        34)
+        35)
             launch_electricsheep
             ;;
-        35)
+        36)
             echo -e "\n${BOLD}${YELLOW}Launching Live Tracklist Monitor (Press Ctrl+C to return to menu)...${NC}\n"
             sleep 1
             trap ':' INT
@@ -3943,7 +4403,7 @@ while true; do
             trap - INT
             press_enter
             ;;
-        36)
+        37)
             echo -e "\n${BOLD}${YELLOW}Launching Live File Transfer Monitor (Press Ctrl+C to return to menu)...${NC}\n"
             sleep 1
             trap ':' INT
@@ -3957,7 +4417,7 @@ while true; do
             trap - INT
             press_enter
             ;;
-        37)
+        38)
             echo -e "\n${BOLD}${YELLOW}Launching Chrome Upload Monitor (Press Ctrl+C to return to menu)...${NC}\n"
             sleep 1
             trap ':' INT
@@ -3979,17 +4439,17 @@ while true; do
             trap - INT
             press_enter
             ;;
-        38)
+        39)
             echo -e "\n${BOLD}${YELLOW}Loading Advanced Archive Statistics...${NC}\n"
             sleep 0.5
             run_sub_script "SOF_Archive_Stats.sh"
             press_enter
             ;;
-        39)
+        40)
             view_tasks
             press_enter
             ;;
-        40)
+        41)
             echo -e "\n${BOLD}${YELLOW}Launching btop Resource Monitor (Press 'q' to exit)...${NC}\n"
             sleep 0.5
             trap ':' INT
@@ -4001,7 +4461,7 @@ while true; do
             fi
             trap - INT
             ;;
-        41)
+        42)
             echo -e "\n${BOLD}${YELLOW}Launching nvtop GPU Monitor (Press 'q' to exit)...${NC}\n"
             sleep 0.5
             trap ':' INT
@@ -4013,7 +4473,7 @@ while true; do
             fi
             trap - INT
             ;;
-        42)
+        43)
             echo -e "\n${BOLD}${YELLOW}Launching top Process Monitor (Press 'q' to exit)...${NC}\n"
             sleep 0.5
             trap ':' INT
@@ -4025,54 +4485,54 @@ while true; do
             fi
             trap - INT
             ;;
-        43)
+        44)
             manage_wan2gp
             ;;
-        44)
+        45)
             manage_network_services
             ;;
-        45)
+        46)
             block_internet
             ;;
-        46)
+        47)
             unblock_internet
             ;;
-        47)
+        48)
             switch_to_wayland
             ;;
-        48)
+        49)
             switch_to_x11
             ;;
-        49)
+        50)
             close_all_desktop_apps
             ;;
-        50)
+        51)
             manage_system_maintenance
             ;;
-        51)
+        52)
             launch_geexlab_demos
             ;;
-        52)
+        53)
             burn_iso_to_usb
             ;;
-        53)
+        54)
             manage_ai_models
             ;;
-        54)
+        55)
             run_bash_cli
             ;;
-        55)
+        56)
             manage_themes
             ;;
-        56)
+        57)
             reboot_system
             ;;
-        57|0|[qQ]|[eE][xX][iI][tT])
+        58|0|[qQ]|[eE][xX][iI][tT])
             echo -e "\n${BOLD}${GREEN}Exiting Mix Archive Manager. Goodbye!${NC}\n"
             exit 0
             ;;
         *)
-            echo -e "\n${RED}Invalid option! Please enter a number between 1 and 57 (or 'q' to exit).${NC}"
+            echo -e "\n${RED}Invalid option! Please enter a number between 1 and 58 (or 'q' to exit).${NC}"
             sleep 2
             ;;
     esac

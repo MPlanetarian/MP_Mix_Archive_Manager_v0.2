@@ -1,4 +1,11 @@
 #!/usr/bin/env bash
+# ==============================================================================
+# Make_SOF_Episode_From_PNG_FLAC_Output_MP4_4K_Video.sh
+# Generates 4K UHD YouTube Video (3840x2160 @ 30fps) from FLAC Audio & Cover Image
+# Hardware Accelerated (NVENC / VideoToolbox / libx264 fallback)
+# ==============================================================================
+
+set -euo pipefail
 
 # Setup colors
 RED='\033[0;31m'
@@ -9,22 +16,47 @@ CYAN='\033[0;36m'
 NC='\033[0m'
 BOLD='\033[1m'
 
-AUDIO_FILE="${1:-FLAC_CONVERTED_OUTPUTS/MPlanetarian_-_Stream_of_Frequency_116_10_YEARS_PART2_2026-08-25.flac}"
-IMAGE_FILE="${2:-/home/mplanetarian/Pictures/New_Desktop_Sept_2026.png}"
-OUTPUT_DIR="${3:-/home/mplanetarian/Documents}"
+AUDIO_FILE="${1:-}"
+IMAGE_FILE="${2:-}"
+OUTPUT_DIR="${3:-FLAC_CONVERTED_OUTPUTS}"
 
+if [ -z "$AUDIO_FILE" ]; then
+    echo -e "${RED}Error: Audio file not specified!${NC}"
+    echo "Usage: $0 <path_to_audio.flac> [path_to_cover.png] [output_dir]"
+    exit 1
+fi
+
+# Locate audio file
 if [ ! -f "$AUDIO_FILE" ]; then
     if [ -f "FLAC_CONVERTED_OUTPUTS/$AUDIO_FILE" ]; then
         AUDIO_FILE="FLAC_CONVERTED_OUTPUTS/$AUDIO_FILE"
+    elif [ -f "$AUDIO_FILE.flac" ]; then
+        AUDIO_FILE="$AUDIO_FILE.flac"
+    elif [ -f "FLAC_CONVERTED_OUTPUTS/$AUDIO_FILE.flac" ]; then
+        AUDIO_FILE="FLAC_CONVERTED_OUTPUTS/$AUDIO_FILE.flac"
     else
         echo -e "${RED}Error: Audio file '$AUDIO_FILE' not found!${NC}"
         exit 1
     fi
 fi
 
+# Locate image file
+if [ -z "$IMAGE_FILE" ]; then
+    IMAGE_FILE="Cover.png"
+fi
+
 if [ ! -f "$IMAGE_FILE" ]; then
-    echo -e "${RED}Error: Cover/Background image '$IMAGE_FILE' not found!${NC}"
-    exit 1
+    if [ -f "COVERS/$IMAGE_FILE" ]; then
+        IMAGE_FILE="COVERS/$IMAGE_FILE"
+    elif [ -f "Cover.png" ]; then
+        echo -e "${YELLOW}Warning: Cover file '$IMAGE_FILE' not found. Using default Cover.png.${NC}"
+        IMAGE_FILE="Cover.png"
+    elif [ -f "assets/Cover.png" ]; then
+        IMAGE_FILE="assets/Cover.png"
+    else
+        echo -e "${RED}Error: Cover image '$IMAGE_FILE' not found!${NC}"
+        exit 1
+    fi
 fi
 
 mkdir -p "$OUTPUT_DIR"
@@ -36,82 +68,77 @@ FPS=30
 WIDTH=3840
 HEIGHT=2160
 
-echo -e "${BOLD}${BLUE}==================================================${NC}"
-echo -e "${BOLD}${CYAN}         YOUTUBE 4K VIDEO GENERATION (NVENC)     ${NC}"
-echo -e "${BOLD}${BLUE}==================================================${NC}"
+clear
+echo -e "${BOLD}${BLUE}============================================================${NC}"
+echo -e "${BOLD}${CYAN}          YOUTUBE 4K UHD VIDEO GENERATION (2160p)           ${NC}"
+echo -e "${BOLD}${BLUE}============================================================${NC}"
 echo -e "  Audio File:   ${GREEN}$AUDIO_FILE${NC}"
 echo -e "  Cover Image:  ${GREEN}$IMAGE_FILE${NC}"
 echo -e "  Output Video: ${GREEN}$OUTPUT_FILE${NC}"
-echo -e "${BLUE}--------------------------------------------------${NC}"
+echo -e "${BLUE}------------------------------------------------------------${NC}"
 
 # Get audio duration
-AUDIO_DURATION=$(ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "$AUDIO_FILE")
+AUDIO_DURATION=$(ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "$AUDIO_FILE" 2>/dev/null || echo "")
 
 if [ -z "$AUDIO_DURATION" ]; then
-    echo -e "${RED}Error: Could not retrieve audio duration from $AUDIO_FILE${NC}"
+    echo -e "${RED}Error: Could not retrieve duration from $AUDIO_FILE${NC}"
     exit 1
 fi
 
+TOTAL_SEC=$(printf "%.0f" "$AUDIO_DURATION")
+FADE_OUT_START=$((TOTAL_SEC - 5))
+[ "$FADE_OUT_START" -lt 0 ] && FADE_OUT_START=0
+
 echo -e "Audio Duration: ${BOLD}${AUDIO_DURATION}s${NC}"
 echo -e "Resolution:     ${BOLD}${WIDTH}x${HEIGHT} (4K UHD @ ${FPS}fps)${NC}"
-echo -e "Encoder:        ${BOLD}h264_nvenc (NVENC Hardware Accelerated)${NC}"
-echo -e "Audio Codec:    ${BOLD}libfdk_aac @ 320 kbps${NC}"
-echo -e "Transitions:    ${BOLD}5s fade-in at start, 5s fade-out at end, 5s dip every 2 mins${NC}"
-echo -e "${BLUE}--------------------------------------------------${NC}"
 
-# Build filter string using Python
-VF=$(python3 -c "
-import sys
+# Detect optimal Video Encoder
+VCODEC="libx264"
+VPRESET_ARGS=(-preset medium -crf 20)
+if ffmpeg -f lavfi -i color=c=black:s=256x256 -frames:v 1 -c:v h264_nvenc -f null - >/dev/null 2>&1; then
+    VCODEC="h264_nvenc"
+    VPRESET_ARGS=(-preset p3 -cq 19 -g 60)
+    echo -e "Video Encoder:  ${BOLD}${GREEN}h264_nvenc (NVIDIA NVENC Hardware Accelerated)${NC}"
+elif [ "$(uname -s)" = "Darwin" ] && ffmpeg -f lavfi -i color=c=black:s=256x256 -frames:v 1 -c:v h264_videotoolbox -f null - >/dev/null 2>&1; then
+    VCODEC="h264_videotoolbox"
+    VPRESET_ARGS=(-b:v 14000k)
+    echo -e "Video Encoder:  ${BOLD}${GREEN}h264_videotoolbox (Apple Silicon Hardware Accelerated)${NC}"
+else
+    echo -e "Video Encoder:  ${BOLD}${YELLOW}libx264 (CPU Software Encoder)${NC}"
+fi
 
-dur = float(sys.argv[1])
-w = sys.argv[2]
-h = sys.argv[3]
+# Detect optimal Audio Encoder
+ACODEC="aac"
+if ffmpeg -encoders 2>/dev/null | grep -q "libfdk_aac"; then
+    ACODEC="libfdk_aac"
+    echo -e "Audio Codec:    ${BOLD}${GREEN}libfdk_aac @ 320 kbps (Pristine)${NC}"
+else
+    echo -e "Audio Codec:    ${BOLD}${YELLOW}native aac @ 320 kbps${NC}"
+fi
 
-filters = [
-    f'scale={w}:{h}:force_original_aspect_ratio=decrease',
-    f'pad={w}:{h}:(ow-iw)/2:(oh-ih)/2:black',
-    'setsar=1',
-    'format=yuv420p',
-    'fade=t=in:st=0:d=5'
-]
-
-interval = 120
-t = interval
-while t + 2.5 < (dur - 6):
-    st_out = t - 2.5
-    filters.append(f'fade=t=out:st={st_out:.2f}:d=2.5:enable=\'between(t,{st_out:.2f},{t:.2f})\'')
-    filters.append(f'fade=t=in:st={t:.2f}:d=2.5:enable=\'between(t,{t:.2f},{t+2.5:.2f})\'')
-    t += interval
-
-end_fade_start = dur - 5
-filters.append(f'fade=t=out:st={end_fade_start:.2f}:d=5')
-
-print(','.join(filters))
-" "$AUDIO_DURATION" "$WIDTH" "$HEIGHT")
-
-echo -e "${YELLOW}Starting FFmpeg 4K render... Please wait.${NC}\n"
+echo -e "Transitions:    ${BOLD}5s fade-in, 5s fade-out${NC}"
+echo -e "${BLUE}------------------------------------------------------------${NC}"
+echo -e "${YELLOW}Rendering 4K UHD MP4 with FFmpeg... Please wait.${NC}\n"
 
 ffmpeg -y \
   -err_detect ignore_err \
   -loop 1 -framerate "$FPS" -t "$AUDIO_DURATION" -i "$IMAGE_FILE" \
   -i "$AUDIO_FILE" \
-  -map 0:v:0 -map 1:a:0 \
-  -vf "$VF" \
-  -c:v h264_nvenc \
-  -preset p3 \
-  -cq 19 \
-  -g 60 \
-  -c:a libfdk_aac \
+  -vf "scale=${WIDTH}:${HEIGHT}:force_original_aspect_ratio=decrease,pad=${WIDTH}:${HEIGHT}:(ow-iw)/2:(oh-ih)/2:black,fade=t=in:st=0:d=5:color=black,fade=t=out:st=${FADE_OUT_START}:d=5:color=black,format=yuv420p" \
+  -c:v "$VCODEC" \
+  "${VPRESET_ARGS[@]}" \
+  -c:a "$ACODEC" \
   -b:a 320k \
   "$OUTPUT_FILE"
 
 STATUS=$?
 
-echo -e "${BLUE}--------------------------------------------------${NC}"
+echo -e "\n${BLUE}------------------------------------------------------------${NC}"
 if [ $STATUS -eq 0 ]; then
-    echo -e "${BOLD}${GREEN}Successfully generated 4K video: $OUTPUT_FILE${NC}"
+    echo -e "${BOLD}${GREEN}✓ Successfully generated 4K UHD video!${NC}"
     ls -lh "$OUTPUT_FILE"
 else
-    echo -e "${BOLD}${RED}FFmpeg exited with error status: $STATUS${NC}"
-    exit $STATUS
+    echo -e "${BOLD}${RED}✗ Video rendering failed with exit code $STATUS!${NC}"
 fi
+echo -e "${BOLD}${BLUE}============================================================${NC}"
+exit $STATUS

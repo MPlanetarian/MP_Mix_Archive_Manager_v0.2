@@ -13,7 +13,7 @@ An enterprise-grade workstation orchestration console and media management suite
 
 ## 🎧 Overview
 
-The **Stream of Frequency Mix Archive Manager** provides an interactive, terminal-driven control center (56 operations) that automates the entire lifecycle of professional DJ mixes and audio recordings:
+The **Stream of Frequency Mix Archive Manager** provides an interactive, terminal-driven control center (57 operations) that automates the entire lifecycle of professional DJ mixes and audio recordings:
 
 1. **Ingestion & Concatenation**: Auto-detects split multi-hour WAV recordings (e.g. 3-hour chunks from Traktor / external recorders), normalizes filenames, and concatenates them into single pristine tracks.
 2. **Lossless FLAC Mastering**: Encodes to 32-bit sample depth FLAC (`-sample_fmt s32 -compression_level 12`), optimizes and embeds cover art (`scale='min(1400,iw)':-1`), and outputs matching high-resolution spectrograms (`SPEK_OUTPUTS`).
@@ -107,7 +107,7 @@ winget install VideoLAN.VLC Audacity.Audacity MusicBrainz.Picard GIMP.GIMP Cocko
 
 ```
 MP_Mix_Manager_v0.1/
-├── Mix_Archive_Manager.sh       # Authoritative master interactive console (56 operations)
+├── Mix_Archive_Manager.sh       # Authoritative master interactive console (57 operations)
 ├── manager.sh                   # Linux bash wrapper
 ├── manager_macos.command        # macOS double-clickable Finder launcher
 ├── manager.bat                  # Windows native Command Prompt / Batch launcher
@@ -177,7 +177,7 @@ MP_Mix_Manager_v0.1/
 
 ---
 
-## 🎛️ Feature Matrix (56 Core Operations in 7 Logical Sections)
+## 🎛️ Feature Matrix (57 Core Operations in 7 Logical Sections)
 
 ### ─── [ SECTION 1: MIX ARCHIVE WORKFLOW & INGESTION ] ──────────
 | # | Operation | Description |
@@ -210,59 +210,60 @@ MP_Mix_Manager_v0.1/
 | **18**| **Digital Audio Workstations (DAWs) Menu** | Unified launcher and package installer for REAPER, Ardour, LMMS, Bitwig Studio, Bespoke Synth, Logic Pro, and FL Studio. |
 | **19**| **Launch Audacity Audio Editor** | Launches Audacity audio editor or installs via Homebrew/winget/Flatpak. |
 | **20**| **Audio Players Menu** | Quick launch hub for cliamp, Strawberry, VLC, Haruna, and Kodi. |
-| **21**| **cliamp Music Player & Track Manager** | Built-in retro terminal player: now-playing path display, cross-platform clipboard copy, folder open, and playback controls. |
-| **22**| **Launch Strawberry Music Player** | Opens Strawberry Music Player in a separate desktop window. |
-| **23**| **Launch VLC Media Player** | Launches VLC audio/video media player. |
-| **24**| **Launch Haruna Media Player** | Opens Haruna Media Player (KDE / mpv / IINA). |
-| **25**| **Launch Kodi Entertainment Center** | Launches Kodi Media Center. |
-| **26**| **Show Connected USB MIDI Devices** | Inspects connected synthesizers, DJ controllers, and keyboards. |
+| **21**| **Configure Default Audio Player & Startup Autoplay** | User preferences suite: choose default player (cliamp, Strawberry, VLC, Haruna, Kodi, Audacity, mpv, custom), toggle startup mix autoplay, toggle auto-opening cover art, and toggle auto-displaying tracklists. |
+| **22**| **cliamp Music Player & Track Manager** | Built-in retro terminal player: now-playing path display, cross-platform clipboard copy, folder open, and playback controls. |
+| **23**| **Launch Strawberry Music Player** | Opens Strawberry Music Player in a separate desktop window. |
+| **24**| **Launch VLC Media Player** | Launches VLC audio/video media player. |
+| **25**| **Launch Haruna Media Player** | Opens Haruna Media Player (KDE / mpv / IINA). |
+| **26**| **Launch Kodi Entertainment Center** | Launches Kodi Media Center. |
+| **27**| **Show Connected USB MIDI Devices** | Inspects connected synthesizers, DJ controllers, and keyboards. |
 
 ### ─── [ SECTION 4: VIDEO PRODUCTION, ART & VISUAL MEDIA ] ──────
 | # | Operation | Description |
 |---|---|---|
-| **27**| **Generate 1080p YouTube Video** | Synthesizes a 1080p MP4 with libx264, 320kbps AAC audio, and automatic 5s audio fading (`Make_SOF_Episode_From_PNG_FLAC_Output_MP4_1080p_Video.sh`). |
-| **28**| **Cut Video File (.mp4 / .mkv)** | Precision video clipping utility based on start/end timestamps with cross-platform folder launch (`Cut_Video.sh`). |
-| **29**| **Launch Video Playlists** | Plays Defasten or NFT video playlists in VLC, or regenerates `.m3u`/`.xspf` files. |
-| **30**| **Launch VLC Video Player** | Launches VLC Video Player directly. |
-| **31**| **Launch GIMP Image Editor** | Launches GIMP image editor or installs via package manager. |
-| **32**| **Convert Cover Art & Resize / Byte Target** | Converts covers between JPEG, WebP, PNG, and TIFF with preset resolutions (3000x3000, 1400x1400, 1080x1080) and binary-search byte targeting (e.g. strict <= 1MB podcast standard). |
-| **33**| **View Cover Art by Mix Number** | Searches `COVERS/` directory by episode or mix number and opens in system image viewer. |
-| **34**| **Launch Electric Sheep Screensaver** | Launches Electric Sheep generative screensaver. |
+| **58** | **Generate YouTube Video (4K UHD, 1080p, 720p)** | Encodes pristine YouTube MP4 videos in 4K UHD (3840x2160), 1080p Full HD (1920x1080), or 720p HD (1280x720) with NVENC/Hardware acceleration, 320kbps AAC audio, and smooth 5s audio fading (`generate_youtube_video.sh`). |
+| **58** | **Cut Video File (.mp4 / .mkv)** | Precision video clipping utility based on start/end timestamps with cross-platform folder launch (`Cut_Video.sh`). |
+| **58** | **Launch Video Playlists** | Plays Defasten or NFT video playlists in VLC, or regenerates `.m3u`/`.xspf` files. |
+| **58** | **Launch VLC Video Player** | Launches VLC Video Player directly. |
+| **58** | **Launch GIMP Image Editor** | Launches GIMP image editor or installs via package manager. |
+| **58** | **Convert Cover Art & Resize / Byte Target** | Converts covers between JPEG, WebP, PNG, and TIFF with preset resolutions (3000x3000, 1400x1400, 1080x1080) and binary-search byte targeting (e.g. strict <= 1MB podcast standard). |
+| **58** | **View Cover Art by Mix Number** | Searches `COVERS/` directory by episode or mix number and opens in system image viewer. |
+| **58** | **Launch Electric Sheep Screensaver** | Launches Electric Sheep generative screensaver. |
 
 ### ─── [ SECTION 5: LIVE MONITORS & SYSTEM DIAGNOSTICS ] ────────
 | # | Operation | Description |
 |---|---|---|
-| **35**| **Launch Live Tracklist Monitor** | Real-time CLI display connecting to Strawberry MPRIS and `cliamp` with live progress and track info (`SOF_Live_Tracker.sh`). |
-| **36**| **Launch Live File Transfer Monitor** | Inspects transfer speeds, byte positions, and percentage for huge files (`transfer-monitor`). |
-| **37**| **Launch Chrome Upload Monitor** | Monitors web uploads (e.g. Apple Podcasts Connect, YouTube Studio) in real-time (`chrome_upload_monitor.py`). |
-| **38**| **View Advanced Archive Statistics** | Deep inventory scan calculating total duration, file sizes, GB footprint, and tracklist completeness (`SOF_Archive_Stats.sh`). |
-| **39**| **View Running Background Tasks** | Scans process table for active encoding, syncing, or AI batch jobs. |
-| **40**| **Launch Resource Monitor** | Launches `btop` for deep multi-core CPU and memory profiling. |
-| **41**| **Launch GPU Process Monitor** | Launches `nvtop` for real-time monitoring of NVIDIA GPU clock, VRAM, and power draw. |
-| **42**| **Launch System Process Monitor** | Quick-launches `top` inside manager session. |
+| **58** | **Launch Live Tracklist Monitor** | Real-time CLI display connecting to Strawberry MPRIS and `cliamp` with live progress and track info (`SOF_Live_Tracker.sh`). |
+| **58** | **Launch Live File Transfer Monitor** | Inspects transfer speeds, byte positions, and percentage for huge files (`transfer-monitor`). |
+| **58** | **Launch Chrome Upload Monitor** | Monitors web uploads (e.g. Apple Podcasts Connect, YouTube Studio) in real-time (`chrome_upload_monitor.py`). |
+| **58** | **View Advanced Archive Statistics** | Deep inventory scan calculating total duration, file sizes, GB footprint, and tracklist completeness (`SOF_Archive_Stats.sh`). |
+| **58** | **View Running Background Tasks** | Scans process table for active encoding, syncing, or AI batch jobs. |
+| **58** | **Launch Resource Monitor** | Launches `btop` for deep multi-core CPU and memory profiling. |
+| **58** | **Launch GPU Process Monitor** | Launches `nvtop` for real-time monitoring of NVIDIA GPU clock, VRAM, and power draw. |
+| **58** | **Launch System Process Monitor** | Quick-launches `top` inside manager session. |
 
 ### ─── [ SECTION 6: SYSTEM, NETWORK & HARDWARE MANAGEMENT ] ─────
 | # | Operation | Description |
 |---|---|---|
-| **43**| **Manage WAN2GP Server** | Controls WAN2GP AI video server (Profile 2 / 4.5, Flux Klein 9B batch, LTX Video 2B/13B). |
-| **44**| **Manage Network Services** | Bulk start, stop, and restart for SSH (`sshd`), Samba (`smb`), and FTP (`vsftpd`). |
-| **45**| **Block Internet Access (LAN Only)** | Activates an isolated firewall table blocking WAN while keeping LAN open (`block-internet`). |
-| **46**| **Restore / Unblock Internet Access** | Restores immediate full internet connectivity (`unblock-internet`). |
-| **47**| **Display Settings (OS Tailored)** | Opens Wayland/HDR on Linux, macOS Display Settings, or Windows Display Settings (`ms-settings:display`). |
-| **48**| **Audio / Sound Settings (OS Tailored)** | Opens X11 audio on Linux, Audio MIDI Setup on macOS, or Windows Sound Panel (`mmsys.cpl`). |
-| **49**| **Close All Desktop Applications** | Gracefully closes external desktop windows using AppleScript (macOS), PowerShell (Windows), or `wmctrl` (Linux) while shielding the manager. |
-| **50**| **System Maintenance & Cleanup** | Executes platform maintenance (Linux `ujust clean-system`, macOS `brew cleanup` & RAM purge, Windows `winget upgrade` & temp cleanup). |
-| **51**| **Launch GeeXLab Demo Launcher** | Runs 3D/OpenGL shader demos and GPU stress tests via GeeXLab/FurMark. |
-| **52**| **Burn ISO Image to USB Drive** | Writes bootable ISO files directly to removable USB storage with safety checks and dd progress (macOS `diskutil` / Linux `lsblk`). |
+| **58** | **Manage WAN2GP Server** | Controls WAN2GP AI video server (Profile 2 / 4.5, Flux Klein 9B batch, LTX Video 2B/13B). |
+| **58** | **Manage Network Services** | Bulk start, stop, and restart for SSH (`sshd`), Samba (`smb`), and FTP (`vsftpd`). |
+| **58** | **Block Internet Access (LAN Only)** | Activates an isolated firewall table blocking WAN while keeping LAN open (`block-internet`). |
+| **58** | **Restore / Unblock Internet Access** | Restores immediate full internet connectivity (`unblock-internet`). |
+| **58** | **Display Settings (OS Tailored)** | Opens Wayland/HDR on Linux, macOS Display Settings, or Windows Display Settings (`ms-settings:display`). |
+| **58** | **Audio / Sound Settings (OS Tailored)** | Opens X11 audio on Linux, Audio MIDI Setup on macOS, or Windows Sound Panel (`mmsys.cpl`). |
+| **58** | **Close All Desktop Applications** | Gracefully closes external desktop windows using AppleScript (macOS), PowerShell (Windows), or `wmctrl` (Linux) while shielding the manager. |
+| **58** | **System Maintenance & Cleanup** | Executes platform maintenance (Linux `ujust clean-system`, macOS `brew cleanup` & RAM purge, Windows `winget upgrade` & temp cleanup). |
+| **58** | **Launch GeeXLab Demo Launcher** | Runs 3D/OpenGL shader demos and GPU stress tests via GeeXLab/FurMark. |
+| **58** | **Burn ISO Image to USB Drive** | Writes bootable ISO files directly to removable USB storage with safety checks and dd progress (macOS `diskutil` / Linux `lsblk`). |
 
 ### ─── [ SECTION 7: AI, SHELL CLI & SETTINGS ] ───────────────────
 | # | Operation | Description |
 |---|---|---|
-| **53**| **Launch AI Assistant / Models (AGY)** | Starts Antigravity CLI AI sessions (Claude Sonnet, Claude Opus, GPT-OSS, Gemini). |
-| **54**| **Run Bash CLI Commands** | Built-in interactive Bash shell and direct command execution runner. |
-| **55**| **Manager Themes & Color Palette Switcher** | Switch between 9 terminal themes (Cyberpunk, Dracula, Nord, Matrix, Solarized, Tokyo Night, Monokai, Gruvbox, Emerald, Classic). |
-| **56**| **Reboot System** | Cross-platform system reboot with safety confirmation dialog. |
-| **57**| **Exit Manager** | Cleans up and exits the console session. |
+| **58** | **Launch AI Assistant / Models (AGY)** | Starts Antigravity CLI AI sessions (Claude Sonnet, Claude Opus, GPT-OSS, Gemini). |
+| **58** | **Run Bash CLI Commands** | Built-in interactive Bash shell and direct command execution runner. |
+| **58** | **Manager Themes & Color Palette Switcher** | Switch between 9 terminal themes (Cyberpunk, Dracula, Nord, Matrix, Solarized, Tokyo Night, Monokai, Gruvbox, Emerald, Classic). |
+| **58** | **Reboot System** | Cross-platform system reboot with safety confirmation dialog. |
+| **58** | **Exit Manager** | Cleans up and exits the console session. |
 
 ## ⚙️ Configuration (`config.env`)
 
