@@ -195,6 +195,318 @@ open_path() {
     fi
 }
 
+# Cross-Platform Open Tracklist in a Dedicated Window
+open_tracklist_window() {
+    local target="$1"
+    [ -z "$target" ] || [ ! -f "$target" ] && return 1
+
+    local tl_title="Tracklist: $(basename "$target")"
+    local viewer="${TRACKLIST_VIEWER:-auto}"
+
+    # Custom configured viewer from config.env
+    if [ "$viewer" != "auto" ] && [ -n "$viewer" ]; then
+        if command -v "$viewer" >/dev/null 2>&1; then
+            "$viewer" "$target" >/dev/null 2>&1 &
+            return 0
+        fi
+    fi
+
+    # macOS: Open in TextEdit or default editor
+    if [ "$OS_TYPE" = "macos" ]; then
+        open -a TextEdit "$target" >/dev/null 2>&1 &
+        return 0
+    fi
+
+    # Windows / WSL: Open in Notepad
+    if [ "$OS_TYPE" = "windows" ]; then
+        if command -v cygpath >/dev/null 2>&1; then
+            local win_p
+            win_p="$(cygpath -w "$target" 2>/dev/null || echo "$target")"
+            cmd.exe /c start notepad.exe "$win_p" >/dev/null 2>&1 &
+        else
+            notepad.exe "$target" >/dev/null 2>&1 &
+        fi
+        return 0
+    elif [ "$OS_TYPE" = "wsl" ]; then
+        if command -v notepad.exe >/dev/null 2>&1; then
+            notepad.exe "$(wslpath -w "$target" 2>/dev/null || echo "$target")" >/dev/null 2>&1 &
+        elif command -v wslview >/dev/null 2>&1; then
+            wslview "$target" >/dev/null 2>&1 &
+        fi
+        return 0
+    fi
+
+    # Linux / FreeBSD: Open in Dedicated GUI Text Window
+    if [ -n "${DISPLAY:-}" ] || [ -n "${WAYLAND_DISPLAY:-}" ]; then
+        if command -v kwrite >/dev/null 2>&1; then
+            kwrite "$target" >/dev/null 2>&1 &
+            return 0
+        elif command -v kate >/dev/null 2>&1; then
+            kate -n "$target" >/dev/null 2>&1 &
+            return 0
+        elif command -v gedit >/dev/null 2>&1; then
+            gedit --new-window "$target" >/dev/null 2>&1 &
+            return 0
+        elif command -v gnome-text-editor >/dev/null 2>&1; then
+            gnome-text-editor --new-window "$target" >/dev/null 2>&1 &
+            return 0
+        elif command -v mousepad >/dev/null 2>&1; then
+            mousepad "$target" >/dev/null 2>&1 &
+            return 0
+        elif command -v xdg-open >/dev/null 2>&1; then
+            xdg-open "$target" >/dev/null 2>&1 &
+            return 0
+        elif command -v konsole >/dev/null 2>&1; then
+            konsole --separate -p tabtitle="$tl_title" -e less -R "$target" >/dev/null 2>&1 &
+            return 0
+        elif command -v xterm >/dev/null 2>&1; then
+            xterm -T "$tl_title" -e less -R "$target" >/dev/null 2>&1 &
+            return 0
+        fi
+    fi
+
+    # Fallback to open_path
+    open_path "$target"
+}
+
+# Cross-Platform Mix Tracklist Finder
+find_mix_tracklist() {
+    local mix_file="$1"
+    [ -z "$mix_file" ] && return 1
+
+    local mix_basename
+    mix_basename=$(basename "$mix_file")
+    local mix_stem="${mix_basename%.*}"
+    local mix_dir
+    mix_dir="$(dirname "$mix_file")"
+
+    local ep_num=""
+    if [[ "$mix_stem" =~ [_\ -]([0-9]{2,3})([_\ -]|$) ]]; then
+        ep_num="${BASH_REMATCH[1]}"
+    fi
+
+    local date_str=""
+    if [[ "$mix_stem" =~ ([0-9]{4}-[0-9]{2}-[0-9]{2}) ]]; then
+        date_str="${BASH_REMATCH[1]}"
+    fi
+
+    local candidate_dirs=(
+        "$mix_dir"
+        "$OUTPUT_DIR"
+        "${MIX_ARCHIVE_DIR:-$PWD}/FLAC_CONVERTED_OUTPUTS"
+        "${MIX_ARCHIVE_DIR:-$PWD}"
+        "$PWD/FLAC_CONVERTED_OUTPUTS"
+        "$PWD"
+        "${MIX_ARCHIVE_DIR:-$PWD}/TEMP"
+    )
+
+    # 1. Exact stem match: <dir>/<mix_stem>.txt or <mix_file_without_ext>.txt
+    if [ -f "${mix_file%.*}.txt" ]; then
+        echo "${mix_file%.*}.txt"
+        return 0
+    fi
+    for d in "${candidate_dirs[@]}"; do
+        if [ -f "$d/${mix_stem}.txt" ]; then
+            echo "$d/${mix_stem}.txt"
+            return 0
+        fi
+    done
+
+    # 2. Episode number match
+    if [ -n "$ep_num" ]; then
+        shopt -s nullglob nocaseglob
+        for d in "${candidate_dirs[@]}"; do
+            for match in "$d"/*"${ep_num}"*.txt; do
+                if [ -f "$match" ]; then
+                    shopt -u nullglob nocaseglob
+                    echo "$match"
+                    return 0
+                fi
+            done
+        done
+        shopt -u nullglob nocaseglob
+    fi
+
+    # 3. Date match
+    if [ -n "$date_str" ]; then
+        shopt -s nullglob nocaseglob
+        for d in "${candidate_dirs[@]}"; do
+            for match in "$d"/*"${date_str}"*.txt; do
+                if [ -f "$match" ]; then
+                    shopt -u nullglob nocaseglob
+                    echo "$match"
+                    return 0
+                fi
+            done
+        done
+        shopt -u nullglob nocaseglob
+    fi
+
+    # 4. Keyword fuzzy match from stem
+    local clean_kw
+    clean_kw=$(echo "$mix_stem" | sed -E 's/MPlanetarian|Stream|of|Frequency|Part|WMI|Mix//gi' | tr '_-' ' ' | awk '{print $1}')
+    if [ -n "$clean_kw" ] && [ "${#clean_kw}" -ge 4 ]; then
+        shopt -s nullglob nocaseglob
+        for d in "${candidate_dirs[@]}"; do
+            for match in "$d"/*"${clean_kw}"*.txt; do
+                if [ -f "$match" ]; then
+                    shopt -u nullglob nocaseglob
+                    echo "$match"
+                    return 0
+                fi
+            done
+        done
+        shopt -u nullglob nocaseglob
+    fi
+
+    # 5. Archive-wide deep search (up to 3 levels) for episode or stem
+    if [ -d "${MIX_ARCHIVE_DIR:-$PWD}" ]; then
+        if [ -n "$ep_num" ]; then
+            local deep_match
+            deep_match=$(find "${MIX_ARCHIVE_DIR:-$PWD}" -maxdepth 3 -type f -name "*${ep_num}*.txt" ! -path "*/SPEK_OUTPUTS/*" 2>/dev/null | head -1)
+            if [ -n "$deep_match" ] && [ -f "$deep_match" ]; then
+                echo "$deep_match"
+                return 0
+            fi
+        fi
+        if [ -n "$date_str" ]; then
+            local deep_match_date
+            deep_match_date=$(find "${MIX_ARCHIVE_DIR:-$PWD}" -maxdepth 3 -type f -name "*${date_str}*.txt" ! -path "*/SPEK_OUTPUTS/*" 2>/dev/null | head -1)
+            if [ -n "$deep_match_date" ] && [ -f "$deep_match_date" ]; then
+                echo "$deep_match_date"
+                return 0
+            fi
+        fi
+    fi
+
+    # 6. Generate fallback summary manifest if none found
+    local tmp_tl="/tmp/Tracklist_${mix_stem}.txt"
+    {
+        echo "=================================================="
+        echo "STREAM OF FREQUENCY - MIX TRACKLIST"
+        echo "=================================================="
+        echo "Mix File:       $mix_basename"
+        [ -n "$ep_num" ] && echo "Episode:        Episode $ep_num"
+        [ -n "$date_str" ] && echo "Recorded Date:  $date_str"
+        echo "Directory:      $mix_dir"
+        echo "Detected on:    $(date '+%Y-%m-%d %H:%M:%S')"
+        echo "--------------------------------------------------"
+        echo "A standalone .txt tracklist file was not yet found"
+        echo "directly on disk for this mix file."
+        echo ""
+        echo "To auto-generate complete tracklists from your Traktor"
+        echo "history or audio metadata, launch Option 15 in the"
+        echo "Mix Archive Manager."
+        echo "=================================================="
+    } > "$tmp_tl" 2>/dev/null
+    if [ -f "$tmp_tl" ]; then
+        echo "$tmp_tl"
+        return 0
+    fi
+
+    return 1
+}
+
+# Cross-Platform Mix Cover Art Finder
+find_mix_cover() {
+    local mix_file="$1"
+    [ -z "$mix_file" ] && return 1
+
+    local mix_basename
+    mix_basename=$(basename "$mix_file")
+    local mix_stem="${mix_basename%.*}"
+    local mix_dir
+    mix_dir="$(dirname "$mix_file")"
+
+    local ep_num=""
+    if [[ "$mix_stem" =~ [_\ -]([0-9]{2,3})([_\ -]|$) ]]; then
+        ep_num="${BASH_REMATCH[1]}"
+    fi
+
+    local date_str=""
+    if [[ "$mix_stem" =~ ([0-9]{4}-[0-9]{2}-[0-9]{2}) ]]; then
+        date_str="${BASH_REMATCH[1]}"
+    fi
+
+    local candidate_dirs=(
+        "$mix_dir"
+        "$mix_dir/COVERS"
+        "${MIX_ARCHIVE_DIR:-$PWD}/COVERS"
+        "$PWD/COVERS"
+        "${MIX_ARCHIVE_DIR:-$PWD}"
+        "$PWD"
+        "$SCRIPT_DIR/COVERS"
+        "$SCRIPT_DIR"
+    )
+
+    # 1. Exact match with same stem
+    for d in "${candidate_dirs[@]}"; do
+        for ext in png jpg jpeg webp; do
+            if [ -f "$d/${mix_stem}.${ext}" ]; then
+                echo "$d/${mix_stem}.${ext}"
+                return 0
+            fi
+        done
+    done
+
+    # 2. Episode number in COVERS
+    if [ -n "$ep_num" ]; then
+        shopt -s nullglob nocaseglob
+        for d in "${candidate_dirs[@]}"; do
+            for match in "$d"/*"${ep_num}"*.png "$d"/*"${ep_num}"*.jpg; do
+                if [ -f "$match" ]; then
+                    shopt -u nullglob nocaseglob
+                    echo "$match"
+                    return 0
+                fi
+            done
+        done
+        shopt -u nullglob nocaseglob
+    fi
+
+    # 3. Date in COVERS
+    if [ -n "$date_str" ]; then
+        shopt -s nullglob nocaseglob
+        for d in "${candidate_dirs[@]}"; do
+            for match in "$d"/*"${date_str}"*.png "$d"/*"${date_str}"*.jpg; do
+                if [ -f "$match" ]; then
+                    shopt -u nullglob nocaseglob
+                    echo "$match"
+                    return 0
+                fi
+            done
+        done
+        shopt -u nullglob nocaseglob
+    fi
+
+    # 4. Archive-wide deep search for episode cover art
+    if [ -d "${MIX_ARCHIVE_DIR:-$PWD}" ]; then
+        if [ -n "$ep_num" ]; then
+            local deep_cov
+            deep_cov=$(find "${MIX_ARCHIVE_DIR:-$PWD}" -maxdepth 3 -type f \( -name "*${ep_num}*.png" -o -name "*${ep_num}*.jpg" \) ! -path "*/SPEK_OUTPUTS/*" 2>/dev/null | head -1)
+            if [ -n "$deep_cov" ] && [ -f "$deep_cov" ]; then
+                echo "$deep_cov"
+                return 0
+            fi
+        fi
+    fi
+
+    # 5. Master Cover.png or Cover_4K.png
+    for d in "${candidate_dirs[@]}"; do
+        if [ -f "$d/Cover_4K.png" ]; then echo "$d/Cover_4K.png"; return 0; fi
+        if [ -f "$d/Cover.png" ]; then echo "$d/Cover.png"; return 0; fi
+        if [ -f "$d/Cover.jpg" ]; then echo "$d/Cover.jpg"; return 0; fi
+        if [ -f "$d/001.png" ]; then echo "$d/001.png"; return 0; fi
+    done
+
+    if [ -f "$SCRIPT_DIR/assets/Cover.png" ]; then
+        echo "$SCRIPT_DIR/assets/Cover.png"
+        return 0
+    fi
+
+    return 1
+}
+
 # Cross-Platform Clipboard Copy (Linux wl-copy/xclip, macOS pbcopy, Windows clip.exe)
 copy_to_clipboard() {
     local text="$1"
@@ -304,11 +616,22 @@ fi
 OUTPUT_DIR="${OUTPUT_DIR:-FLAC_CONVERTED_OUTPUTS}"
 ARCHIVE_DIR="${ARCHIVE_DIR:-CONVERTED_WAV_FILES}"
 
+# Resolve relative storage paths to MIX_ARCHIVE_DIR if mounted
+if [ -n "${MIX_ARCHIVE_DIR:-}" ] && [ -d "$MIX_ARCHIVE_DIR" ]; then
+    if [ ! -d "$OUTPUT_DIR" ] && [ -d "$MIX_ARCHIVE_DIR/$OUTPUT_DIR" ]; then
+        OUTPUT_DIR="$MIX_ARCHIVE_DIR/$OUTPUT_DIR"
+    fi
+    if [ ! -d "$ARCHIVE_DIR" ] && [ -d "$MIX_ARCHIVE_DIR/$ARCHIVE_DIR" ]; then
+        ARCHIVE_DIR="$MIX_ARCHIVE_DIR/$ARCHIVE_DIR"
+    fi
+fi
+
 # Default Audio Player and Startup Autoplay Preferences
 DEFAULT_AUDIO_PLAYER="${DEFAULT_AUDIO_PLAYER:-cliamp}"
 AUTO_PLAY_ON_STARTUP="${AUTO_PLAY_ON_STARTUP:-true}"
 AUTO_SHOW_COVER_ON_STARTUP="${AUTO_SHOW_COVER_ON_STARTUP:-true}"
 AUTO_SHOW_TRACKLIST_ON_STARTUP="${AUTO_SHOW_TRACKLIST_ON_STARTUP:-true}"
+TRACKLIST_VIEWER="${TRACKLIST_VIEWER:-auto}"
 AUTO_PLAY_MIX_SELECTION="${AUTO_PLAY_MIX_SELECTION:-latest}"
 STARTUP_AUTOPLAY_EXECUTED=0
 
@@ -3661,15 +3984,38 @@ execute_startup_autoplay() {
         return 0
     fi
 
-    shopt -s nullglob nocaseglob
-    local flac_candidates=(
-        "$OUTPUT_DIR"/*.flac
-        "$PWD"/*.flac
-        "/run/media/$USER/WD BLACK B/MIX_ARCHIVE/FLAC_CONVERTED_OUTPUTS"/*.flac
-        "/run/media/$USER/WD BLACK B/MIX_ARCHIVE"/*.flac
-        "$PWD"/*.wav
+    # Scan candidate audio directories
+    local search_dirs=(
+        "$OUTPUT_DIR"
+        "${MIX_ARCHIVE_DIR:-$PWD}/FLAC_CONVERTED_OUTPUTS"
+        "$PWD/FLAC_CONVERTED_OUTPUTS"
+        "${MIX_ARCHIVE_DIR:-$PWD}"
+        "$PWD"
     )
+
+    shopt -s nullglob nocaseglob
+    local flac_candidates=()
+    for d in "${search_dirs[@]}"; do
+        if [ -d "$d" ]; then
+            for f in "$d"/*.flac; do
+                [ -f "$f" ] && flac_candidates+=("$f")
+            done
+        fi
+    done
     shopt -u nullglob nocaseglob
+
+    # If no FLAC mixes found, search for WAV and MP3 files
+    if [ ${#flac_candidates[@]} -eq 0 ]; then
+        shopt -s nullglob nocaseglob
+        for d in "${search_dirs[@]}"; do
+            if [ -d "$d" ]; then
+                for f in "$d"/*.wav "$d"/*.mp3; do
+                    [ -f "$f" ] && flac_candidates+=("$f")
+                done
+            fi
+        done
+        shopt -u nullglob nocaseglob
+    fi
 
     if [ ${#flac_candidates[@]} -eq 0 ]; then
         return 0
@@ -3677,13 +4023,30 @@ execute_startup_autoplay() {
 
     local selected_mix=""
     if [ "${AUTO_PLAY_MIX_SELECTION:-latest}" = "random" ]; then
-        local rand_idx=$(( RANDOM % ${#flac_candidates[@]} ))
-        selected_mix="${flac_candidates[$rand_idx]}"
+        local distinct_mixes
+        IFS=$'\n' read -r -d '' -a distinct_mixes < <(printf "%s\n" "${flac_candidates[@]}" | sort -u && printf '\0')
+        local rand_idx=$(( RANDOM % ${#distinct_mixes[@]} ))
+        selected_mix="${distinct_mixes[$rand_idx]}"
+    elif [ "${AUTO_PLAY_MIX_SELECTION:-latest}" = "latest" ]; then
+        # Pick truly newest mix by file modification time
+        selected_mix=$(python3 -c "
+import os, sys
+files = list(set(sys.argv[1:]))
+files = [f for f in files if os.path.isfile(f)]
+if files:
+    files.sort(key=lambda x: os.path.getmtime(x), reverse=True)
+    print(files[0])
+" "${flac_candidates[@]}" 2>/dev/null)
+        [ -z "$selected_mix" ] && selected_mix="${flac_candidates[0]}"
     else
-        local sorted_mixes
-        IFS=$'\n' sorted_mixes=($(sort -V -r <<<"${flac_candidates[*]}"))
-        unset IFS
-        selected_mix="${sorted_mixes[0]}"
+        local kw="${AUTO_PLAY_MIX_SELECTION}"
+        for f in "${flac_candidates[@]}"; do
+            if [[ "$(basename "$f")" =~ $kw ]]; then
+                selected_mix="$f"
+                break
+            fi
+        done
+        [ -z "$selected_mix" ] && selected_mix="${flac_candidates[0]}"
     fi
 
     [ ! -f "$selected_mix" ] && return 0
@@ -3697,40 +4060,22 @@ execute_startup_autoplay() {
     local player="${DEFAULT_AUDIO_PLAYER:-cliamp}"
     play_audio_file "$player" "$selected_mix"
 
-    # 2. Open cover art if enabled
+    # 2. Open cover art in image viewer window if enabled
     local found_cover=""
     if [ "${AUTO_SHOW_COVER_ON_STARTUP:-true}" = "true" ]; then
-        shopt -s nullglob nocaseglob
-        local cov_candidates=(
-            "COVERS/*${mix_stem}*"
-            "COVERS/"*$(echo "$mix_stem" | grep -o -E '[0-9]{3}').*
-            "$PWD/COVERS/"*.png
-            "$PWD/Cover.png"
-            "assets/Cover.png"
-        )
-        shopt -u nullglob nocaseglob
-        for c in "${cov_candidates[@]}"; do
-            if [ -f "$c" ]; then found_cover="$c"; break; fi
-        done
-        if [ -n "$found_cover" ]; then
+        found_cover=$(find_mix_cover "$selected_mix" 2>/dev/null)
+        if [ -n "$found_cover" ] && [ -f "$found_cover" ]; then
             open_path "$found_cover"
         fi
     fi
 
-    # 3. Find matching tracklist if enabled
+    # 3. Find matching tracklist and open in dedicated new text editor window
     local found_tl=""
     if [ "${AUTO_SHOW_TRACKLIST_ON_STARTUP:-true}" = "true" ]; then
-        shopt -s nullglob nocaseglob
-        local tl_candidates=(
-            "${OUTPUT_DIR}/${mix_stem}.txt"
-            "${selected_mix%.*}.txt"
-            "$PWD/${mix_stem}.txt"
-            "$PWD/"*$(echo "$mix_stem" | grep -o -E '[0-9]{3}')*".txt"
-        )
-        shopt -u nullglob nocaseglob
-        for t in "${tl_candidates[@]}"; do
-            if [ -f "$t" ]; then found_tl="$t"; break; fi
-        done
+        found_tl=$(find_mix_tracklist "$selected_mix" 2>/dev/null)
+        if [ -n "$found_tl" ] && [ -f "$found_tl" ]; then
+            open_tracklist_window "$found_tl"
+        fi
     fi
 
     clear
@@ -3740,22 +4085,25 @@ execute_startup_autoplay() {
     echo -e "  • ${BOLD}Now Playing:${NC}       ${BOLD}${GREEN}${mix_basename}${NC}"
     echo -e "  • ${BOLD}Default Player:${NC}    ${BOLD}${CYAN}${player}${NC} (Configured in config.env)"
     if [ -n "$found_cover" ]; then
-        echo -e "  • ${BOLD}Cover Art Opened:${NC}  ${YELLOW}$(basename "$found_cover")${NC} (External Image Viewer)"
+        echo -e "  • ${BOLD}Cover Art Opened:${NC}  ${YELLOW}$(basename "$found_cover")${NC} (Image Viewer Window)"
+    fi
+    if [ -n "$found_tl" ]; then
+        echo -e "  • ${BOLD}Tracklist Opened:${NC}  ${CYAN}$(basename "$found_tl")${NC} (Dedicated Text Editor Window)"
     fi
     echo -e "${BOLD}${MAGENTA}-----------------------------------------------------------------------------------${NC}"
 
     if [ -n "$found_tl" ]; then
-        echo -e "\n${BOLD}${CYAN}=== TRACKLIST: $(basename "$found_tl") ===${NC}\n"
+        echo -e "\n${BOLD}${CYAN}=== TRACKLIST PREVIEW: $(basename "$found_tl") ===${NC}\n"
         head -n 25 "$found_tl"
         local total_lines
         total_lines=$(wc -l < "$found_tl" 2>/dev/null || echo "0")
         if [ "$total_lines" -gt 25 ]; then
-            echo -e "  ${DIM}...and $((total_lines - 25)) more tracks (View complete tracklist in Option 13)${NC}"
+            echo -e "  ${DIM}...and $((total_lines - 25)) more tracks (Also opened in full text editor window)${NC}"
         fi
     fi
 
     echo -e "\n${BOLD}${BLUE}───────────────────────────────────────────────────────────────────────────────────${NC}"
-    echo -e "${DIM}Startup autoplay complete. Press [Enter] for Main Menu (or continuing in 3s)...${NC}"
+    echo -e "${DIM}Startup autoplay & assets active. Press [Enter] for Main Menu (or continuing in 3s)...${NC}"
     if [ -t 0 ]; then
         if [ -e /dev/tty ]; then
             read -r -t 3 < /dev/tty 2>/dev/null || true
@@ -3807,6 +4155,7 @@ configure_audio_player_and_startup() {
         local tl_badge="${RED}DISABLED${NC}"
         [ "${AUTO_SHOW_TRACKLIST_ON_STARTUP:-true}" = "true" ] && tl_badge="${GREEN}ENABLED${NC}"
         echo -e "  • Auto-Show Tracklist on Boot:   ${tl_badge}"
+        echo -e "  • Tracklist Window Viewer:       ${BOLD}${CYAN}${TRACKLIST_VIEWER:-auto}${NC} (Dedicated Window)"
 
         echo -e "  • Startup Mix Selection Mode:    ${BOLD}${CYAN}${AUTO_PLAY_MIX_SELECTION:-latest}${NC} (Latest Episode or Random)"
         echo -e "  • Config File Location:          ${DIM}${SCRIPT_DIR}/config.env${NC}\n"
@@ -3829,8 +4178,9 @@ configure_audio_player_and_startup() {
         echo -e "  ${BOLD}${CYAN}14)${NC} Toggle Auto-Show Tracklist on Startup (${tl_badge})"
         echo -e "  ${BOLD}${CYAN}15)${NC} Toggle Startup Mix Selection (Latest vs Random)"
         echo -e "  ${BOLD}${CYAN}16)${NC} Test-Play Latest Mix Right Now in Default Player (${DEFAULT_AUDIO_PLAYER})"
+        echo -e "  ${BOLD}${CYAN}17)${NC} Configure Tracklist Window Viewer (${BOLD}${TRACKLIST_VIEWER:-auto}${NC})"
         echo -e "  ${BOLD}${CYAN} 0)${NC} Return to Main Menu\n"
-        read -r -p "Enter choice [0-16]: " set_choice
+        read -r -p "Enter choice [0-17]: " set_choice
 
         case "$set_choice" in
             1)
@@ -3946,6 +4296,40 @@ configure_audio_player_and_startup() {
                 echo -e "\n${BOLD}${YELLOW}Testing startup playback right now with player: ${DEFAULT_AUDIO_PLAYER}...${NC}\n"
                 execute_startup_autoplay
                 press_enter
+                ;;
+            17)
+                clear
+                echo -e "${BOLD}${MAGENTA}======================================================================${NC}"
+                echo -e "${BOLD}${MAGENTA}             CONFIGURE DEDICATED TRACKLIST WINDOW VIEWER              ${NC}"
+                echo -e "${BOLD}${MAGENTA}======================================================================${NC}\n"
+                echo -e "  Current Viewer: ${BOLD}${GREEN}${TRACKLIST_VIEWER:-auto}${NC}\n"
+                echo -e "  ${BOLD}${CYAN} 1)${NC} ${BOLD}Auto${NC} (System Default: KWrite/Kate on KDE, TextEdit on macOS, Notepad on Windows)"
+                echo -e "  ${BOLD}${CYAN} 2)${NC} ${BOLD}kwrite${NC} (KDE Lightweight Dedicated Editor Window)"
+                echo -e "  ${BOLD}${CYAN} 3)${NC} ${BOLD}kate${NC} (KDE Advanced Text Editor - New Window)"
+                echo -e "  ${BOLD}${CYAN} 4)${NC} ${BOLD}gedit${NC} (GNOME Text Editor - New Window)"
+                echo -e "  ${BOLD}${CYAN} 5)${NC} ${BOLD}mousepad${NC} (XFCE Lightweight Text Editor)"
+                echo -e "  ${BOLD}${CYAN} 6)${NC} ${BOLD}konsole${NC} (Dedicated Konsole Window with less viewer)"
+                echo -e "  ${BOLD}${CYAN} 7)${NC} ${BOLD}xdg-open${NC} (Desktop Environment Default MIME Handler)"
+                echo -e "  ${BOLD}${CYAN} 8)${NC} Custom Text Viewer / Editor Executable Command"
+                echo -e "  ${BOLD}${CYAN} 0)${NC} Cancel\n"
+                read -r -p "Enter choice [0-8]: " tv_choice
+                case "$tv_choice" in
+                    1) TRACKLIST_VIEWER="auto" ;;
+                    2) TRACKLIST_VIEWER="kwrite" ;;
+                    3) TRACKLIST_VIEWER="kate" ;;
+                    4) TRACKLIST_VIEWER="gedit" ;;
+                    5) TRACKLIST_VIEWER="mousepad" ;;
+                    6) TRACKLIST_VIEWER="konsole" ;;
+                    7) TRACKLIST_VIEWER="xdg-open" ;;
+                    8)
+                        read -r -p "Enter custom text viewer command: " cust_tv
+                        [ -n "$cust_tv" ] && TRACKLIST_VIEWER="$cust_tv"
+                        ;;
+                    *) ;;
+                esac
+                save_config_setting "TRACKLIST_VIEWER" "$TRACKLIST_VIEWER"
+                echo -e "\n${GREEN}✓ Tracklist window viewer set to '${TRACKLIST_VIEWER}' and saved to config.env!${NC}"
+                sleep 1.2
                 ;;
             0|[qQ])
                 return 0
@@ -5477,49 +5861,20 @@ auto_show_playing_mix_assets() {
 
     local mix_basename
     mix_basename=$(basename "$mix_file")
-    local mix_stem="${mix_basename%.*}"
-    local ep_num
-    ep_num=$(echo "$mix_stem" | grep -o -E '[0-9]{3}' | head -1)
 
-    # 1. Open cover art
+    # 1. Open cover art in external image viewer window
     local found_cover=""
-    shopt -s nullglob nocaseglob
-    local cov_candidates=(
-        "COVERS/*${mix_stem}*"
-        "COVERS/*${ep_num}*"
-        "$PWD/COVERS/"*.png
-        "$(dirname "$mix_file")/Cover.png"
-        "$(dirname "$mix_file")/${mix_stem}.png"
-        "$(dirname "$mix_file")/${mix_stem}.jpg"
-        "$PWD/Cover.png"
-        "assets/Cover.png"
-    )
-    shopt -u nullglob nocaseglob
-    for c in "${cov_candidates[@]}"; do
-        if [ -f "$c" ]; then found_cover="$c"; break; fi
-    done
-
-    if [ -n "$found_cover" ]; then
+    found_cover=$(find_mix_cover "$mix_file" 2>/dev/null)
+    if [ -n "$found_cover" ] && [ -f "$found_cover" ]; then
         open_path "$found_cover"
     fi
 
-    # 2. Display tracklist
+    # 2. Open tracklist in dedicated text editor window
     local found_tl=""
-    shopt -s nullglob nocaseglob
-    local tl_candidates=(
-        "${OUTPUT_DIR}/${mix_stem}.txt"
-        "${mix_file%.*}.txt"
-        "$PWD/${mix_stem}.txt"
-        "$(dirname "$mix_file")/${mix_stem}.txt"
-    )
-    if [ -n "$ep_num" ]; then
-        tl_candidates+=("$PWD/"*"${ep_num}"*".txt" "${OUTPUT_DIR}/"*"${ep_num}"*".txt")
+    found_tl=$(find_mix_tracklist "$mix_file" 2>/dev/null)
+    if [ -n "$found_tl" ] && [ -f "$found_tl" ]; then
+        open_tracklist_window "$found_tl"
     fi
-    shopt -u nullglob nocaseglob
-
-    for t in "${tl_candidates[@]}"; do
-        if [ -f "$t" ]; then found_tl="$t"; break; fi
-    done
 
     clear
     echo -e "${BOLD}${MAGENTA}===================================================================================${NC}"
@@ -5528,24 +5883,27 @@ auto_show_playing_mix_assets() {
     echo -e "  • ${BOLD}Now Playing:${NC}       ${BOLD}${GREEN}${mix_basename}${NC}"
     echo -e "  • ${BOLD}Audio Player:${NC}      ${BOLD}${CYAN}${player_name}${NC}"
     if [ -n "$found_cover" ]; then
-        echo -e "  • ${BOLD}Cover Art Opened:${NC}  ${YELLOW}$(basename "$found_cover")${NC} (External Image Viewer)"
+        echo -e "  • ${BOLD}Cover Art Opened:${NC}  ${YELLOW}$(basename "$found_cover")${NC} (Image Viewer Window)"
+    fi
+    if [ -n "$found_tl" ]; then
+        echo -e "  • ${BOLD}Tracklist Opened:${NC}  ${CYAN}$(basename "$found_tl")${NC} (Dedicated Text Editor Window)"
     fi
     echo -e "${BOLD}${MAGENTA}-----------------------------------------------------------------------------------${NC}"
 
     if [ -n "$found_tl" ]; then
-        echo -e "\n${BOLD}${CYAN}=== TRACKLIST: $(basename "$found_tl") ===${NC}\n"
+        echo -e "\n${BOLD}${CYAN}=== TRACKLIST PREVIEW: $(basename "$found_tl") ===${NC}\n"
         head -n 25 "$found_tl"
         local total_lines
         total_lines=$(wc -l < "$found_tl" 2>/dev/null || echo "0")
         if [ "$total_lines" -gt 25 ]; then
-            echo -e "  ${DIM}...and $((total_lines - 25)) more tracks (Full tracklist in Option 13)${NC}"
+            echo -e "  ${DIM}...and $((total_lines - 25)) more tracks (Also opened in full text editor window)${NC}"
         fi
     else
         echo -e "\n${YELLOW}No matching tracklist text file found for: ${mix_basename}${NC}"
     fi
 
     echo -e "\n${BOLD}${BLUE}───────────────────────────────────────────────────────────────────────────────────${NC}"
-    echo -e "${DIM}Playback assets loaded. Press [Enter] to continue to Main Menu...${NC}"
+    echo -e "${DIM}Playback assets loaded in separate windows. Press [Enter] to continue to Main Menu...${NC}"
     if [ -t 0 ]; then
         if [ -e /dev/tty ]; then
             read -r -t 3 < /dev/tty 2>/dev/null || true

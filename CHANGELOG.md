@@ -11,6 +11,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 🚀 Major Highlights & New Features
 
+- **Dual-Window Startup Mix Experience & Dedicated Tracklist Viewer**:
+  - Automatically loads and opens the playing mix's cover art in an image viewer window (`xdg-open` / Gwenview / Preview / Photos) **and** spawns the complete mix tracklist in a dedicated text editor window (KWrite, Kate, Gedit, TextEdit, Notepad, or Konsole).
+  - Added `open_tracklist_window()` cross-platform launcher with auto-detection and user-configurable viewer preference (`TRACKLIST_VIEWER` in `config.env`).
+  - Added archive-wide deep discovery (`find_mix_tracklist` & `find_mix_cover`) locating episode tracklists and cover artwork even within nested series subdirectories (e.g., `Stream of Frequency/070/`).
+  - Enhanced startup autoplay sorting to select the true newest mix by modification time (`mtime`) rather than alphabetical sorting.
+
 - **Mix Publishing Schedule Calendar & Multi-Platform Syndication**:
   - Added `publish_calendar_scheduler.py` and `publish_calendar_scheduler.sh` (Option 19).
   - Enables release scheduling across all major music and podcast platforms: Apple Podcasts, Spotify for Podcasters, YouTube, SoundCloud, Mixcloud, DI.FM, Proton Radio, and Bandcamp.
