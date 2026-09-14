@@ -99,21 +99,23 @@ echo ""
 
 # 4. Check & Report Dependencies
 echo -e "${BOLD}${BLUE}[4/7] Checking System Dependencies...${NC}"
-declare -A TOOLS=(
-    ["ffmpeg"]="Audio/video conversion, encoding, and integrity verification"
-    ["ffprobe"]="Audio stream duration and codec inspection"
-    ["sox"]="Spectrogram and high-resolution signal processing"
-    ["flac"]="Native lossless audio encoding and decoding"
-    ["rclone"]="Automated Google Drive and cloud synchronisation"
-    ["jq"]="JSON parser for cliamp and system inspection"
+TOOLS_LIST=(
+    "ffmpeg:Audio/video conversion, encoding, and integrity verification"
+    "ffprobe:Audio stream duration and codec inspection"
+    "sox:Spectrogram and high-resolution signal processing"
+    "flac:Native lossless audio encoding and decoding"
+    "rclone:Automated Google Drive and cloud synchronisation"
+    "jq:JSON parser for cliamp and system inspection"
 )
 
 MISSING_TOOLS=()
-for tool in "${!TOOLS[@]}"; do
+for item in "${TOOLS_LIST[@]}"; do
+    tool="${item%%:*}"
+    desc="${item#*:}"
     if command -v "$tool" >/dev/null 2>&1; then
         echo -e "      [${GREEN}FOUND${NC}] $tool"
     else
-        echo -e "      [${RED}MISSING${NC}] ${BOLD}$tool${NC} (${TOOLS[$tool]})"
+        echo -e "      [${RED}MISSING${NC}] ${BOLD}$tool${NC} ($desc)"
         MISSING_TOOLS+=("$tool")
     fi
 done
