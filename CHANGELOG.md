@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.2.1] - 2026-09-17
+
+- **Strawberry Music Player Integration & Startup Autoplay Fix**:
+  - Configured Strawberry as default audio player (`DEFAULT_AUDIO_PLAYER="strawberry"`) across `Mix_Archive_Manager.sh`, `config.env`, and `config.env.example`.
+  - Resolved issue where launching the manager automatically opened `cliamp` even when Strawberry was already playing.
+  - Added active playback pre-check in `execute_startup_autoplay`: detects if Strawberry or any other player is currently playing before initiating playback or launching external windows.
+  - Implemented `get_strawberry_track_info` via MPRIS D-Bus (`qdbus`, `dbus-send`, and `playerctl` fallbacks) to report live playback status, track title, artist, album, elapsed time, total duration, progress percentage, and resolved file path.
+  - Integrated Strawberry real-time status display into the manager's Live Status Box (`show_stats`), active background tasks list (`show_active_tasks`), and command-line flags (`--strawberry-info`, `--track`, `--current-track`, `-p`).
+  - Removed unused experimental Javascript binary artifact (`bin/mix-archive-manager.js`).
+
 ## [0.2.0] - 2026-09-14
 
 - **Cross-Platform Traktor Pro Live Monitor & Audio Recorder Control (Option 48)**:

@@ -793,7 +793,7 @@ if [ -n "${MIX_ARCHIVE_DIR:-}" ] && [ -d "$MIX_ARCHIVE_DIR" ]; then
 fi
 
 # Default Audio Player and Startup Autoplay Preferences
-DEFAULT_AUDIO_PLAYER="${DEFAULT_AUDIO_PLAYER:-cliamp}"
+DEFAULT_AUDIO_PLAYER="${DEFAULT_AUDIO_PLAYER:-strawberry}"
 AUTO_PLAY_ON_STARTUP="${AUTO_PLAY_ON_STARTUP:-true}"
 AUTO_SHOW_COVER_ON_STARTUP="${AUTO_SHOW_COVER_ON_STARTUP:-true}"
 AUTO_SHOW_TRACKLIST_ON_STARTUP="${AUTO_SHOW_TRACKLIST_ON_STARTUP:-true}"
@@ -882,6 +882,208 @@ run_sub_script() {
         echo -e "${RED}Error: Script '$script_name' not found in $(pwd) or $SCRIPT_DIR!${NC}"
         return 1
     fi
+}
+
+get_strawberry_track_info() {
+    STRAWBERRY_RUNNING=0
+    STRAWBERRY_STATE=""
+    STRAWBERRY_TITLE=""
+    STRAWBERRY_ARTIST=""
+    STRAWBERRY_ALBUM=""
+    STRAWBERRY_RAW_PATH=""
+    STRAWBERRY_RESOLVED_PATH=""
+    STRAWBERRY_FILE_EXISTS=0
+    STRAWBERRY_FILE_SIZE=""
+    STRAWBERRY_POSITION=0
+    STRAWBERRY_DURATION=0
+    STRAWBERRY_POS_FMT="00:00"
+    STRAWBERRY_DUR_FMT="00:00"
+    STRAWBERRY_PROGRESS_PCT=0
+
+    if ! pgrep -i -f strawberry >/dev/null 2>&1; then
+        return 1
+    fi
+
+    local status_json
+    status_json=$(python3 -c '
+import subprocess, urllib.parse, sys, os, json
+
+def get_prop(dest, path, iface, prop):
+    try:
+        return subprocess.check_output(["qdbus", dest, path, f"{iface}.{prop}"], stderr=subprocess.DEVNULL).decode("utf-8", errors="ignore").strip()
+    except Exception:
+        pass
+    try:
+        if prop == "PlaybackStatus":
+            return subprocess.check_output(["playerctl", "-p", "strawberry", "status"], stderr=subprocess.DEVNULL).decode("utf-8", errors="ignore").strip()
+        elif prop == "Position":
+            return subprocess.check_output(["playerctl", "-p", "strawberry", "position"], stderr=subprocess.DEVNULL).decode("utf-8", errors="ignore").strip()
+    except Exception:
+        pass
+    try:
+        out = subprocess.check_output(["dbus-send", "--print-reply", f"--dest={dest}", path, "org.freedesktop.DBus.Properties.Get", "string:" + iface, "string:" + prop], stderr=subprocess.DEVNULL).decode("utf-8", errors="ignore")
+        for line in out.splitlines():
+            line = line.strip()
+            if "variant" in line:
+                parts = line.split(None, 2)
+                if len(parts) >= 3:
+                    return parts[2].strip().strip("\"")
+    except Exception:
+        pass
+    return ""
+
+def get_meta(dest, path):
+    try:
+        raw = subprocess.check_output(["qdbus", dest, path, "org.mpris.MediaPlayer2.Player.Metadata"], stderr=subprocess.DEVNULL).decode("utf-8", errors="ignore")
+        meta = {}
+        for line in raw.splitlines():
+            if ": " in line:
+                k, v = line.split(": ", 1)
+                meta[k.strip()] = v.strip()
+        if meta:
+            return meta
+    except Exception:
+        pass
+    try:
+        url = subprocess.check_output(["playerctl", "-p", "strawberry", "metadata", "xesam:url"], stderr=subprocess.DEVNULL).decode("utf-8", errors="ignore").strip()
+        title = subprocess.check_output(["playerctl", "-p", "strawberry", "metadata", "xesam:title"], stderr=subprocess.DEVNULL).decode("utf-8", errors="ignore").strip()
+        artist = subprocess.check_output(["playerctl", "-p", "strawberry", "metadata", "xesam:artist"], stderr=subprocess.DEVNULL).decode("utf-8", errors="ignore").strip()
+        album = subprocess.check_output(["playerctl", "-p", "strawberry", "metadata", "xesam:album"], stderr=subprocess.DEVNULL).decode("utf-8", errors="ignore").strip()
+        length = subprocess.check_output(["playerctl", "-p", "strawberry", "metadata", "mpris:length"], stderr=subprocess.DEVNULL).decode("utf-8", errors="ignore").strip()
+        return {"xesam:url": url, "xesam:title": title, "xesam:artist": artist, "album": album, "mpris:length": length}
+    except Exception:
+        pass
+    return {}
+
+dest = "org.mpris.MediaPlayer2.strawberry"
+path = "/org/mpris/MediaPlayer2"
+iface = "org.mpris.MediaPlayer2.Player"
+
+status = get_prop(dest, path, iface, "PlaybackStatus")
+if not status:
+    sys.exit(1)
+
+meta = get_meta(dest, path)
+track_url = meta.get("xesam:url", "")
+if track_url.startswith("file://"):
+    track_url = track_url[7:]
+elif track_url.startswith("file:/"):
+    track_url = track_url[6:]
+track_url = urllib.parse.unquote(track_url)
+
+title = meta.get("xesam:title", "")
+artist = meta.get("xesam:artist", "")
+album = meta.get("xesam:album", "")
+
+if not title and track_url:
+    title = os.path.splitext(os.path.basename(track_url))[0]
+
+dur_us = meta.get("mpris:length", "0")
+try:
+    dur_s = int(dur_us) // 1000000
+except Exception:
+    try:
+        dur_s = int(float(dur_us))
+    except Exception:
+        dur_s = 0
+
+pos_val = get_prop(dest, path, iface, "Position")
+try:
+    pos_s = int(pos_val) // 1000000
+except Exception:
+    try:
+        pos_s = int(float(pos_val))
+    except Exception:
+        pos_s = 0
+
+data = {
+    "ok": True,
+    "state": status.lower(),
+    "title": title,
+    "artist": artist,
+    "album": album,
+    "path": track_url,
+    "position": pos_s,
+    "duration": dur_s
+}
+print(json.dumps(data))
+' 2>/dev/null)
+
+    if [ -z "$status_json" ] || ! echo "$status_json" | jq -e . >/dev/null 2>&1; then
+        return 1
+    fi
+
+    local ok
+    ok=$(echo "$status_json" | jq -r '.ok // false')
+    if [ "$ok" != "true" ]; then
+        return 1
+    fi
+
+    STRAWBERRY_RUNNING=1
+    STRAWBERRY_STATE=$(echo "$status_json" | jq -r '.state // "unknown"')
+    STRAWBERRY_TITLE=$(echo "$status_json" | jq -r '.title // ""')
+    STRAWBERRY_ARTIST=$(echo "$status_json" | jq -r '.artist // ""')
+    STRAWBERRY_ALBUM=$(echo "$status_json" | jq -r '.album // ""')
+    STRAWBERRY_RAW_PATH=$(echo "$status_json" | jq -r '.path // ""')
+    STRAWBERRY_POSITION=$(echo "$status_json" | jq -r '.position // 0' | awk '{printf "%d", $1}')
+    STRAWBERRY_DURATION=$(echo "$status_json" | jq -r '.duration // 0' | awk '{printf "%d", $1}')
+
+    format_seconds_straw() {
+        local t=$1
+        local h=$((t / 3600))
+        local m=$(( (t % 3600) / 60 ))
+        local s=$((t % 60))
+        if [ $h -gt 0 ]; then
+            printf "%02d:%02d:%02d" $h $m $s
+        else
+            printf "%02d:%02d" $m $s
+        fi
+    }
+    STRAWBERRY_POS_FMT=$(format_seconds_straw "$STRAWBERRY_POSITION")
+    STRAWBERRY_DUR_FMT=$(format_seconds_straw "$STRAWBERRY_DURATION")
+
+    if [ "$STRAWBERRY_DURATION" -gt 0 ]; then
+        STRAWBERRY_PROGRESS_PCT=$((STRAWBERRY_POSITION * 100 / STRAWBERRY_DURATION))
+    else
+        STRAWBERRY_PROGRESS_PCT=0
+    fi
+
+    STRAWBERRY_RESOLVED_PATH="$STRAWBERRY_RAW_PATH"
+    if [ -e "$STRAWBERRY_RESOLVED_PATH" ]; then
+        STRAWBERRY_FILE_EXISTS=1
+    else
+        local alt="${STRAWBERRY_RAW_PATH/#\/media\//\/run\/media\/}"
+        if [ -e "$alt" ]; then
+            STRAWBERRY_RESOLVED_PATH="$alt"
+            STRAWBERRY_FILE_EXISTS=1
+        else
+            local target_pids
+            target_pids=$(pgrep -i -f strawberry 2>/dev/null)
+            for pid in $target_pids; do
+                for fd in /proc/"$pid"/fd/*; do
+                    if [ -e "$fd" ]; then
+                        local link_target
+                        link_target=$(readlink "$fd" 2>/dev/null)
+                        case "$link_target" in
+                            *.flac|*.wav|*.mp3|*.m4a|*.ogg)
+                                if [ -f "$link_target" ]; then
+                                    STRAWBERRY_RESOLVED_PATH="$link_target"
+                                    STRAWBERRY_FILE_EXISTS=1
+                                    break 2
+                                fi
+                                ;;
+                        esac
+                    fi
+                done
+            done
+        fi
+    fi
+
+    if [ "$STRAWBERRY_FILE_EXISTS" -eq 1 ]; then
+        STRAWBERRY_FILE_SIZE=$(ls -lh "$STRAWBERRY_RESOLVED_PATH" 2>/dev/null | awk '{print $5}')
+    fi
+
+    return 0
 }
 
 get_cliamp_track_info() {
@@ -1020,12 +1222,35 @@ get_cliamp_track_info() {
 }
 
 # Command-line flags for quick inspection without full interactive menu
-if [ "$1" = "--track" ] || [ "$1" = "--current-track" ] || [ "$1" = "--cliamp-path" ] || [ "$1" = "-p" ]; then
-    if get_cliamp_track_info 2>/dev/null; then
+if [ "$1" = "--track" ] || [ "$1" = "--current-track" ] || [ "$1" = "--strawberry-path" ] || [ "$1" = "--cliamp-path" ] || [ "$1" = "-p" ]; then
+    if get_strawberry_track_info 2>/dev/null && [ -n "$STRAWBERRY_RESOLVED_PATH" ]; then
+        echo "$STRAWBERRY_RESOLVED_PATH"
+        exit 0
+    elif get_cliamp_track_info 2>/dev/null && [ -n "$CLIAMP_RESOLVED_PATH" ]; then
         echo "$CLIAMP_RESOLVED_PATH"
         exit 0
     else
-        echo "Error: cliamp is not running or no track playing." >&2
+        local detected_p
+        detected_p=$(detect_currently_playing_mix 2>/dev/null)
+        if [ -n "$detected_p" ] && [ -f "$detected_p" ]; then
+            echo "$detected_p"
+            exit 0
+        fi
+        echo "Error: No track currently playing in Strawberry, cliamp, or supported players." >&2
+        exit 1
+    fi
+elif [ "$1" = "--strawberry-info" ]; then
+    if get_strawberry_track_info 2>/dev/null; then
+        echo "State: $STRAWBERRY_STATE"
+        echo "Title: $STRAWBERRY_TITLE"
+        echo "Artist: $STRAWBERRY_ARTIST"
+        echo "Album: $STRAWBERRY_ALBUM"
+        echo "Time: $STRAWBERRY_POS_FMT / $STRAWBERRY_DUR_FMT ($STRAWBERRY_PROGRESS_PCT%)"
+        echo "Path: $STRAWBERRY_RESOLVED_PATH"
+        [ -n "$STRAWBERRY_FILE_SIZE" ] && echo "Size: $STRAWBERRY_FILE_SIZE"
+        exit 0
+    else
+        echo "Error: Strawberry is not running or no track playing." >&2
         exit 1
     fi
 elif [ "$1" = "--cliamp-info" ]; then
@@ -1096,8 +1321,25 @@ show_stats() {
         echo -e "  FLAC Files Missing Tracklists:            ${BOLD}${GREEN}0${NC} files (All complete!)"
     fi
 
-    # 5. CLI Amp Live Player Status & Audio Specifications
-    if get_cliamp_track_info 2>/dev/null; then
+    # 5. Live Player Status & Audio Specifications
+    if get_strawberry_track_info 2>/dev/null; then
+        local st_badge
+        case "$STRAWBERRY_STATE" in
+            playing) st_badge="${BOLD}${GREEN}▶ PLAYING${NC}" ;;
+            paused)  st_badge="${BOLD}${YELLOW}⏸ PAUSED${NC}" ;;
+            stopped) st_badge="${BOLD}${RED}⏹ STOPPED${NC}" ;;
+            *)       st_badge="${BOLD}${CYAN}${STRAWBERRY_STATE^^}${NC}" ;;
+        esac
+        echo -e "  --------------------------------------------------"
+        echo -e "  Strawberry Music Player:                  ${st_badge} [${STRAWBERRY_POS_FMT} / ${STRAWBERRY_DUR_FMT}] (${STRAWBERRY_PROGRESS_PCT}%)"
+        echo -e "  Strawberry Current Track:                 ${BOLD}${YELLOW}${STRAWBERRY_TITLE}${NC}${STRAWBERRY_ARTIST:+ - $STRAWBERRY_ARTIST}"
+        [ -n "$STRAWBERRY_RESOLVED_PATH" ] && echo -e "  Strawberry Active File Path:              ${BOLD}${CYAN}${STRAWBERRY_RESOLVED_PATH}${NC}"
+        if [ -n "$STRAWBERRY_RESOLVED_PATH" ] && [ -f "$STRAWBERRY_RESOLVED_PATH" ]; then
+            local audio_spec
+            audio_spec=$(get_playing_audio_spec_summary "$STRAWBERRY_RESOLVED_PATH")
+            [ -n "$audio_spec" ] && echo -e "  Audio Specifications:                     ${BOLD}${GREEN}${audio_spec}${NC}"
+        fi
+    elif get_cliamp_track_info 2>/dev/null; then
         local st_badge
         case "$CLIAMP_STATE" in
             playing) st_badge="${BOLD}${GREEN}▶ PLAYING${NC}" ;;
@@ -1282,6 +1524,15 @@ view_tasks() {
     fi
     if pgrep -f "ujust" > /dev/null || pgrep -f "rpm-ostree" > /dev/null; then
         echo -e "  [${YELLOW}RUNNING${NC}] System Maintenance / Update (ujust / rpm-ostree)"
+        ((tasks_found++))
+    fi
+    if pgrep -i -f "strawberry" > /dev/null; then
+        local straw_pids straw_desc=""
+        straw_pids=$(pgrep -i -f strawberry | tr '\n' ' ')
+        if get_strawberry_track_info 2>/dev/null; then
+            straw_desc=" [${STRAWBERRY_STATE^^}: ${STRAWBERRY_TITLE} - ${STRAWBERRY_POS_FMT}/${STRAWBERRY_DUR_FMT}]"
+        fi
+        echo -e "  [${GREEN}RUNNING${NC}] Strawberry Music Player (PID: ${straw_pids})${straw_desc}"
         ((tasks_found++))
     fi
     if pgrep -x "cliamp" > /dev/null; then
@@ -4081,7 +4332,7 @@ manage_daws() {
 }
 
 play_audio_file() {
-    local player="${1:-${DEFAULT_AUDIO_PLAYER:-cliamp}}"
+    local player="${1:-${DEFAULT_AUDIO_PLAYER:-strawberry}}"
     local file="$2"
     [ -z "$file" ] && return 1
 
@@ -4100,6 +4351,11 @@ play_audio_file() {
             fi
             ;;
         strawberry)
+            if get_strawberry_track_info 2>/dev/null && [ "$STRAWBERRY_STATE" = "playing" ]; then
+                if [ "$STRAWBERRY_RESOLVED_PATH" = "$file" ] || [ "$STRAWBERRY_RAW_PATH" = "$file" ]; then
+                    return 0
+                fi
+            fi
             if command -v strawberry >/dev/null 2>&1; then
                 nohup strawberry "$file" >/dev/null 2>&1 &
             elif flatpak list 2>/dev/null | grep -q "org.strawberrymusicplayer.strawberry"; then
@@ -4177,6 +4433,8 @@ play_audio_file() {
         *)
             if command -v "$player" >/dev/null 2>&1; then
                 nohup "$player" "$file" >/dev/null 2>&1 &
+            elif [ "$player" != "strawberry" ] && command -v strawberry >/dev/null 2>&1; then
+                play_audio_file "strawberry" "$file"
             else
                 play_audio_file "cliamp" "$file"
             fi
@@ -4190,6 +4448,37 @@ play_audio_file() {
 
 execute_startup_autoplay() {
     if [ "${AUTO_PLAY_ON_STARTUP:-true}" != "true" ]; then
+        return 0
+    fi
+
+    # 0. Check if Strawberry or another player is ALREADY playing!
+    # If Strawberry or any player is already playing, DO NOT launch cliamp or start a new track!
+    local active_playing_mix=""
+    local active_player_name=""
+
+    if get_strawberry_track_info 2>/dev/null && [ "$STRAWBERRY_STATE" = "playing" ]; then
+        active_player_name="Strawberry"
+        active_playing_mix="$STRAWBERRY_RESOLVED_PATH"
+    elif get_cliamp_track_info 2>/dev/null && [ "$CLIAMP_STATE" = "playing" ]; then
+        active_player_name="cliamp"
+        active_playing_mix="$CLIAMP_RESOLVED_PATH"
+    else
+        local detected_mix
+        detected_mix=$(detect_currently_playing_mix 2>/dev/null)
+        if [ -n "$detected_mix" ] && [ -f "$detected_mix" ]; then
+            active_playing_mix="$detected_mix"
+            active_player_name="${DEFAULT_AUDIO_PLAYER:-strawberry}"
+        fi
+    fi
+
+    if [ -n "$active_playing_mix" ] || [ "$active_player_name" = "Strawberry" ]; then
+        # Audio is already actively playing in the background (e.g. Strawberry).
+        # Do NOT launch cliamp or start another track over it.
+        if [ -n "$active_playing_mix" ] && [ -f "$active_playing_mix" ]; then
+            if [ "${AUTO_SHOW_PLAYING_ASSETS:-true}" = "true" ] || [ "${AUTO_SHOW_COVER_ON_STARTUP:-true}" = "true" ] || [ "${AUTO_SHOW_TRACKLIST_ON_STARTUP:-true}" = "true" ]; then
+                auto_show_playing_mix_assets "$active_playing_mix" "$active_player_name"
+            fi
+        fi
         return 0
     fi
 
@@ -4266,7 +4555,7 @@ if files:
 
     # 1. Play in default audio player
     local SKIP_PLAYING_ASSETS=1
-    local player="${DEFAULT_AUDIO_PLAYER:-cliamp}"
+    local player="${DEFAULT_AUDIO_PLAYER:-strawberry}"
     play_audio_file "$player" "$selected_mix"
 
     # 2. Open cover art in dedicated image viewer window if enabled
@@ -4371,7 +4660,7 @@ configure_audio_player_and_startup() {
         ([ "$OS_TYPE" = "macos" ] && osascript -e 'id of application "Music"' >/dev/null 2>&1) && music_st="${GREEN}Installed${NC}"
 
         echo -e "  ${BOLD}Current Settings:${NC}"
-        echo -e "  • Default Audio Player:          ${BOLD}${GREEN}${DEFAULT_AUDIO_PLAYER:-cliamp}${NC}"
+        echo -e "  • Default Audio Player:          ${BOLD}${GREEN}${DEFAULT_AUDIO_PLAYER:-strawberry}${NC}"
         
         local ap_badge="${RED}DISABLED${NC}"
         [ "${AUTO_PLAY_ON_STARTUP:-true}" = "true" ] && ap_badge="${GREEN}ENABLED${NC}"
@@ -4718,7 +5007,7 @@ manage_audio_players() {
         echo -e "  ${BOLD}${CYAN} 9)${NC} Launch Apple Podcasts App (${ap_badge})"
         echo -e "  ${BOLD}${CYAN}10)${NC} Launch Audacity Audio Editor (${GREEN}audacity${NC})"
         echo -e "  ${BOLD}${CYAN}11)${NC} Show Connected USB MIDI Devices (${GREEN}list-midi-devices${NC})"
-        echo -e "  ${BOLD}${CYAN}12)${NC} Configure Default Audio Player & Startup Autoplay (${GREEN}Current: ${DEFAULT_AUDIO_PLAYER:-cliamp}${NC})"
+        echo -e "  ${BOLD}${CYAN}12)${NC} Configure Default Audio Player & Startup Autoplay (${GREEN}Current: ${DEFAULT_AUDIO_PLAYER:-strawberry}${NC})"
         echo -e "  ${BOLD}${CYAN} 0)${NC} Return to Main Menu"
         echo ""
         read -r -p "Enter choice [0-12]: " p_choice
@@ -6291,7 +6580,15 @@ get_manager_uptime() {
 }
 
 detect_currently_playing_mix() {
-    # 1. Check cliamp
+    # 1. Check Strawberry (MPRIS / qdbus / dbus-send)
+    if get_strawberry_track_info 2>/dev/null; then
+        if [ -n "$STRAWBERRY_RESOLVED_PATH" ] && [ -f "$STRAWBERRY_RESOLVED_PATH" ]; then
+            echo "$STRAWBERRY_RESOLVED_PATH"
+            return 0
+        fi
+    fi
+
+    # 2. Check cliamp
     if get_cliamp_track_info 2>/dev/null; then
         if [ -n "$CLIAMP_RESOLVED_PATH" ] && [ -f "$CLIAMP_RESOLVED_PATH" ]; then
             echo "$CLIAMP_RESOLVED_PATH"
@@ -6299,7 +6596,7 @@ detect_currently_playing_mix() {
         fi
     fi
 
-    # 2. Check playerctl
+    # 3. Check playerctl
     if command -v playerctl >/dev/null 2>&1; then
         local p_status p_url
         p_status=$(playerctl status 2>/dev/null | head -1)
@@ -6316,7 +6613,7 @@ detect_currently_playing_mix() {
         fi
     fi
 
-    # 3. Check strawberry/vlc/mpv open file descriptors
+    # 4. Check strawberry/vlc/mpv open file descriptors
     local target_pids
     target_pids=$(pgrep -i -f 'strawberry|vlc|mpv|kodi|cliamp' 2>/dev/null)
     for pid in $target_pids; do
@@ -6341,7 +6638,7 @@ detect_currently_playing_mix() {
 
 auto_show_playing_mix_assets() {
     local mix_file="$1"
-    local player_name="${2:-${DEFAULT_AUDIO_PLAYER:-cliamp}}"
+    local player_name="${2:-${DEFAULT_AUDIO_PLAYER:-strawberry}}"
     [ -z "$mix_file" ] || [ ! -f "$mix_file" ] && return 0
 
     local mix_basename
@@ -6781,7 +7078,7 @@ while true; do
     echo -e "  ${BOLD}${CYAN}23)${NC} Acoustic Spectrogram Suite & Audio Analysis (${GREEN}Spek, Sonic Visualiser, SoX 24-bit, Praat, Kwave${NC})"
     echo -e "  ${BOLD}${CYAN}24)${NC} Launch Audacity Audio Editor (${GREEN}audacity${NC})"
     echo -e "  ${BOLD}${CYAN}25)${NC} Launch Audio Players Menu (${GREEN}cliamp, Strawberry, VLC, foobar2000, Winamp, Apple Music...${NC})"
-    echo -e "  ${BOLD}${CYAN}26)${NC} Configure Default Audio Player & Startup Autoplay (${GREEN}Current: ${DEFAULT_AUDIO_PLAYER:-cliamp}${NC})"
+    echo -e "  ${BOLD}${CYAN}26)${NC} Configure Default Audio Player & Startup Autoplay (${GREEN}Current: ${DEFAULT_AUDIO_PLAYER:-strawberry}${NC})"
     echo -e "  ${BOLD}${CYAN}27)${NC} cliamp Music Player & Track Control (${GREEN}Now Playing Path, Controls & Launch${NC})"
     echo -e "  ${BOLD}${CYAN}28)${NC} View Playing Mix Audio Specifications & Stream Metadata (${GREEN}WAV/FLAC, Bit Depth, 48kHz, Codec, Duration, Size, Title${NC})"
     echo -e "  ${BOLD}${CYAN}29)${NC} Custom Mix Playlists Suite (.m3u8 / .xspf) (${GREEN}Create, Edit & Launch in cliamp/Strawberry/VLC${NC})"
