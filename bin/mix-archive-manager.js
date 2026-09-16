@@ -33,6 +33,10 @@ function launchPlayer(player) {
 
 function main() {
     const player = process.env.PLAYER || DEFAULT_PLAYER;
+    if (player === 'cliamp') {
+        console.log('Not launching cliamp as it is the default player.');
+        return;
+    }
     launchPlayer(player);
 }
 
