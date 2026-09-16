@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Run Ollama Server
+GenericName=Ollama LLM Server
+Comment=Run Ollama Serve inside distrobox container (ollama-container)
+Exec=/home/mplanetarian/KDE_CONNECT_CMDS/kc_run_ollama_serve.sh
+Icon=utilities-terminal
+Terminal=false
+Categories=Development;Utility;System;AI;
+StartupNotify=false
+X-KDE-GlobalAccel-CommandShortcut=true

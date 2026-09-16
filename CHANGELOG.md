@@ -16,6 +16,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Implemented `get_strawberry_track_info` via MPRIS D-Bus (`qdbus`, `dbus-send`, and `playerctl` fallbacks) to report live playback status, track title, artist, album, elapsed time, total duration, progress percentage, and resolved file path.
   - Integrated Strawberry real-time status display into the manager's Live Status Box (`show_stats`), active background tasks list (`show_active_tasks`), and command-line flags (`--strawberry-info`, `--track`, `--current-track`, `-p`).
   - Removed unused experimental Javascript binary artifact (`bin/mix-archive-manager.js`).
+- **FLAC & YouTube MP4 Video Splitting Utilities**:
+  - Implemented standalone interactive utility `Split_FLAC_File.sh` (mirrored to `scripts/Split_FLAC_File.sh`, symlinked to `bin/split-flac` and `~/.local/bin/split-flac`):
+    - Discovers candidate `.flac` files in `FLAC_CONVERTED_OUTPUTS` and allows manual entry/pasting of custom full paths.
+    - Prompts user for the number of parts $N$ and calculates duration per part with sample-accurate division.
+    - Losslessly splits FLAC audio using `ffmpeg` (`-c:a flac -map_metadata 0`) with the final part capturing to the exact end without truncation.
+    - Always outputs split parts (`<stem>_Part01.flac`, `<stem>_Part02.flac`...) into the exact directory of the input file and opens the file manager.
+  - Implemented standalone interactive utility `Split_Video_File.sh` (mirrored to `scripts/Split_Video_File.sh`, symlinked to `bin/split-video` and `~/.local/bin/split-video`):
+    - Discovers candidate `.mp4` video files across archive directories (`downloaded_videos`, `RENDERED_SOF_EPISODES`, etc.) and allows manual entry/pasting of custom full paths.
+    - Prompts user for number of parts $N$ and split mode (Fast Lossless Stream Copy or Frame-Accurate Re-encode).
+    - Divides video files into equal parts, naming them `<stem>_Part01.mp4`, `<stem>_Part02.mp4`... directly in the input video's directory and opens the file manager.
+  - Integrated into `Mix_Archive_Manager.sh`:
+    - **Option 2 (manage_audio_conversion)**: Added Option 6 to launch `Split_FLAC_File.sh`.
+    - **Option 38 (manage_video_cut_and_split)**: Upgraded Option 38 to a Video Cutting & Splitting Suite (`Cut_Video.sh` & `Split_Video_File.sh`).
+    - Added CLI flags `--split-flac`, `--split-video`, `--split-mp4`, and `--cut-video`.
+    - Added direct console menu keyword triggers `split-flac` and `split-video`.
+- **KDE Connect & Desktop Shortcuts for WAN2GP Server Management**:
+  - Created dedicated KDE Connect remote commands and scripts (`kc_start_wan2gp_profile45.sh`, `kc_stop_wan2gp.sh`):
+    - **Option 56 / 2**: `Start WAN2GP (Profile 4.5 - Low VRAM)` launches WAN2GP in Profile 4.5 in a new Konsole tab/window with active-process pre-check and desktop notification feedback.
+    - **Option 56 / 3**: `Stop WAN2GP Server` safely terminates the active WAN2GP server with status notifications.
+  - Registered remote commands into KDE Connect device configuration (`~/.config/kdeconnect/*/kdeconnect_runcommand/config`) and deployed to `~/KDE_CONNECT_CMDS/`.
+  - Added direct command-line arguments to `Mix_Archive_Manager.sh` and `bin/mix-archive-manager`: `--wan2gp-start-4.5`, `--wan2gp-stop`, `56 2`, and `56 3`.
+  - Created `.desktop` application entries (`wan2gp-start-profile45.desktop`, `wan2gp-stop.desktop`) in `desktop/`, `~/.local/share/applications/`, and `~/Desktop/` for KRunner/application menu launcher and global shortcut integration.
+  - Added symlinks `wan2gp-start-profile45` and `wan2gp-stop` into `bin/` and `~/.local/bin/`.
+  - Updated `install.sh` to install all desktop shortcuts, KDE Connect scripts, and symlinks automatically.
+- **KDE Connect & Desktop Shortcuts for Ollama Server (distrobox: ollama-container)**:
+  - Created dedicated KDE Connect remote commands and scripts (`kc_run_ollama_serve.sh`, `kc_stop_ollama.sh`):
+    - `Run Ollama Server (distrobox)` enters `ollama-container` via `distrobox enter ollama-container -- ollama serve`, with active endpoint pre-check on port 11434, container auto-start, and desktop notifications.
+    - `Stop Ollama Server` terminates active `ollama serve` processes with notification confirmation.
+  - Registered remote commands into KDE Connect device configuration (`~/.config/kdeconnect/*/kdeconnect_runcommand/config`) and deployed to `~/KDE_CONNECT_CMDS/`.
+  - Created `.desktop` application entries (`ollama-serve.desktop`, `ollama-stop.desktop`) in `desktop/`, `~/.local/share/applications/`, and `~/Desktop/`.
+  - Added symlinks `ollama-serve` and `ollama-stop` into `bin/` and `~/.local/bin/`.
 
 ## [0.2.0] - 2026-09-14
 

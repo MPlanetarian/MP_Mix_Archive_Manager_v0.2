@@ -193,6 +193,8 @@ MP_Mix_Manager_v0.2/
 │   ├── traktor-monitor          # Traktor Pro Live Monitor & Audio Recorder CLI
 │   ├── view-mix-specs           # Dedicated audio specification & stream inspector CLI
 │   ├── view-tracklist           # Borderless console tracklist viewer
+│   ├── split-flac               # Interactive lossless FLAC splitter CLI
+│   ├── split-video              # Interactive YouTube MP4 video splitter CLI
 │   ├── transfer-monitor         # Live file write and transfer inspector
 │   ├── chrome-upload-monitor    # Real-time web / Podcast Connect upload monitor
 │   ├── update-nft-playlist      # M3U / XSPF video playlist builder
@@ -242,6 +244,8 @@ MP_Mix_Manager_v0.2/
 │   ├── Make_SOF_Episode_From_PNG_FLAC_Output_MP4_720p_Video.sh  # 720p YouTube video creator
 │   ├── generate_youtube_video.sh# Unified YouTube video generation engine
 │   ├── Cut_Video.sh             # Precision start/end video cutter
+│   ├── Split_FLAC_File.sh       # Sample-accurate lossless FLAC audio splitter
+│   ├── Split_Video_File.sh      # Precision YouTube MP4 video splitter (lossless / re-encode)
 │   ├── merge_playlist_flac.sh   # Concat M3U playlist to FLAC
 │   ├── process_trance_roots.py  # Audio processing helper
 │   ├── switch-to-plasma-wayland.sh # Plasma Wayland HDR display switcher
@@ -284,7 +288,7 @@ MP_Mix_Manager_v0.2/
 | # | Operation | Description |
 |---|---|---|
 | **1** | **Run FLAC Conversion Process** | Batch concatenates split WAVs, encodes to 32-bit FLAC (`Make_SOF_FLAC_CONVERSION.sh`), embeds artwork, and outputs spectrograms. |
-| **2** | **Convert Audio Formats & Bit Depths** | Converts audio between MP3 (320k, V0, 256k), Ogg Vorbis, Opus, Apple AAC, Apple ALAC lossless, FLAC, and WAV-to-WAV bit depths (32-bit float, 32-bit int, 24-bit PCM, 16-bit PCM). |
+| **2** | **Convert Audio Formats, Bit Depths & Split FLACs** | Converts audio between MP3 (320k, V0, 256k), Ogg Vorbis, Opus, Apple AAC, Apple ALAC lossless, FLAC, and WAV-to-WAV bit depths (32-bit float, 32-bit int, 24-bit PCM, 16-bit PCM). Includes sample-accurate lossless FLAC file splitting into equal parts (`Split_FLAC_File.sh` / `--split-flac`). |
 | **3** | **Retrieve Unconverted WAVs** | Scans archive and quarantines/moves WAVs lacking a corresponding FLAC back to staging (`MOVE_NOT_CONVERTED_WAVS.sh`). |
 | **4** | **Search & Import Mixes (Local Drives & SMB)** | Auto-discovers local storage volumes, USB drives, common music directories, and SMB shares. Scans and filters by mix size (>=100MB) and audio extensions, checks for duplicates against the archive, and executes transfers with live progress and audit logs (`search_and_import_mixes.sh` / `import_new_mixes.sh`). |
 | **5** | **Rename Mix and Associated Assets** | Atomically renames FLAC file, `.txt` tracklist, and Spek `.png` across all archive subdirectories. |
@@ -332,7 +336,7 @@ MP_Mix_Manager_v0.2/
 | # | Operation | Description |
 |---|---|---|
 | **37**| **Generate YouTube Video (4K UHD, 1080p, 720p)** | Encodes pristine YouTube MP4 videos in 4K UHD (3840x2160), 1080p Full HD (1920x1080), or 720p HD (1280x720) with NVENC/Hardware acceleration, 320kbps AAC audio, and smooth 5s audio fading (`generate_youtube_video.sh`). |
-| **38**| **Cut Video File (.mp4 / .mkv)** | Precision video clipping utility based on start/end timestamps with cross-platform folder launch (`Cut_Video.sh`). |
+| **38**| **Cut or Split Video File (.mp4 / .mkv)** | Precision video editing and splitting suite: cut video clips by start/end timestamps (`Cut_Video.sh`) or split YouTube .mp4 video files into equal parts with lossless stream copy or frame-accurate re-encode (`Split_Video_File.sh` / `--split-video`). |
 | **39**| **Launch Video Playlists** | Plays Defasten or NFT video playlists in VLC, or regenerates `.m3u`/`.xspf` files. |
 | **40**| **Launch Specific Video in Default Video Player** | Launches specific video files or streaming URLs in user's default video player (VLC default, mpv, Haruna, Kodi) (`launch_specific_video.sh`). |
 | **41**| **Launch GIMP Image Editor** | Launches GIMP image editor or installs via package manager. |
@@ -358,7 +362,7 @@ MP_Mix_Manager_v0.2/
 ### ─── [ SECTION 6: SYSTEM, NETWORK & HARDWARE MANAGEMENT ] ─────
 | # | Operation | Description |
 |---|---|---|
-| **56**| **Manage WAN2GP Server** | Controls WAN2GP AI video server (Profile 2 / 4.5, Flux Klein 9B batch, LTX Video 2B/13B). |
+| **56**| **Manage WAN2GP Server** | Controls WAN2GP AI video server (Profile 2 / 4.5, Flux Klein 9B batch, LTX Video 2B/13B). Accessible via KDE Connect shortcuts, desktop entries, and CLI (`--wan2gp-start-4.5` / `--wan2gp-stop` / `56 2` / `56 3`). |
 | **57**| **Manage Network Services** | Bulk and individual start, stop, restart, and status for SSH (`sshd`), Samba (`smb`), and FTP (`vsftpd`) across Linux (`systemctl`), FreeBSD (`service`), macOS (`launchctl`/`systemsetup`), and Windows (PowerShell). |
 | **58**| **Block Internet Access (LAN Only)** | Activates an isolated firewall table blocking WAN while keeping LAN open (`block-internet`). |
 | **59**| **Restore / Unblock Internet Access** | Restores immediate full internet connectivity (`unblock-internet`). |

@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Stop Ollama Server
+GenericName=Stop Ollama LLM Server
+Comment=Stop Ollama Serve inside distrobox container (ollama-container)
+Exec=/home/mplanetarian/KDE_CONNECT_CMDS/kc_stop_ollama.sh
+Icon=process-stop
+Terminal=false
+Categories=Development;Utility;System;AI;
+StartupNotify=false
+X-KDE-GlobalAccel-CommandShortcut=true

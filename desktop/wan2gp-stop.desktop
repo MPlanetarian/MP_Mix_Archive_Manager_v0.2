@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Stop WAN2GP Server
+GenericName=Stop AI Video Server
+Comment=Stop running WAN2GP AI Video Server
+Exec=/home/mplanetarian/KDE_CONNECT_CMDS/kc_stop_wan2gp.sh
+Icon=process-stop
+Terminal=false
+Categories=AudioVideo;Audio;Development;Utility;
+StartupNotify=false
+X-KDE-GlobalAccel-CommandShortcut=true

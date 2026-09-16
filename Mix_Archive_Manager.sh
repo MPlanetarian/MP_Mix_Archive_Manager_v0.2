@@ -1679,7 +1679,48 @@ ${BOLD}${CYAN}Available Mixes in Archive:${NC}"
 
 cut_video_clip() {
     echo -e "\n${BOLD}${BLUE}=== CUT VIDEO FILE (.MP4 / .MKV) ===${NC}\n"
-    run_sub_script "Cut_Video.sh"
+    run_sub_script "Cut_Video.sh" "$@"
+}
+
+split_flac_audio() {
+    echo -e "\n${BOLD}${BLUE}=== SPLIT FLAC AUDIO FILE ===${NC}\n"
+    run_sub_script "Split_FLAC_File.sh" "$@"
+}
+
+split_video_clip() {
+    echo -e "\n${BOLD}${BLUE}=== SPLIT VIDEO FILE (.MP4) ===${NC}\n"
+    run_sub_script "Split_Video_File.sh" "$@"
+}
+
+manage_video_cut_and_split() {
+    while true; do
+        clear
+        echo -e "${BOLD}${MAGENTA}======================================================================${NC}"
+        echo -e "${BOLD}${MAGENTA}                   VIDEO CUTTING & SPLITTING SUITE                    ${NC}"
+        echo -e "${BOLD}${MAGENTA}======================================================================${NC}\n"
+        echo -e "  ${BOLD}${CYAN}1)${NC} Cut / Trim Video File by Start & End Time (${GREEN}Cut_Video.sh${NC})"
+        echo -e "  ${BOLD}${CYAN}2)${NC} Split Video File (.mp4) into Equal Parts (${GREEN}Split_Video_File.sh${NC})"
+        echo -e "  ${BOLD}${CYAN}3)${NC} Return to Main Menu\n"
+        read -r -p "Enter choice [1-3]: " v_choice
+
+        case "$v_choice" in
+            1)
+                run_sub_script "Cut_Video.sh"
+                press_enter
+                ;;
+            2)
+                run_sub_script "Split_Video_File.sh"
+                press_enter
+                ;;
+            3|[qQ])
+                return 0
+                ;;
+            *)
+                echo -e "\n${RED}Invalid option!${NC}"
+                sleep 1.2
+                ;;
+        esac
+    done
 }
 
 launch_cliamp() {
@@ -5507,9 +5548,10 @@ manage_audio_conversion() {
         echo -e "  ${BOLD}${CYAN}3)${NC} Convert All WAVs in CONVERTED_WAV_FILES/"
         echo -e "  ${BOLD}${CYAN}4)${NC} Convert FLAC Outputs to MP3 (320kbps CBR) & Apple AAC"
         echo -e "  ${BOLD}${CYAN}5)${NC} WAV-to-WAV Bit Depth Conversion (16/24/32-bit Float)"
-        echo -e "  ${BOLD}${CYAN}6)${NC} Launch Full Interactive Converter CLI"
-        echo -e "  ${BOLD}${CYAN}7)${NC} Return to Main Menu\n"
-        read -r -p "Enter choice [1-7]: " conv_choice
+        echo -e "  ${BOLD}${CYAN}6)${NC} Split FLAC File into Parts (${GREEN}Split_FLAC_File.sh${NC})"
+        echo -e "  ${BOLD}${CYAN}7)${NC} Launch Full Interactive Converter CLI"
+        echo -e "  ${BOLD}${CYAN}8)${NC} Return to Main Menu\n"
+        read -r -p "Enter choice [1-8]: " conv_choice
 
         case "$conv_choice" in
             1)
@@ -5533,10 +5575,14 @@ manage_audio_conversion() {
                 press_enter
                 ;;
             6)
+                split_flac_audio
+                press_enter
+                ;;
+            7)
                 bash "$script"
                 press_enter
                 ;;
-            7|[qQ])
+            8|[qQ])
                 return 0
                 ;;
             *)
@@ -7011,6 +7057,44 @@ get_os_badge() {
     fi
 }
 
+# Direct CLI invocation support for WAN2GP server management (e.g. Menu 56 options)
+if [ "$1" = "--wan2gp-start-4.5" ] || [ "$1" = "--wan2gp-p45" ] || { [ "$1" = "56" ] && [ "$2" = "2" ]; }; then
+    wgp_pids=$(pgrep -f "python.*wgp\.py" | tr '\n' ' ')
+    if [ -n "$wgp_pids" ]; then
+        echo -e "\n${YELLOW}WAN2GP is already running (PID: ${wgp_pids% }). Stop or restart it first.${NC}"
+        exit 0
+    fi
+    echo -e "\n${YELLOW}Launching WAN2GP in Profile 4.5...${NC}"
+    launch_wan2gp_terminal "4.5"
+    exit 0
+elif [ "$1" = "--wan2gp-start" ] || [ "$1" = "--wan2gp" ]; then
+    profile="${2:-4.5}"
+    wgp_pids=$(pgrep -f "python.*wgp\.py" | tr '\n' ' ')
+    if [ -n "$wgp_pids" ]; then
+        echo -e "\n${YELLOW}WAN2GP is already running (PID: ${wgp_pids% }). Stop or restart it first.${NC}"
+        exit 0
+    fi
+    echo -e "\n${YELLOW}Launching WAN2GP in Profile $profile...${NC}"
+    launch_wan2gp_terminal "$profile"
+    exit 0
+elif [ "$1" = "--wan2gp-stop" ] || { [ "$1" = "56" ] && [ "$2" = "3" ]; }; then
+    echo -e "\n${YELLOW}Stopping WAN2GP...${NC}"
+    run_sub_script "wan2gp.sh" stop
+    exit 0
+elif [ "$1" = "--split-flac" ] || [ "$1" = "--flac-split" ]; then
+    shift
+    split_flac_audio "$@"
+    exit 0
+elif [ "$1" = "--split-video" ] || [ "$1" = "--split-mp4" ] || [ "$1" = "--video-split" ]; then
+    shift
+    split_video_clip "$@"
+    exit 0
+elif [ "$1" = "--cut-video" ]; then
+    shift
+    cut_video_clip "$@"
+    exit 0
+fi
+
 # ==============================================================================
 # MAIN APPLICATION LOOP
 # ==============================================================================
@@ -7050,7 +7134,7 @@ while true; do
     
     echo -e "\n  ${BOLD}${BLUE}─── [ SECTION 1: MIX ARCHIVE WORKFLOW & INGESTION ] ─────────${NC}"
     echo -e "  ${BOLD}${CYAN} 1)${NC} Run FLAC Conversion Process (${GREEN}Make_SOF_FLAC_CONVERSION.sh${NC})"
-    echo -e "  ${BOLD}${CYAN} 2)${NC} Convert Audio Formats & Bit Depths (${GREEN}WAV to MP3, OGG, AAC, ALAC, WAV 32/24/16${NC})"
+    echo -e "  ${BOLD}${CYAN} 2)${NC} Convert Audio Formats, Bit Depths & Split FLACs (${GREEN}WAV, MP3, AAC, FLAC Splitter${NC})"
     echo -e "  ${BOLD}${CYAN} 3)${NC} Retrieve Unconverted WAVs from Archive (${GREEN}MOVE_NOT_CONVERTED_WAVS.sh${NC})"
     echo -e "  ${BOLD}${CYAN} 4)${NC} Search & Import Mixes from Local Drives & SMB (${GREEN}search_and_import_mixes.sh / import_new_mixes.sh${NC})"
     echo -e "  ${BOLD}${CYAN} 5)${NC} Rename a Mix and Associated Assets (FLAC, Tracklist, Spek)"
@@ -7092,7 +7176,7 @@ while true; do
     
     echo -e "\n  ${BOLD}${BLUE}─── [ SECTION 4: VIDEO PRODUCTION, ART & VISUAL MEDIA ] ─────${NC}"
     echo -e "  ${BOLD}${CYAN}37)${NC} Generate YouTube Video (4K UHD, 1080p, 720p with NVENC/Hardware)"
-    echo -e "  ${BOLD}${CYAN}38)${NC} Cut Video File (.mp4 / .mkv) (${GREEN}Cut_Video.sh${NC})"
+    echo -e "  ${BOLD}${CYAN}38)${NC} Cut or Split Video File (.mp4 / .mkv) (${GREEN}Cut_Video.sh / Split_Video_File.sh${NC})"
     echo -e "  ${BOLD}${CYAN}39)${NC} Launch Video Playlists (NFT Videos (VLC))"
     echo -e "  ${BOLD}${CYAN}40)${NC} Launch Specific Video in Default Video Player (${GREEN}${DEFAULT_VIDEO_PLAYER:-vlc}${NC})"
     echo -e "  ${BOLD}${CYAN}41)${NC} Launch GIMP Image Editor (${GREEN}gimp / org.gimp.GIMP${NC})"
@@ -7289,8 +7373,7 @@ while true; do
             generate_youtube_video
             ;;
         38)
-            cut_video_clip
-            press_enter
+            manage_video_cut_and_split
             ;;
         39)
             launch_video_playlists
@@ -7457,6 +7540,18 @@ while true; do
             ;;
         71)
             reboot_system
+            ;;
+        split-flac|split_flac)
+            split_flac_audio
+            press_enter
+            ;;
+        split-video|split_video|split-mp4|split_mp4)
+            split_video_clip
+            press_enter
+            ;;
+        cut-video|cut_video)
+            cut_video_clip
+            press_enter
             ;;
         72|0|[qQ]|[eE][xX][iI][tT])
             echo -e "\n${BOLD}${GREEN}Exiting Mix Archive Manager. Goodbye!${NC}\n"

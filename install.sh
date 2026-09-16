@@ -172,6 +172,12 @@ ln -sf "$SCRIPT_DIR/scripts/inspect_playing_audio.sh" "$HOME/.local/bin/view-mix
 ln -sf "$SCRIPT_DIR/bin/traktor-monitor" "$HOME/.local/bin/traktor-monitor" 2>/dev/null || true
 ln -sf "$SCRIPT_DIR/scripts/traktor_monitor.sh" "$HOME/.local/bin/traktor_monitor.sh" 2>/dev/null || true
 ln -sf "$SCRIPT_DIR/Cut_Video.sh" "$HOME/.local/bin/cut-video" 2>/dev/null || true
+ln -sf "$SCRIPT_DIR/Split_FLAC_File.sh" "$HOME/.local/bin/split-flac" 2>/dev/null || true
+ln -sf "$SCRIPT_DIR/Split_Video_File.sh" "$HOME/.local/bin/split-video" 2>/dev/null || true
+ln -sf "$SCRIPT_DIR/scripts/kc_start_wan2gp_profile45.sh" "$HOME/.local/bin/wan2gp-start-profile45" 2>/dev/null || true
+ln -sf "$SCRIPT_DIR/scripts/kc_stop_wan2gp.sh" "$HOME/.local/bin/wan2gp-stop" 2>/dev/null || true
+ln -sf "$SCRIPT_DIR/scripts/kc_run_ollama_serve.sh" "$HOME/.local/bin/ollama-serve" 2>/dev/null || true
+ln -sf "$SCRIPT_DIR/scripts/kc_stop_ollama.sh" "$HOME/.local/bin/ollama-stop" 2>/dev/null || true
 ln -sf "$SCRIPT_DIR/Mix_Archive_Manager.sh" "$HOME/manager.sh" 2>/dev/null || true
 
 echo -e "${GREEN}      ✓ Installed symlinks into ~/.local/bin and ~/manager.sh.${NC}"
@@ -249,17 +255,28 @@ elif [ "$HOST_OS" = "windows" ] || [ "$HOST_OS" = "wsl" ]; then
         echo -e "${GREEN}      ✓ Placed Windows launcher shortcut on Desktop.${NC}"
     fi
 else
-    # Linux Desktop Entry (.desktop)
+    # Linux Desktop Entries (.desktop)
     mkdir -p "$HOME/.local/share/applications"
-    DESKTOP_SRC="$SCRIPT_DIR/desktop/Mix_Archive_Manager.desktop"
-    if [ -f "$DESKTOP_SRC" ]; then
-        cp -p "$DESKTOP_SRC" "$HOME/.local/share/applications/Mix_Archive_Manager.desktop"
-        if [ -d "$HOME/Desktop" ]; then
-            cp -p "$DESKTOP_SRC" "$HOME/Desktop/Mix_Archive_Manager.desktop"
-            chmod +x "$HOME/Desktop/Mix_Archive_Manager.desktop" 2>/dev/null || true
+    for _dentry in "Mix_Archive_Manager.desktop" "wan2gp-start-profile45.desktop" "wan2gp-stop.desktop" "ollama-serve.desktop" "ollama-stop.desktop"; do
+        if [ -f "$SCRIPT_DIR/desktop/$_dentry" ]; then
+            cp -p "$SCRIPT_DIR/desktop/$_dentry" "$HOME/.local/share/applications/$_dentry"
+            if [ -d "$HOME/Desktop" ]; then
+                cp -p "$SCRIPT_DIR/desktop/$_dentry" "$HOME/Desktop/$_dentry"
+                chmod +x "$HOME/Desktop/$_dentry" 2>/dev/null || true
+            fi
         fi
-        update-desktop-database "$HOME/.local/share/applications" 2>/dev/null || true
-        echo -e "${GREEN}      ✓ Mix Archive Manager application shortcut installed.${NC}"
+    done
+    update-desktop-database "$HOME/.local/share/applications" 2>/dev/null || true
+    echo -e "${GREEN}      ✓ Application, WAN2GP, and Ollama shortcuts installed.${NC}"
+
+    # Sync KDE Connect command scripts if directory exists
+    if [ -d "$HOME/KDE_CONNECT_CMDS" ]; then
+        cp -p "$SCRIPT_DIR/scripts/kc_start_wan2gp_profile45.sh" "$HOME/KDE_CONNECT_CMDS/kc_start_wan2gp_profile45.sh" 2>/dev/null || true
+        cp -p "$SCRIPT_DIR/scripts/kc_stop_wan2gp.sh" "$HOME/KDE_CONNECT_CMDS/kc_stop_wan2gp.sh" 2>/dev/null || true
+        cp -p "$SCRIPT_DIR/scripts/kc_run_ollama_serve.sh" "$HOME/KDE_CONNECT_CMDS/kc_run_ollama_serve.sh" 2>/dev/null || true
+        cp -p "$SCRIPT_DIR/scripts/kc_stop_ollama.sh" "$HOME/KDE_CONNECT_CMDS/kc_stop_ollama.sh" 2>/dev/null || true
+        chmod +x "$HOME/KDE_CONNECT_CMDS/kc_start_wan2gp_profile45.sh" "$HOME/KDE_CONNECT_CMDS/kc_stop_wan2gp.sh" "$HOME/KDE_CONNECT_CMDS/kc_run_ollama_serve.sh" "$HOME/KDE_CONNECT_CMDS/kc_stop_ollama.sh" 2>/dev/null || true
+        echo -e "${GREEN}      ✓ Synced KDE Connect WAN2GP & Ollama scripts to ~/KDE_CONNECT_CMDS.${NC}"
     fi
 fi
 

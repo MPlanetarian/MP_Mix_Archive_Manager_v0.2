@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Start WAN2GP (Profile 4.5)
+GenericName=AI Video Server
+Comment=Start WAN2GP AI Video Server in Profile 4.5 (Low VRAM / 14B Models Offload) [New Tab/Window]
+Exec=/home/mplanetarian/KDE_CONNECT_CMDS/kc_start_wan2gp_profile45.sh
+Icon=utilities-terminal
+Terminal=false
+Categories=AudioVideo;Audio;Development;Utility;
+StartupNotify=false
+X-KDE-GlobalAccel-CommandShortcut=true
