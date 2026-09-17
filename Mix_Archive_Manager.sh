@@ -1544,6 +1544,26 @@ view_tasks() {
         echo -e "  [${GREEN}RUNNING${NC}] cliamp Retro Music Player (PID: ${cliamp_pids})${cliamp_desc}"
         ((tasks_found++))
     fi
+    if ss -tuln 2>/dev/null | grep -q ":3080 " || pgrep -f "dsh.*web|apps/cli/src/bin\.ts.*web" >/dev/null 2>&1; then
+        local dsh_pids
+        dsh_pids=$(lsof -ti:3080 2>/dev/null || pgrep -f "dsh.*web|apps/cli/src/bin\.ts.*web" 2>/dev/null | tr '\n' ' ')
+        echo -e "  [${GREEN}RUNNING${NC}] DeepSeek Harness (dsh-mobile - http://192.168.1.11:3080, PID: ${dsh_pids% })"
+        ((tasks_found++))
+    fi
+    if command -v podman >/dev/null 2>&1 && podman ps --filter "name=beszel" --format "{{.Names}}" 2>/dev/null | grep -q "^beszel$"; then
+        local bsz_status="Hub :8090"
+        if podman ps --filter "name=beszel-agent" --format "{{.Names}}" 2>/dev/null | grep -q "^beszel-agent$"; then
+            bsz_status="Hub :8090 + Agent"
+        fi
+        echo -e "  [${GREEN}RUNNING${NC}] Beszel Server Monitoring (${bsz_status})"
+        ((tasks_found++))
+    fi
+    if curl -s --connect-timeout 1 "http://127.0.0.1:11434/" 2>/dev/null | grep -qi "Ollama is running" || pgrep -f "ollama serve" >/dev/null 2>&1; then
+        local olm_pids
+        olm_pids=$(pgrep -f "ollama serve" 2>/dev/null | tr '\n' ' ')
+        echo -e "  [${GREEN}RUNNING${NC}] Ollama Local AI Server (http://127.0.0.1:11434, PID: ${olm_pids% })"
+        ((tasks_found++))
+    fi
     
     if [ $tasks_found -eq 0 ]; then
         echo -e "  ${GREEN}No active background tasks found.${NC}"
@@ -2609,6 +2629,18 @@ manage_beszel() {
     run_sub_script "beszel.sh" "$@"
 }
 
+manage_ollama() {
+    run_sub_script "manage_ollama.sh" "$@"
+}
+
+manage_dsh_mobile() {
+    run_sub_script "dsh_mobile.sh" "$@"
+}
+
+launch_dsh_mobile() {
+    run_sub_script "dsh_mobile.sh" start
+}
+
 _control_net_service() {
     local action="$1" # start, stop, restart
     local target="$2" # all, ssh, smb, ftp
@@ -3184,13 +3216,18 @@ manage_ai_models() {
         echo -e "  ${BOLD}${CYAN}4)${NC} Gemini 3.8 Flash (High)              ${GREEN}[gemini-3.8-flash-high]${NC}"
         echo -e "  ${BOLD}${CYAN}5)${NC} Gemini 3.1 Pro (High)                ${GREEN}[gemini-3.1-pro-high]${NC}"
         echo ""
-        echo -e "${BOLD}Sessions & Utilities:${NC}"
-        echo -e "  ${BOLD}${CYAN}6)${NC} Launch Default Session               ${GREEN}[agy]${NC}"
-        echo -e "  ${BOLD}${CYAN}7)${NC} Resume Most Recent Conversation      ${GREEN}[agy --continue]${NC}"
-        echo -e "  ${BOLD}${CYAN}8)${NC} View All Available Models & Status   ${GREEN}[agy models]${NC}"
-        echo -e "  ${BOLD}${CYAN}9)${NC} Return to Main Menu"
+        echo -e "${BOLD}Local Ollama & AI Web Interfaces:${NC}"
+        echo -e "  ${BOLD}${CYAN}6)${NC} Manage Ollama Server & Local Models  ${GREEN}[ollama serve / chat / status]${NC}"
+        echo -e "  ${BOLD}${CYAN}7)${NC} Launch dsh-mobile Web Server         ${GREEN}[http://192.168.1.11:3080]${NC}"
+        echo -e "  ${BOLD}${CYAN}8)${NC} Manage DeepSeek Harness Server       ${GREEN}[Start, Stop, Browser, Status]${NC}"
         echo ""
-        read -r -p "Enter choice [1-9]: " ai_choice
+        echo -e "${BOLD}Sessions & Utilities:${NC}"
+        echo -e "  ${BOLD}${CYAN}9)${NC} Launch Default Session               ${GREEN}[agy]${NC}"
+        echo -e "  ${BOLD}${CYAN}10)${NC} Resume Most Recent Conversation      ${GREEN}[agy --continue]${NC}"
+        echo -e "  ${BOLD}${CYAN}11)${NC} View All Available Models & Status   ${GREEN}[agy models]${NC}"
+        echo -e "  ${BOLD}${CYAN}12)${NC} Return to Main Menu"
+        echo ""
+        read -r -p "Enter choice [1-12]: " ai_choice
 
         case $ai_choice in
             1)
@@ -3209,13 +3246,23 @@ manage_ai_models() {
                 launch_ai_session "gemini-3.1-pro-high" "Gemini 3.1 Pro"
                 ;;
             6)
-                launch_ai_session "" "Antigravity AI"
+                manage_ollama
                 ;;
             7)
+                launch_dsh_mobile
+                press_enter
+                ;;
+            8)
+                manage_dsh_mobile
+                ;;
+            9)
+                launch_ai_session "" "Antigravity AI"
+                ;;
+            10)
                 echo -e "\n${BOLD}${YELLOW}Resuming most recent conversation...${NC}\n"
                 launch_ai_session "--continue" "Resume Session"
                 ;;
-            8)
+            11)
                 echo -e "\n${BOLD}${BLUE}=== AVAILABLE MODELS IN AGY ===${NC}\n"
                 if command -v agy >/dev/null 2>&1; then
                     agy models
@@ -3225,7 +3272,7 @@ manage_ai_models() {
                 echo ""
                 press_enter
                 ;;
-            9)
+            12|[qQ])
                 return 0
                 ;;
             *)
@@ -4519,11 +4566,7 @@ execute_startup_autoplay() {
     if [ -n "$active_playing_mix" ] || [ "$active_player_name" = "Strawberry" ]; then
         # Audio is already actively playing in the background (e.g. Strawberry).
         # Do NOT launch cliamp or start another track over it.
-        if [ -n "$active_playing_mix" ] && [ -f "$active_playing_mix" ]; then
-            if [ "${AUTO_SHOW_PLAYING_ASSETS:-true}" = "true" ] || [ "${AUTO_SHOW_COVER_ON_STARTUP:-true}" = "true" ] || [ "${AUTO_SHOW_TRACKLIST_ON_STARTUP:-true}" = "true" ]; then
-                auto_show_playing_mix_assets "$active_playing_mix" "$active_player_name"
-            fi
-        fi
+        # Do NOT hijack startup with intermediate tracklist screens; proceed directly to main window.
         return 0
     fi
 
@@ -4631,49 +4674,7 @@ if files:
         (sleep 0.6; open_video_url "$STARTUP_YOUTUBE_URL" >/dev/null 2>&1 || true) &
     fi
 
-    clear
-    echo -e "${BOLD}${MAGENTA}===================================================================================${NC}"
-    echo -e "${BOLD}${MAGENTA}                 🎶 AUTOMATIC STARTUP MIX PLAYBACK INITIALIZED 🎶                  ${NC}"
-    echo -e "${BOLD}${MAGENTA}===================================================================================${NC}"
-    echo -e "  • ${BOLD}Now Playing:${NC}       ${BOLD}${GREEN}${mix_basename}${NC}"
-    echo -e "  • ${BOLD}Default Player:${NC}    ${BOLD}${CYAN}${player}${NC} (Configured in config.env)"
-    local audio_spec
-    audio_spec=$(get_playing_audio_spec_summary "$selected_mix")
-    if [ -n "$audio_spec" ]; then
-        echo -e "  • ${BOLD}Audio Specs:${NC}       ${BOLD}${GREEN}${audio_spec}${NC}"
-    fi
-    local audio_out
-    audio_out=$(get_active_audio_interface_display)
-    if [ -n "$audio_out" ]; then
-        echo -e "  • ${BOLD}Audio Output:${NC}     ${audio_out#  }"
-    fi
-    if [ -n "$found_cover" ]; then
-        echo -e "  • ${BOLD}Cover Art Opened:${NC}  ${YELLOW}$(basename "$found_cover")${NC} (Image Viewer Window)"
-    fi
-    if [ -n "$found_tl" ]; then
-        echo -e "  • ${BOLD}Tracklist Opened:${NC}  ${CYAN}$(basename "$found_tl")${NC} (Dedicated Text Editor Window)"
-    fi
-    echo -e "${BOLD}${MAGENTA}-----------------------------------------------------------------------------------${NC}"
-
-    if [ -n "$found_tl" ]; then
-        echo -e "\n${BOLD}${CYAN}=== TRACKLIST PREVIEW: $(basename "$found_tl") ===${NC}\n"
-        head -n 25 "$found_tl"
-        local total_lines
-        total_lines=$(wc -l < "$found_tl" 2>/dev/null || echo "0")
-        if [ "$total_lines" -gt 25 ]; then
-            echo -e "  ${DIM}...and $((total_lines - 25)) more tracks (Also opened in full text editor window)${NC}"
-        fi
-    fi
-
-    echo -e "\n${BOLD}${BLUE}───────────────────────────────────────────────────────────────────────────────────${NC}"
-    echo -e "${DIM}Startup autoplay & assets active. Press [Enter] for Main Menu (or continuing in 3s)...${NC}"
-    if [ -t 0 ]; then
-        if [ -e /dev/tty ]; then
-            read -r -t 3 < /dev/tty 2>/dev/null || true
-        else
-            read -r -t 3 || true
-        fi
-    fi
+    return 0
 }
 
 configure_audio_player_and_startup() {
@@ -6766,11 +6767,9 @@ auto_show_playing_mix_assets() {
 }
 
 check_and_show_currently_playing_mix() {
-    local current_mix
-    current_mix=$(detect_currently_playing_mix 2>/dev/null)
-    if [ -n "$current_mix" ] && [ -f "$current_mix" ]; then
-        auto_show_playing_mix_assets "$current_mix" "Active Player"
-    fi
+    # On startup, proceed directly to the main menu window.
+    # Active playback info is displayed in the live status box by show_stats.
+    return 0
 }
 
 open_video_url() {
@@ -7122,6 +7121,59 @@ elif [ "$1" = "--beszel-status" ] || { [ "$1" = "57" ] && [ "$2" = "status" ]; }
 elif [ "$1" = "57" ] && [ -z "$2" ]; then
     manage_beszel
     exit 0
+elif [ "$1" = "--ollama" ] || [ "$1" = "--ollama-menu" ]; then
+    shift
+    manage_ollama "$@"
+    exit 0
+elif [ "$1" = "--ollama-serve" ] || [ "$1" = "--ollama-start" ] || [ "$1" = "--ollama-bg" ] || { [ "$1" = "58" ] && [ "$2" = "1" ]; }; then
+    run_sub_script "manage_ollama.sh" start
+    exit 0
+elif [ "$1" = "--ollama-window" ] || [ "$1" = "--ollama-term" ] || { [ "$1" = "58" ] && [ "$2" = "2" ]; }; then
+    run_sub_script "manage_ollama.sh" start-window
+    exit 0
+elif [ "$1" = "--ollama-stop" ] || { [ "$1" = "58" ] && [ "$2" = "3" ]; }; then
+    run_sub_script "manage_ollama.sh" stop
+    exit 0
+elif [ "$1" = "--ollama-restart" ] || { [ "$1" = "58" ] && [ "$2" = "4" ]; }; then
+    run_sub_script "manage_ollama.sh" restart
+    exit 0
+elif [ "$1" = "--ollama-chat" ] || { [ "$1" = "58" ] && [ "$2" = "5" ]; }; then
+    shift 2 2>/dev/null || shift 1
+    run_sub_script "manage_ollama.sh" chat "$@"
+    exit 0
+elif [ "$1" = "--ollama-logs" ] || { [ "$1" = "58" ] && [ "$2" = "6" ]; }; then
+    run_sub_script "manage_ollama.sh" logs
+    exit 0
+elif [ "$1" = "--ollama-status" ] || { [ "$1" = "58" ] && [ "$2" = "status" ]; }; then
+    run_sub_script "manage_ollama.sh" status
+    exit 0
+elif [ "$1" = "58" ] && [ -z "$2" ]; then
+    manage_ollama
+    exit 0
+elif [ "$1" = "--dsh-mobile" ] || [ "$1" = "--dsh" ] || [ "$1" = "--dsh-start" ] || { [ "$1" = "59" ] && [ "$2" = "1" ]; }; then
+    run_sub_script "dsh_mobile.sh" start
+    exit 0
+elif [ "$1" = "--dsh-bg" ] || { [ "$1" = "59" ] && [ "$2" = "2" ]; }; then
+    run_sub_script "dsh_mobile.sh" start-bg
+    exit 0
+elif [ "$1" = "--dsh-web" ] || [ "$1" = "--dsh-browser" ] || { [ "$1" = "59" ] && [ "$2" = "3" ]; }; then
+    run_sub_script "dsh_mobile.sh" web
+    exit 0
+elif [ "$1" = "--dsh-stop" ] || { [ "$1" = "59" ] && [ "$2" = "4" ]; }; then
+    run_sub_script "dsh_mobile.sh" stop
+    exit 0
+elif [ "$1" = "--dsh-restart" ] || { [ "$1" = "59" ] && [ "$2" = "5" ]; }; then
+    run_sub_script "dsh_mobile.sh" restart
+    exit 0
+elif [ "$1" = "--dsh-logs" ] || { [ "$1" = "59" ] && [ "$2" = "6" ]; }; then
+    run_sub_script "dsh_mobile.sh" logs
+    exit 0
+elif [ "$1" = "--dsh-status" ] || { [ "$1" = "59" ] && [ "$2" = "status" ]; }; then
+    run_sub_script "dsh_mobile.sh" status
+    exit 0
+elif [ "$1" = "--dsh-menu" ] || { [ "$1" = "59" ] && [ -z "$2" ]; }; then
+    manage_dsh_mobile
+    exit 0
 fi
 
 # ==============================================================================
@@ -7229,53 +7281,55 @@ while true; do
     echo -e "\n  ${BOLD}${BLUE}─── [ SECTION 6: SYSTEM, NETWORK & HARDWARE MANAGEMENT ] ────${NC}"
     echo -e "  ${BOLD}${CYAN}56)${NC} Manage WAN2GP Server (Start, Stop, Restart in Profile 2 or 4.5)"
     echo -e "  ${BOLD}${CYAN}57)${NC} Manage Beszel Server & Monitoring Agent (${GREEN}Start Hub & Agent, Status, Dashboard :8090${NC})"
-    echo -e "  ${BOLD}${CYAN}58)${NC} Manage Network Services (SSH, Samba, FTP - Start, Stop, Restart All)"
-    echo -e "  ${BOLD}${CYAN}59)${NC} Block Internet Access (LAN Only) (${GREEN}block-internet${NC})"
-    echo -e "  ${BOLD}${CYAN}60)${NC} Restore / Unblock Internet Access (${GREEN}unblock-internet${NC})"
+    echo -e "  ${BOLD}${CYAN}58)${NC} Manage Ollama Server (${GREEN}ollama serve in distrobox, Chat, Models, Logs :11434${NC})"
+    echo -e "  ${BOLD}${CYAN}59)${NC} Manage DeepSeek Harness Server (${GREEN}dsh-mobile - Start, Stop, Mobile Web UI :3080${NC})"
+    echo -e "  ${BOLD}${CYAN}60)${NC} Manage Network Services (SSH, Samba, FTP - Start, Stop, Restart All)"
+    echo -e "  ${BOLD}${CYAN}61)${NC} Block Internet Access (LAN Only) (${GREEN}block-internet${NC})"
+    echo -e "  ${BOLD}${CYAN}62)${NC} Restore / Unblock Internet Access (${GREEN}unblock-internet${NC})"
     if [ "$OS_TYPE" = "macos" ]; then
-        echo -e "  ${BOLD}${CYAN}61)${NC} Open macOS Display Settings (${GREEN}Displays, Arrangement & HDR${NC})"
-        echo -e "  ${BOLD}${CYAN}62)${NC} Open macOS Audio MIDI Setup (${GREEN}Sample Rates & Output Devices${NC})"
+        echo -e "  ${BOLD}${CYAN}63)${NC} Open macOS Display Settings (${GREEN}Displays, Arrangement & HDR${NC})"
+        echo -e "  ${BOLD}${CYAN}64)${NC} Open macOS Audio MIDI Setup (${GREEN}Sample Rates & Output Devices${NC})"
     elif [ "$OS_TYPE" = "windows" ] || [ "$OS_TYPE" = "wsl" ]; then
-        echo -e "  ${BOLD}${CYAN}61)${NC} Open Windows Display Settings (${GREEN}ms-settings:display - HDR & Scale${NC})"
-        echo -e "  ${BOLD}${CYAN}62)${NC} Open Windows Sound Settings (${GREEN}control.exe mmsys.cpl${NC})"
+        echo -e "  ${BOLD}${CYAN}63)${NC} Open Windows Display Settings (${GREEN}ms-settings:display - HDR & Scale${NC})"
+        echo -e "  ${BOLD}${CYAN}64)${NC} Open Windows Sound Settings (${GREEN}control.exe mmsys.cpl${NC})"
     else
-        echo -e "  ${BOLD}${CYAN}61)${NC} Switch Desktop to Plasma Wayland (HDR Gaming on Hisense & Steam BPM)"
-        echo -e "  ${BOLD}${CYAN}62)${NC} Switch Desktop to Plasma X11 (Workstation 4-Screen Defasten)"
+        echo -e "  ${BOLD}${CYAN}63)${NC} Switch Desktop to Plasma Wayland (HDR Gaming on Hisense & Steam BPM)"
+        echo -e "  ${BOLD}${CYAN}64)${NC} Switch Desktop to Plasma X11 (Workstation 4-Screen Defasten)"
     fi
-    echo -e "  ${BOLD}${CYAN}63)${NC} Close All Desktop Applications (Keep Manager Open)"
+    echo -e "  ${BOLD}${CYAN}65)${NC} Close All Desktop Applications (Keep Manager Open)"
     if [ "$OS_TYPE" = "macos" ]; then
-        echo -e "  ${BOLD}${CYAN}64)${NC} macOS System Maintenance & Cleanup (${GREEN}brew cleanup, purge RAM, caches${NC})"
+        echo -e "  ${BOLD}${CYAN}66)${NC} macOS System Maintenance & Cleanup (${GREEN}brew cleanup, purge RAM, caches${NC})"
     elif [ "$OS_TYPE" = "windows" ] || [ "$OS_TYPE" = "wsl" ]; then
-        echo -e "  ${BOLD}${CYAN}64)${NC} Windows System Maintenance & Cleanup (${GREEN}winget upgrade, clean temp, TRIM${NC})"
+        echo -e "  ${BOLD}${CYAN}66)${NC} Windows System Maintenance & Cleanup (${GREEN}winget upgrade, clean temp, TRIM${NC})"
     elif [ "$OS_TYPE" = "freebsd" ]; then
-        echo -e "  ${BOLD}${CYAN}64)${NC} FreeBSD System Maintenance & Cleanup (${GREEN}pkg upgrade, pkg clean, autoremove, audit${NC})"
+        echo -e "  ${BOLD}${CYAN}66)${NC} FreeBSD System Maintenance & Cleanup (${GREEN}pkg upgrade, pkg clean, autoremove, audit${NC})"
     else
-        echo -e "  ${BOLD}${CYAN}64)${NC} Bazzite System Maintenance & Cleanup (${GREEN}ujust clean-system, update, trim, logs${NC})"
+        echo -e "  ${BOLD}${CYAN}66)${NC} Bazzite System Maintenance & Cleanup (${GREEN}ujust clean-system, update, trim, logs${NC})"
     fi
-    echo -e "  ${BOLD}${CYAN}65)${NC} Launch GeeXLab Demo Launcher (${GREEN}FurMark_linux64/demo_launcher.sh${NC})"
-    echo -e "  ${BOLD}${CYAN}66)${NC} Burn ISO Image to USB Drive (${GREEN}dd / diskutil with safety checks${NC})"
-    echo -e "  ${BOLD}${CYAN}67)${NC} Dynamic System MOTD Banner Manager (${GREEN}Last 5 Mixes, Date/Time, Size, Format & Specs${NC})"
+    echo -e "  ${BOLD}${CYAN}67)${NC} Launch GeeXLab Demo Launcher (${GREEN}FurMark_linux64/demo_launcher.sh${NC})"
+    echo -e "  ${BOLD}${CYAN}68)${NC} Burn ISO Image to USB Drive (${GREEN}dd / diskutil with safety checks${NC})"
+    echo -e "  ${BOLD}${CYAN}69)${NC} Dynamic System MOTD Banner Manager (${GREEN}Last 5 Mixes, Date/Time, Size, Format & Specs${NC})"
     
     echo -e "\n  ${BOLD}${BLUE}─── [ SECTION 7: AI, SHELL CLI & SETTINGS ] ──────────────────${NC}"
-    echo -e "  ${BOLD}${CYAN}68)${NC} Launch AI Assistant / Models (${GREEN}Claude Opus, Claude Sonnet, GPT-OSS, Gemini${NC})"
-    echo -e "  ${BOLD}${CYAN}69)${NC} Run Bash CLI Commands (${GREEN}Interactive Shell & Direct Runner${NC})"
-    echo -e "  ${BOLD}${CYAN}70)${NC} Manager Themes & Color Palette Switcher (${GREEN}8 Themes + Classic${NC})"
-    echo -e "  ${BOLD}${CYAN}71)${NC} Manage Installation & Configuration (${GREEN}Migrate Path, Backup, Export & Import Config${NC})"
+    echo -e "  ${BOLD}${CYAN}70)${NC} Launch AI Assistant / Models (${GREEN}Claude Opus, Claude Sonnet, GPT-OSS, Gemini, Ollama, DeepSeek${NC})"
+    echo -e "  ${BOLD}${CYAN}71)${NC} Run Bash CLI Commands (${GREEN}Interactive Shell & Direct Runner${NC})"
+    echo -e "  ${BOLD}${CYAN}72)${NC} Manager Themes & Color Palette Switcher (${GREEN}8 Themes + Classic${NC})"
+    echo -e "  ${BOLD}${CYAN}73)${NC} Manage Installation & Configuration (${GREEN}Migrate Path, Backup, Export & Import Config${NC})"
     if [ "$OS_TYPE" = "macos" ]; then
-        echo -e "  ${BOLD}${CYAN}72)${NC} Reboot System (${RED}macOS restart with confirmation${NC})"
+        echo -e "  ${BOLD}${CYAN}74)${NC} Reboot System (${RED}macOS restart with confirmation${NC})"
     elif [ "$OS_TYPE" = "windows" ] || [ "$OS_TYPE" = "wsl" ]; then
-        echo -e "  ${BOLD}${CYAN}72)${NC} Reboot System (${RED}Windows restart with confirmation${NC})"
+        echo -e "  ${BOLD}${CYAN}74)${NC} Reboot System (${RED}Windows restart with confirmation${NC})"
     elif [ "$OS_TYPE" = "freebsd" ]; then
-        echo -e "  ${BOLD}${CYAN}72)${NC} Reboot System (${RED}FreeBSD restart with confirmation${NC})"
+        echo -e "  ${BOLD}${CYAN}74)${NC} Reboot System (${RED}FreeBSD restart with confirmation${NC})"
     else
-        echo -e "  ${BOLD}${CYAN}72)${NC} Reboot System (${RED}systemctl reboot with confirmation${NC})"
+        echo -e "  ${BOLD}${CYAN}74)${NC} Reboot System (${RED}systemctl reboot with confirmation${NC})"
     fi
     
     echo -e "\n  ${BOLD}${BLUE}──────────────────────────────────────────────────────────────${NC}"
     get_manager_uptime
-    echo -e "  ${BOLD}${CYAN}73)${NC} Exit Manager ${DIM}(or 0 / q)${NC}"
+    echo -e "  ${BOLD}${CYAN}75)${NC} Exit Manager ${DIM}(or 0 / q)${NC}"
     echo ""
-    read -r -p "Enter choice [1-73, or q to exit]: " choice
+    read -r -p "Enter choice [1-75, or q to exit]: " choice
     
     case $choice in
         1)
@@ -7530,48 +7584,54 @@ while true; do
             manage_beszel
             ;;
         58)
-            manage_network_services
+            manage_ollama
             ;;
         59)
-            block_internet
+            manage_dsh_mobile
             ;;
         60)
-            unblock_internet
+            manage_network_services
             ;;
         61)
-            switch_to_wayland
+            block_internet
             ;;
         62)
-            switch_to_x11
+            unblock_internet
             ;;
         63)
-            close_all_desktop_apps
+            switch_to_wayland
             ;;
         64)
-            manage_system_maintenance
+            switch_to_x11
             ;;
         65)
-            launch_geexlab_demos
+            close_all_desktop_apps
             ;;
         66)
-            burn_iso_to_usb
+            manage_system_maintenance
             ;;
         67)
-            manage_system_motd_menu
+            launch_geexlab_demos
             ;;
         68)
-            manage_ai_models
+            burn_iso_to_usb
             ;;
         69)
-            run_bash_cli
+            manage_system_motd_menu
             ;;
         70)
-            manage_themes
+            manage_ai_models
             ;;
         71)
-            manage_installation_and_config
+            run_bash_cli
             ;;
         72)
+            manage_themes
+            ;;
+        73)
+            manage_installation_and_config
+            ;;
+        74)
             reboot_system
             ;;
         split-flac|split_flac)
@@ -7590,12 +7650,20 @@ while true; do
             manage_beszel
             press_enter
             ;;
-        73|0|[qQ]|[eE][xX][iI][tT])
+        ollama|ollama-serve|ollama_serve|ollama-start|ollama_start)
+            manage_ollama
+            press_enter
+            ;;
+        dsh|dsh-mobile|dsh_mobile|dsh-start|dsh_start|dsh-web|dsh_web|deepseek|deepseek-harness)
+            manage_dsh_mobile
+            press_enter
+            ;;
+        75|0|[qQ]|[eE][xX][iI][tT])
             echo -e "\n${BOLD}${GREEN}Exiting Mix Archive Manager. Goodbye!${NC}\n"
             exit 0
             ;;
         *)
-            echo -e "\n${RED}Invalid option! Please enter a number between 1 and 73 (or 'q' to exit).${NC}"
+            echo -e "\n${RED}Invalid option! Please enter a number between 1 and 75 (or 'q' to exit).${NC}"
             sleep 2
             ;;
     esac

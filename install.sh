@@ -178,9 +178,11 @@ ln -sf "$SCRIPT_DIR/scripts/kc_start_wan2gp_profile45.sh" "$HOME/.local/bin/wan2
 ln -sf "$SCRIPT_DIR/scripts/kc_stop_wan2gp.sh" "$HOME/.local/bin/wan2gp-stop" 2>/dev/null || true
 ln -sf "$SCRIPT_DIR/scripts/kc_run_ollama_serve.sh" "$HOME/.local/bin/ollama-serve" 2>/dev/null || true
 ln -sf "$SCRIPT_DIR/scripts/kc_stop_ollama.sh" "$HOME/.local/bin/ollama-stop" 2>/dev/null || true
+ln -sf "$SCRIPT_DIR/scripts/manage_ollama.sh" "$HOME/.local/bin/manage-ollama" 2>/dev/null || true
 ln -sf "$SCRIPT_DIR/scripts/kc_launch_beszel_hub_and_agent.sh" "$HOME/.local/bin/beszel-hub-and-agent" 2>/dev/null || true
 ln -sf "$SCRIPT_DIR/scripts/beszel.sh" "$HOME/.local/bin/beszel" 2>/dev/null || true
-ln -sf "$SCRIPT_DIR/scripts/kc_launch_dsh_mobile.sh" "$HOME/.local/bin/dsh-mobile" 2>/dev/null || true
+ln -sf "$SCRIPT_DIR/scripts/dsh_mobile.sh" "$HOME/.local/bin/dsh-mobile" 2>/dev/null || true
+ln -sf "$SCRIPT_DIR/scripts/dsh_mobile.sh" "$HOME/.local/bin/manage-dsh-mobile" 2>/dev/null || true
 ln -sf "$SCRIPT_DIR/scripts/kc_run_aider_qwen.sh" "$HOME/.local/bin/aider-qwen" 2>/dev/null || true
 ln -sf "$SCRIPT_DIR/Mix_Archive_Manager.sh" "$HOME/manager.sh" 2>/dev/null || true
 

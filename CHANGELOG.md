@@ -9,13 +9,54 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.2.1] - 2026-09-17
 
+- **DeepSeek Harness Web Server & Mobile Interface Management (`dsh-mobile` - Option 59)**:
+  - Added standalone controller script `scripts/dsh_mobile.sh` (mirrored to `dsh_mobile.sh`, symlinked to `bin/dsh-mobile`, `bin/manage-dsh-mobile`, `~/.local/bin/dsh-mobile`, and `~/.local/bin/manage-dsh-mobile`):
+    - Manages `pnpm dsh web` running at `/var/home/mplanetarian/beszel-hub/deepseek-harness` with LAN mobile trust (`--trusted-host 192.168.1.11:3080 --trusted-host 192.168.1.11 --no-open`) on port 3080 (`http://192.168.1.11:3080`).
+    - Supports starting in a dedicated terminal window (Konsole tab, xdg-terminal-exec, gnome-terminal, xterm) or in background daemon mode (logging to `/tmp/dsh-mobile.log`).
+    - Fast process and socket detection (`ss`, `lsof`, `pgrep`) with clean termination (`SIGTERM` and fallback `SIGKILL`).
+    - Server status and environment inspection: reports process state, PID, local URL (`http://localhost:3080`), LAN mobile URL (`http://192.168.1.11:3080`), port listening status, harness directory, and latest git commit.
+    - One-click browser dispatch to open the mobile web interface in the default browser.
+    - Live server log viewer inspecting `/tmp/dsh-mobile.log`.
+  - Integrated into `Mix_Archive_Manager.sh`:
+    - **Option 59**: `Manage DeepSeek Harness Server (dsh-mobile - Start, Stop, Mobile Web UI :3080)` in Section 6 (System, Network & Hardware Management).
+    - Added to **Option 70 (manage_ai_models)**: Options 7 & 8 to launch and manage `dsh-mobile` alongside Claude Sonnet, Claude Opus, GPT-OSS, Gemini, and Ollama.
+    - Live task detection in `show_stats`: actively detects running `dsh-mobile` processes and displays them under running background tasks with PID and URL.
+    - CLI flags: `--dsh-mobile`, `--dsh`, `--dsh-start`, `--dsh-bg`, `--dsh-web`, `--dsh-stop`, `--dsh-restart`, `--dsh-logs`, and `--dsh-status`.
+    - Subcommand arguments: `59 1` (Start Window), `59 2` (Start BG), `59 3` (Web UI), `59 4` (Stop), `59 5` (Restart), `59 6` (Logs), `59 status`.
+    - Menu prompt keyword triggers: `dsh`, `dsh-mobile`, `dsh_mobile`, `dsh-start`, `dsh-web`, `deepseek`, `deepseek-harness`.
+    - Renumbered Section 6 & 7 operations up to Option 75 (Exit).
+  - Updated `scripts/kc_launch_dsh_mobile.sh` and KDE Connect integration to delegate to the unified `dsh_mobile.sh` engine.
+  - Updated `install.sh` to install `bin/dsh-mobile`, `bin/manage-dsh-mobile`, and user local bin symlinks.
+
+- **Ollama Server & Local LLM Management (Option 58)**:
+  - Added standalone controller script `scripts/manage_ollama.sh` (mirrored to `manage_ollama.sh`, symlinked to `bin/manage-ollama` and `~/.local/bin/manage-ollama`):
+    - Manages `ollama serve` running inside distrobox container `ollama-container` on port 11434 (`http://127.0.0.1:11434`).
+    - Supports starting in background daemon mode or in a dedicated terminal window (Konsole tab, xdg-terminal-exec, gnome-terminal, xterm) for viewing live inference logs.
+    - Includes automatic podman container pre-check (`podman start ollama-container`) and endpoint responsiveness loop.
+    - Graceful process termination with `SIGTERM` and fallback `SIGKILL`.
+    - Live server status and hardware inspection: reports HTTP 200 health, API endpoint, PID, container state, NVIDIA GPU model/VRAM (CUDA enabled), and lists all installed local models with parameter size, quantisation level, and disk footprint.
+    - Interactive CLI chat launcher allowing selection from installed local models (Qwen 2.5, LLaMA 3.1, Nemotron, SmolLM2, etc.) for direct inference inside the container.
+    - Server log viewer inspecting `/tmp/ollama-serve.log`.
+  - Integrated into `Mix_Archive_Manager.sh`:
+    - **Option 58**: `Manage Ollama Server` in Section 6 (System, Network & Hardware Management).
+    - Added to **Option 69 (manage_ai_models)**: Direct access to manage Ollama and run local models alongside Claude Sonnet, Claude Opus, GPT-OSS, and Gemini.
+    - CLI flags: `--ollama`, `--ollama-serve`, `--ollama-start`, `--ollama-window`, `--ollama-stop`, `--ollama-restart`, `--ollama-chat`, `--ollama-logs`, and `--ollama-status`.
+    - Subcommand arguments: `58 1` (Start BG), `58 2` (Start Window), `58 3` (Stop), `58 4` (Restart), `58 5` (Chat), `58 6` (Logs), `58 status`.
+    - Menu prompt keyword triggers: `ollama`, `ollama-serve`, `ollama-start`.
+    - Renumbered Section 6 & 7 operations up to Option 74 (Exit).
+  - Updated `install.sh` to automatically install `bin/manage-ollama` and `~/.local/bin/manage-ollama` symlinks.
+
 - **Strawberry Music Player Integration & Startup Autoplay Fix**:
   - Configured Strawberry as default audio player (`DEFAULT_AUDIO_PLAYER="strawberry"`) across `Mix_Archive_Manager.sh`, `config.env`, and `config.env.example`.
   - Resolved issue where launching the manager automatically opened `cliamp` even when Strawberry was already playing.
   - Added active playback pre-check in `execute_startup_autoplay`: detects if Strawberry or any other player is currently playing before initiating playback or launching external windows.
   - Implemented `get_strawberry_track_info` via MPRIS D-Bus (`qdbus`, `dbus-send`, and `playerctl` fallbacks) to report live playback status, track title, artist, album, elapsed time, total duration, progress percentage, and resolved file path.
-  - Integrated Strawberry real-time status display into the manager's Live Status Box (`show_stats`), active background tasks list (`show_active_tasks`), and command-line flags (`--strawberry-info`, `--track`, `--current-track`, `-p`).
-  - Removed unused experimental Javascript binary artifact (`bin/mix-archive-manager.js`).
+- **Fix Startup Display Behavior**:
+  - Eliminated unexpected intermediate Live Tracklist / Now Playing preview screen and delay on manager launch.
+  - When background playback is active (e.g. Strawberry), `execute_startup_autoplay` now returns cleanly and immediately without calling `auto_show_playing_mix_assets` or popping up tracklist windows.
+  - Removed disruptive 3-second preview delay from the startup sequence so the manager main window loads instantly.
+  - Updated `scripts/view_tracklist_console.sh` interactive loop to ignore unconsumed newline / empty inputs and avoid premature window closing.
+
 - **FLAC & YouTube MP4 Video Splitting Utilities**:
   - Implemented standalone interactive utility `Split_FLAC_File.sh` (mirrored to `scripts/Split_FLAC_File.sh`, symlinked to `bin/split-flac` and `~/.local/bin/split-flac`):
     - Discovers candidate `.flac` files in `FLAC_CONVERTED_OUTPUTS` and allows manual entry/pasting of custom full paths.

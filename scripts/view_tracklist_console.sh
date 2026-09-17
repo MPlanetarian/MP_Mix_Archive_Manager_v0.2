@@ -157,7 +157,7 @@ while true; do
     fi
 
     case "$key" in
-        [qQ]|""|$'\e')
+        [qQ]|$'\e')
             # Exit and close the borderless terminal window
             exit 0
             ;;
