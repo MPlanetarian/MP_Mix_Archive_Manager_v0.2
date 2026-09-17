@@ -41,10 +41,14 @@ DSH_LOCAL_URL="http://localhost:${DSH_PORT}"
 DSH_LAN_URL="http://${DSH_LAN_IP}:${DSH_PORT}"
 LOG_FILE="/tmp/dsh-mobile.log"
 
+ensure_lan_bridge() {
+    if ! systemctl --user is-active --quiet dsh-mobile-bridge.service 2>/dev/null; then
+        systemctl --user start dsh-mobile-bridge.service 2>/dev/null || true
+    fi
+}
+
 is_dsh_running() {
-    if ss -tuln 2>/dev/null | grep -q ":${DSH_PORT} "; then
-        return 0
-    elif command -v lsof >/dev/null 2>&1 && lsof -ti:"${DSH_PORT}" >/dev/null 2>&1; then
+    if ss -tuln 2>/dev/null | grep -q "127.0.0.1:${DSH_PORT} "; then
         return 0
     elif pgrep -f "dsh.*web" >/dev/null 2>&1 || pgrep -f "apps/cli/src/bin\.ts.*web" >/dev/null 2>&1; then
         return 0
@@ -54,17 +58,16 @@ is_dsh_running() {
 
 get_dsh_pids() {
     local pids=""
-    if command -v lsof >/dev/null 2>&1; then
-        pids=$(lsof -ti:"${DSH_PORT}" 2>/dev/null | tr '\n' ' ')
-    fi
-    if [ -z "$pids" ]; then
-        pids=$(pgrep -f "dsh.*web|apps/cli/src/bin\.ts.*web" 2>/dev/null | tr '\n' ' ')
+    pids=$(pgrep -f "dsh.*web|apps/cli/src/bin\.ts.*web" 2>/dev/null | tr '\n' ' ')
+    if [ -z "$pids" ] && command -v lsof >/dev/null 2>&1; then
+        pids=$(lsof -ti:"127.0.0.1:${DSH_PORT}" 2>/dev/null | tr '\n' ' ')
     fi
     echo "$pids"
 }
 
 start_dsh_window() {
     echo -e "\n${BOLD}${BLUE}=== LAUNCHING DSH-MOBILE (TERMINAL WINDOW) ===${NC}"
+    ensure_lan_bridge
     if is_dsh_running; then
         local pids
         pids=$(get_dsh_pids)
@@ -137,6 +140,7 @@ start_dsh_window() {
 
 start_dsh_bg() {
     echo -e "\n${BOLD}${BLUE}=== STARTING DSH-MOBILE (BACKGROUND DAEMON) ===${NC}"
+    ensure_lan_bridge
     if is_dsh_running; then
         local pids
         pids=$(get_dsh_pids)
