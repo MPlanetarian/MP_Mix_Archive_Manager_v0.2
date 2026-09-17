@@ -195,6 +195,7 @@ MP_Mix_Manager_v0.2/
 │   ├── view-tracklist           # Borderless console tracklist viewer
 │   ├── split-flac               # Interactive lossless FLAC splitter CLI
 │   ├── split-video              # Interactive YouTube MP4 video splitter CLI
+│   ├── beszel                   # Beszel server monitoring hub & agent controller CLI
 │   ├── transfer-monitor         # Live file write and transfer inspector
 │   ├── chrome-upload-monitor    # Real-time web / Podcast Connect upload monitor
 │   ├── update-nft-playlist      # M3U / XSPF video playlist builder
@@ -253,6 +254,7 @@ MP_Mix_Manager_v0.2/
 │   ├── play_defasten_4screens.sh# Multi-screen video display orchestrator
 │   ├── close_allapps.sh         # Window manager cleaner (protects active manager)
 │   ├── wan2gp.sh                # WAN2GP AI Video server runner
+│   ├── beszel.sh                # Beszel server monitoring hub & hardware agent runner
 │   ├── wan2gp_flux_batch.py     # Flux Klein 9B batch generation
 │   ├── wan2gp_ltx_batch.py      # LTX Video 2B/13B batch generation
 │   ├── clear-wan2gp-logs.sh     # AI generation log pruner
@@ -282,7 +284,7 @@ MP_Mix_Manager_v0.2/
 
 ---
 
-## 🎛️ Feature Matrix (72 Core Operations in 7 Logical Sections)
+## 🎛️ Feature Matrix (73 Core Operations in 7 Logical Sections)
 
 ### ─── [ SECTION 1: MIX ARCHIVE WORKFLOW & INGESTION ] ──────────
 | # | Operation | Description |
@@ -363,26 +365,27 @@ MP_Mix_Manager_v0.2/
 | # | Operation | Description |
 |---|---|---|
 | **56**| **Manage WAN2GP Server** | Controls WAN2GP AI video server (Profile 2 / 4.5, Flux Klein 9B batch, LTX Video 2B/13B). Accessible via KDE Connect shortcuts, desktop entries, and CLI (`--wan2gp-start-4.5` / `--wan2gp-stop` / `56 2` / `56 3`). |
-| **57**| **Manage Network Services** | Bulk and individual start, stop, restart, and status for SSH (`sshd`), Samba (`smb`), and FTP (`vsftpd`) across Linux (`systemctl`), FreeBSD (`service`), macOS (`launchctl`/`systemsetup`), and Windows (PowerShell). |
-| **58**| **Block Internet Access (LAN Only)** | Activates an isolated firewall table blocking WAN while keeping LAN open (`block-internet`). |
-| **59**| **Restore / Unblock Internet Access** | Restores immediate full internet connectivity (`unblock-internet`). |
-| **60**| **Display Settings (OS Tailored)** | Opens Plasma Wayland on Linux, macOS Display Settings, or Windows Display Settings (`ms-settings:display`). |
-| **61**| **Audio / Sound Settings (OS Tailored)** | Opens Plasma X11 on Linux, Audio MIDI Setup on macOS, or Windows Sound Panel (`control.exe mmsys.cpl`). |
-| **62**| **Close All Desktop Applications** | Gracefully closes external desktop windows using AppleScript (macOS), PowerShell (Windows), or `wmctrl` (Linux) while shielding the manager. |
-| **63**| **System Maintenance & Cleanup** | Executes platform maintenance (Linux `ujust clean-system`, macOS `brew cleanup` & RAM purge, Windows `winget upgrade` & temp cleanup, FreeBSD `pkg clean`, `pkg upgrade`, `pkg autoremove`). |
-| **64**| **Launch GeeXLab Demo Launcher** | Runs 3D/OpenGL shader demos and GPU stress tests via GeeXLab/FurMark. |
-| **65**| **Burn ISO Image to USB Drive** | Writes bootable ISO files directly to removable USB storage with safety checks and dd progress (macOS `diskutil` / Linux `lsblk`). |
-| **66**| **Dynamic System MOTD Banner Manager** | Dynamic Message Of The Day generator (`update_system_motd.sh`): renders stylized ANSI MOTD table summarizing the last 5 created mixes, dates, times, sizes, formats, and audio specs. |
+| **57**| **Manage Beszel Monitoring Suite** | Controls Beszel server monitoring hub (Web Dashboard on port 8090) and hardware/NVIDIA GPU/Podman agent. Supports starting Hub, Agent, or both, live status, logs, browser dashboard dispatch, and CLI (`--beszel-start` / `--beszel-hub` / `--beszel-agent` / `--beszel-stop` / `57 1` / `57 2` / `57 3`). |
+| **58**| **Manage Network Services** | Bulk and individual start, stop, restart, and status for SSH (`sshd`), Samba (`smb`), and FTP (`vsftpd`) across Linux (`systemctl`), FreeBSD (`service`), macOS (`launchctl`/`systemsetup`), and Windows (PowerShell). |
+| **59**| **Block Internet Access (LAN Only)** | Activates an isolated firewall table blocking WAN while keeping LAN open (`block-internet`). |
+| **60**| **Restore / Unblock Internet Access** | Restores immediate full internet connectivity (`unblock-internet`). |
+| **61**| **Display Settings (OS Tailored)** | Opens Plasma Wayland on Linux, macOS Display Settings, or Windows Display Settings (`ms-settings:display`). |
+| **62**| **Audio / Sound Settings (OS Tailored)** | Opens Plasma X11 on Linux, Audio MIDI Setup on macOS, or Windows Sound Panel (`control.exe mmsys.cpl`). |
+| **63**| **Close All Desktop Applications** | Gracefully closes external desktop windows using AppleScript (macOS), PowerShell (Windows), or `wmctrl` (Linux) while shielding the manager. |
+| **64**| **System Maintenance & Cleanup** | Executes platform maintenance (Linux `ujust clean-system`, macOS `brew cleanup` & RAM purge, Windows `winget upgrade` & temp cleanup, FreeBSD `pkg clean`, `pkg upgrade`, `pkg autoremove`). |
+| **65**| **Launch GeeXLab Demo Launcher** | Runs 3D/OpenGL shader demos and GPU stress tests via GeeXLab/FurMark. |
+| **66**| **Burn ISO Image to USB Drive** | Writes bootable ISO files directly to removable USB storage with safety checks and dd progress (macOS `diskutil` / Linux `lsblk`). |
+| **67**| **Dynamic System MOTD Banner Manager** | Dynamic Message Of The Day generator (`update_system_motd.sh`): renders stylized ANSI MOTD table summarizing the last 5 created mixes, dates, times, sizes, formats, and audio specs. |
 
 ### ─── [ SECTION 7: AI, SHELL CLI & SETTINGS ] ───────────────────
 | # | Operation | Description |
 |---|---|---|
-| **67**| **Launch AI Assistant / Models (AGY)** | Starts Antigravity CLI AI sessions (Claude Sonnet, Claude Opus, GPT-OSS, Gemini). |
-| **68**| **Run Bash CLI Commands** | Built-in interactive Bash shell and direct command execution runner. |
-| **69**| **Manager Themes & Color Palette Switcher** | Switch between 9 terminal themes (Cyberpunk, Dracula, Nord, Matrix, Solarized, Tokyo Night, Monokai, Gruvbox, Emerald, Classic). |
-| **70**| **Manage Installation & Configuration** | Comprehensive installation migration wizard (relocates codebase path and auto-repoints all CLI wrappers and desktop entries), instant timestamped config backups, portable `.tar.gz` config bundle export (with SHA-256 verification and manifest), safe bundle import with pre-import snapshots, and rollback/restore of historical snapshots (`manage_installation_config.sh`). |
-| **71**| **Reboot System** | Cross-platform system reboot with safety confirmation dialog (`systemctl reboot`, macOS `osascript`, Windows `shutdown.exe /r`, FreeBSD `shutdown -r now`). |
-| **72**| **Exit Manager** | Cleans up and exits the console session. |
+| **68**| **Launch AI Assistant / Models (AGY)** | Starts Antigravity CLI AI sessions (Claude Sonnet, Claude Opus, GPT-OSS, Gemini). |
+| **69**| **Run Bash CLI Commands** | Built-in interactive Bash shell and direct command execution runner. |
+| **70**| **Manager Themes & Color Palette Switcher** | Switch between 9 terminal themes (Cyberpunk, Dracula, Nord, Matrix, Solarized, Tokyo Night, Monokai, Gruvbox, Emerald, Classic). |
+| **71**| **Manage Installation & Configuration** | Comprehensive installation migration wizard (relocates codebase path and auto-repoints all CLI wrappers and desktop entries), instant timestamped config backups, portable `.tar.gz` config bundle export (with SHA-256 verification and manifest), safe bundle import with pre-import snapshots, and rollback/restore of historical snapshots (`manage_installation_config.sh`). |
+| **72**| **Reboot System** | Cross-platform system reboot with safety confirmation dialog (`systemctl reboot`, macOS `osascript`, Windows `shutdown.exe /r`, FreeBSD `shutdown -r now`). |
+| **73**| **Exit Manager** | Cleans up and exits the console session. |
 
 ---
 

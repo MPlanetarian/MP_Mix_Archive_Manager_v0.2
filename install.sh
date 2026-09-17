@@ -178,6 +178,10 @@ ln -sf "$SCRIPT_DIR/scripts/kc_start_wan2gp_profile45.sh" "$HOME/.local/bin/wan2
 ln -sf "$SCRIPT_DIR/scripts/kc_stop_wan2gp.sh" "$HOME/.local/bin/wan2gp-stop" 2>/dev/null || true
 ln -sf "$SCRIPT_DIR/scripts/kc_run_ollama_serve.sh" "$HOME/.local/bin/ollama-serve" 2>/dev/null || true
 ln -sf "$SCRIPT_DIR/scripts/kc_stop_ollama.sh" "$HOME/.local/bin/ollama-stop" 2>/dev/null || true
+ln -sf "$SCRIPT_DIR/scripts/kc_launch_beszel_hub_and_agent.sh" "$HOME/.local/bin/beszel-hub-and-agent" 2>/dev/null || true
+ln -sf "$SCRIPT_DIR/scripts/beszel.sh" "$HOME/.local/bin/beszel" 2>/dev/null || true
+ln -sf "$SCRIPT_DIR/scripts/kc_launch_dsh_mobile.sh" "$HOME/.local/bin/dsh-mobile" 2>/dev/null || true
+ln -sf "$SCRIPT_DIR/scripts/kc_run_aider_qwen.sh" "$HOME/.local/bin/aider-qwen" 2>/dev/null || true
 ln -sf "$SCRIPT_DIR/Mix_Archive_Manager.sh" "$HOME/manager.sh" 2>/dev/null || true
 
 echo -e "${GREEN}      ✓ Installed symlinks into ~/.local/bin and ~/manager.sh.${NC}"
@@ -257,7 +261,7 @@ elif [ "$HOST_OS" = "windows" ] || [ "$HOST_OS" = "wsl" ]; then
 else
     # Linux Desktop Entries (.desktop)
     mkdir -p "$HOME/.local/share/applications"
-    for _dentry in "Mix_Archive_Manager.desktop" "wan2gp-start-profile45.desktop" "wan2gp-stop.desktop" "ollama-serve.desktop" "ollama-stop.desktop"; do
+    for _dentry in "Mix_Archive_Manager.desktop" "wan2gp-start-profile45.desktop" "wan2gp-stop.desktop" "ollama-serve.desktop" "ollama-stop.desktop" "beszel-hub-and-agent.desktop" "dsh-mobile.desktop"; do
         if [ -f "$SCRIPT_DIR/desktop/$_dentry" ]; then
             cp -p "$SCRIPT_DIR/desktop/$_dentry" "$HOME/.local/share/applications/$_dentry"
             if [ -d "$HOME/Desktop" ]; then
@@ -267,7 +271,7 @@ else
         fi
     done
     update-desktop-database "$HOME/.local/share/applications" 2>/dev/null || true
-    echo -e "${GREEN}      ✓ Application, WAN2GP, and Ollama shortcuts installed.${NC}"
+    echo -e "${GREEN}      ✓ Application, WAN2GP, Ollama, Beszel, and dsh-mobile shortcuts installed.${NC}"
 
     # Sync KDE Connect command scripts if directory exists
     if [ -d "$HOME/KDE_CONNECT_CMDS" ]; then
@@ -275,8 +279,10 @@ else
         cp -p "$SCRIPT_DIR/scripts/kc_stop_wan2gp.sh" "$HOME/KDE_CONNECT_CMDS/kc_stop_wan2gp.sh" 2>/dev/null || true
         cp -p "$SCRIPT_DIR/scripts/kc_run_ollama_serve.sh" "$HOME/KDE_CONNECT_CMDS/kc_run_ollama_serve.sh" 2>/dev/null || true
         cp -p "$SCRIPT_DIR/scripts/kc_stop_ollama.sh" "$HOME/KDE_CONNECT_CMDS/kc_stop_ollama.sh" 2>/dev/null || true
-        chmod +x "$HOME/KDE_CONNECT_CMDS/kc_start_wan2gp_profile45.sh" "$HOME/KDE_CONNECT_CMDS/kc_stop_wan2gp.sh" "$HOME/KDE_CONNECT_CMDS/kc_run_ollama_serve.sh" "$HOME/KDE_CONNECT_CMDS/kc_stop_ollama.sh" 2>/dev/null || true
-        echo -e "${GREEN}      ✓ Synced KDE Connect WAN2GP & Ollama scripts to ~/KDE_CONNECT_CMDS.${NC}"
+        cp -p "$SCRIPT_DIR/scripts/kc_launch_beszel_hub_and_agent.sh" "$HOME/KDE_CONNECT_CMDS/kc_launch_beszel_hub_and_agent.sh" 2>/dev/null || true
+        cp -p "$SCRIPT_DIR/scripts/kc_launch_dsh_mobile.sh" "$HOME/KDE_CONNECT_CMDS/kc_launch_dsh_mobile.sh" 2>/dev/null || true
+        chmod +x "$HOME/KDE_CONNECT_CMDS/kc_start_wan2gp_profile45.sh" "$HOME/KDE_CONNECT_CMDS/kc_stop_wan2gp.sh" "$HOME/KDE_CONNECT_CMDS/kc_run_ollama_serve.sh" "$HOME/KDE_CONNECT_CMDS/kc_stop_ollama.sh" "$HOME/KDE_CONNECT_CMDS/kc_launch_beszel_hub_and_agent.sh" "$HOME/KDE_CONNECT_CMDS/kc_launch_dsh_mobile.sh" 2>/dev/null || true
+        echo -e "${GREEN}      ✓ Synced KDE Connect scripts to ~/KDE_CONNECT_CMDS.${NC}"
     fi
 fi
 

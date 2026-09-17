@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Aider (Qwen2.5 7B)
+GenericName=AI Pair Programmer
+Comment=Launch Aider with local Qwen2.5 7B Instruct model via Ollama
+Exec=/home/mplanetarian/KDE_CONNECT_CMDS/kc_run_aider_qwen.sh
+Icon=utilities-terminal
+Terminal=false
+Categories=Development;Utility;AI;
+StartupNotify=false
+X-KDE-GlobalAccel-CommandShortcut=true

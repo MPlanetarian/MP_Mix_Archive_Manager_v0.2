@@ -2605,6 +2605,10 @@ manage_wan2gp() {
     done
 }
 
+manage_beszel() {
+    run_sub_script "beszel.sh" "$@"
+}
+
 _control_net_service() {
     local action="$1" # start, stop, restart
     local target="$2" # all, ssh, smb, ftp
@@ -7093,6 +7097,31 @@ elif [ "$1" = "--cut-video" ]; then
     shift
     cut_video_clip "$@"
     exit 0
+elif [ "$1" = "--beszel" ] || [ "$1" = "--beszel-menu" ]; then
+    shift
+    manage_beszel "$@"
+    exit 0
+elif [ "$1" = "--beszel-start" ] || [ "$1" = "--beszel-start-both" ] || { [ "$1" = "57" ] && [ "$2" = "1" ]; }; then
+    run_sub_script "beszel.sh" start
+    exit 0
+elif [ "$1" = "--beszel-hub" ] || [ "$1" = "--beszel-start-hub" ] || { [ "$1" = "57" ] && [ "$2" = "2" ]; }; then
+    run_sub_script "beszel.sh" start-hub
+    exit 0
+elif [ "$1" = "--beszel-agent" ] || [ "$1" = "--beszel-start-agent" ] || { [ "$1" = "57" ] && [ "$2" = "3" ]; }; then
+    run_sub_script "beszel.sh" start-agent
+    exit 0
+elif [ "$1" = "--beszel-dashboard" ] || [ "$1" = "--beszel-web" ] || { [ "$1" = "57" ] && [ "$2" = "4" ]; }; then
+    run_sub_script "beszel.sh" dashboard
+    exit 0
+elif [ "$1" = "--beszel-stop" ] || { [ "$1" = "57" ] && [ "$2" = "5" ]; }; then
+    run_sub_script "beszel.sh" stop
+    exit 0
+elif [ "$1" = "--beszel-status" ] || { [ "$1" = "57" ] && [ "$2" = "status" ]; }; then
+    run_sub_script "beszel.sh" status
+    exit 0
+elif [ "$1" = "57" ] && [ -z "$2" ]; then
+    manage_beszel
+    exit 0
 fi
 
 # ==============================================================================
@@ -7199,53 +7228,54 @@ while true; do
     
     echo -e "\n  ${BOLD}${BLUE}─── [ SECTION 6: SYSTEM, NETWORK & HARDWARE MANAGEMENT ] ────${NC}"
     echo -e "  ${BOLD}${CYAN}56)${NC} Manage WAN2GP Server (Start, Stop, Restart in Profile 2 or 4.5)"
-    echo -e "  ${BOLD}${CYAN}57)${NC} Manage Network Services (SSH, Samba, FTP - Start, Stop, Restart All)"
-    echo -e "  ${BOLD}${CYAN}58)${NC} Block Internet Access (LAN Only) (${GREEN}block-internet${NC})"
-    echo -e "  ${BOLD}${CYAN}59)${NC} Restore / Unblock Internet Access (${GREEN}unblock-internet${NC})"
+    echo -e "  ${BOLD}${CYAN}57)${NC} Manage Beszel Server & Monitoring Agent (${GREEN}Start Hub & Agent, Status, Dashboard :8090${NC})"
+    echo -e "  ${BOLD}${CYAN}58)${NC} Manage Network Services (SSH, Samba, FTP - Start, Stop, Restart All)"
+    echo -e "  ${BOLD}${CYAN}59)${NC} Block Internet Access (LAN Only) (${GREEN}block-internet${NC})"
+    echo -e "  ${BOLD}${CYAN}60)${NC} Restore / Unblock Internet Access (${GREEN}unblock-internet${NC})"
     if [ "$OS_TYPE" = "macos" ]; then
-        echo -e "  ${BOLD}${CYAN}60)${NC} Open macOS Display Settings (${GREEN}Displays, Arrangement & HDR${NC})"
-        echo -e "  ${BOLD}${CYAN}61)${NC} Open macOS Audio MIDI Setup (${GREEN}Sample Rates & Output Devices${NC})"
+        echo -e "  ${BOLD}${CYAN}61)${NC} Open macOS Display Settings (${GREEN}Displays, Arrangement & HDR${NC})"
+        echo -e "  ${BOLD}${CYAN}62)${NC} Open macOS Audio MIDI Setup (${GREEN}Sample Rates & Output Devices${NC})"
     elif [ "$OS_TYPE" = "windows" ] || [ "$OS_TYPE" = "wsl" ]; then
-        echo -e "  ${BOLD}${CYAN}60)${NC} Open Windows Display Settings (${GREEN}ms-settings:display - HDR & Scale${NC})"
-        echo -e "  ${BOLD}${CYAN}61)${NC} Open Windows Sound Settings (${GREEN}control.exe mmsys.cpl${NC})"
+        echo -e "  ${BOLD}${CYAN}61)${NC} Open Windows Display Settings (${GREEN}ms-settings:display - HDR & Scale${NC})"
+        echo -e "  ${BOLD}${CYAN}62)${NC} Open Windows Sound Settings (${GREEN}control.exe mmsys.cpl${NC})"
     else
-        echo -e "  ${BOLD}${CYAN}60)${NC} Switch Desktop to Plasma Wayland (HDR Gaming on Hisense & Steam BPM)"
-        echo -e "  ${BOLD}${CYAN}61)${NC} Switch Desktop to Plasma X11 (Workstation 4-Screen Defasten)"
+        echo -e "  ${BOLD}${CYAN}61)${NC} Switch Desktop to Plasma Wayland (HDR Gaming on Hisense & Steam BPM)"
+        echo -e "  ${BOLD}${CYAN}62)${NC} Switch Desktop to Plasma X11 (Workstation 4-Screen Defasten)"
     fi
-    echo -e "  ${BOLD}${CYAN}62)${NC} Close All Desktop Applications (Keep Manager Open)"
+    echo -e "  ${BOLD}${CYAN}63)${NC} Close All Desktop Applications (Keep Manager Open)"
     if [ "$OS_TYPE" = "macos" ]; then
-        echo -e "  ${BOLD}${CYAN}63)${NC} macOS System Maintenance & Cleanup (${GREEN}brew cleanup, purge RAM, caches${NC})"
+        echo -e "  ${BOLD}${CYAN}64)${NC} macOS System Maintenance & Cleanup (${GREEN}brew cleanup, purge RAM, caches${NC})"
     elif [ "$OS_TYPE" = "windows" ] || [ "$OS_TYPE" = "wsl" ]; then
-        echo -e "  ${BOLD}${CYAN}63)${NC} Windows System Maintenance & Cleanup (${GREEN}winget upgrade, clean temp, TRIM${NC})"
+        echo -e "  ${BOLD}${CYAN}64)${NC} Windows System Maintenance & Cleanup (${GREEN}winget upgrade, clean temp, TRIM${NC})"
     elif [ "$OS_TYPE" = "freebsd" ]; then
-        echo -e "  ${BOLD}${CYAN}63)${NC} FreeBSD System Maintenance & Cleanup (${GREEN}pkg upgrade, pkg clean, autoremove, audit${NC})"
+        echo -e "  ${BOLD}${CYAN}64)${NC} FreeBSD System Maintenance & Cleanup (${GREEN}pkg upgrade, pkg clean, autoremove, audit${NC})"
     else
-        echo -e "  ${BOLD}${CYAN}63)${NC} Bazzite System Maintenance & Cleanup (${GREEN}ujust clean-system, update, trim, logs${NC})"
+        echo -e "  ${BOLD}${CYAN}64)${NC} Bazzite System Maintenance & Cleanup (${GREEN}ujust clean-system, update, trim, logs${NC})"
     fi
-    echo -e "  ${BOLD}${CYAN}64)${NC} Launch GeeXLab Demo Launcher (${GREEN}FurMark_linux64/demo_launcher.sh${NC})"
-    echo -e "  ${BOLD}${CYAN}65)${NC} Burn ISO Image to USB Drive (${GREEN}dd / diskutil with safety checks${NC})"
-    echo -e "  ${BOLD}${CYAN}66)${NC} Dynamic System MOTD Banner Manager (${GREEN}Last 5 Mixes, Date/Time, Size, Format & Specs${NC})"
+    echo -e "  ${BOLD}${CYAN}65)${NC} Launch GeeXLab Demo Launcher (${GREEN}FurMark_linux64/demo_launcher.sh${NC})"
+    echo -e "  ${BOLD}${CYAN}66)${NC} Burn ISO Image to USB Drive (${GREEN}dd / diskutil with safety checks${NC})"
+    echo -e "  ${BOLD}${CYAN}67)${NC} Dynamic System MOTD Banner Manager (${GREEN}Last 5 Mixes, Date/Time, Size, Format & Specs${NC})"
     
     echo -e "\n  ${BOLD}${BLUE}─── [ SECTION 7: AI, SHELL CLI & SETTINGS ] ──────────────────${NC}"
-    echo -e "  ${BOLD}${CYAN}67)${NC} Launch AI Assistant / Models (${GREEN}Claude Opus, Claude Sonnet, GPT-OSS, Gemini${NC})"
-    echo -e "  ${BOLD}${CYAN}68)${NC} Run Bash CLI Commands (${GREEN}Interactive Shell & Direct Runner${NC})"
-    echo -e "  ${BOLD}${CYAN}69)${NC} Manager Themes & Color Palette Switcher (${GREEN}8 Themes + Classic${NC})"
-    echo -e "  ${BOLD}${CYAN}70)${NC} Manage Installation & Configuration (${GREEN}Migrate Path, Backup, Export & Import Config${NC})"
+    echo -e "  ${BOLD}${CYAN}68)${NC} Launch AI Assistant / Models (${GREEN}Claude Opus, Claude Sonnet, GPT-OSS, Gemini${NC})"
+    echo -e "  ${BOLD}${CYAN}69)${NC} Run Bash CLI Commands (${GREEN}Interactive Shell & Direct Runner${NC})"
+    echo -e "  ${BOLD}${CYAN}70)${NC} Manager Themes & Color Palette Switcher (${GREEN}8 Themes + Classic${NC})"
+    echo -e "  ${BOLD}${CYAN}71)${NC} Manage Installation & Configuration (${GREEN}Migrate Path, Backup, Export & Import Config${NC})"
     if [ "$OS_TYPE" = "macos" ]; then
-        echo -e "  ${BOLD}${CYAN}71)${NC} Reboot System (${RED}macOS restart with confirmation${NC})"
+        echo -e "  ${BOLD}${CYAN}72)${NC} Reboot System (${RED}macOS restart with confirmation${NC})"
     elif [ "$OS_TYPE" = "windows" ] || [ "$OS_TYPE" = "wsl" ]; then
-        echo -e "  ${BOLD}${CYAN}71)${NC} Reboot System (${RED}Windows restart with confirmation${NC})"
+        echo -e "  ${BOLD}${CYAN}72)${NC} Reboot System (${RED}Windows restart with confirmation${NC})"
     elif [ "$OS_TYPE" = "freebsd" ]; then
-        echo -e "  ${BOLD}${CYAN}71)${NC} Reboot System (${RED}FreeBSD restart with confirmation${NC})"
+        echo -e "  ${BOLD}${CYAN}72)${NC} Reboot System (${RED}FreeBSD restart with confirmation${NC})"
     else
-        echo -e "  ${BOLD}${CYAN}71)${NC} Reboot System (${RED}systemctl reboot with confirmation${NC})"
+        echo -e "  ${BOLD}${CYAN}72)${NC} Reboot System (${RED}systemctl reboot with confirmation${NC})"
     fi
     
     echo -e "\n  ${BOLD}${BLUE}──────────────────────────────────────────────────────────────${NC}"
     get_manager_uptime
-    echo -e "  ${BOLD}${CYAN}72)${NC} Exit Manager ${DIM}(or 0 / q)${NC}"
+    echo -e "  ${BOLD}${CYAN}73)${NC} Exit Manager ${DIM}(or 0 / q)${NC}"
     echo ""
-    read -r -p "Enter choice [1-72, or q to exit]: " choice
+    read -r -p "Enter choice [1-73, or q to exit]: " choice
     
     case $choice in
         1)
@@ -7497,48 +7527,51 @@ while true; do
             manage_wan2gp
             ;;
         57)
-            manage_network_services
+            manage_beszel
             ;;
         58)
-            block_internet
+            manage_network_services
             ;;
         59)
-            unblock_internet
+            block_internet
             ;;
         60)
-            switch_to_wayland
+            unblock_internet
             ;;
         61)
-            switch_to_x11
+            switch_to_wayland
             ;;
         62)
-            close_all_desktop_apps
+            switch_to_x11
             ;;
         63)
-            manage_system_maintenance
+            close_all_desktop_apps
             ;;
         64)
-            launch_geexlab_demos
+            manage_system_maintenance
             ;;
         65)
-            burn_iso_to_usb
+            launch_geexlab_demos
             ;;
         66)
-            manage_system_motd_menu
+            burn_iso_to_usb
             ;;
         67)
-            manage_ai_models
+            manage_system_motd_menu
             ;;
         68)
-            run_bash_cli
+            manage_ai_models
             ;;
         69)
-            manage_themes
+            run_bash_cli
             ;;
         70)
-            manage_installation_and_config
+            manage_themes
             ;;
         71)
+            manage_installation_and_config
+            ;;
+        72)
             reboot_system
             ;;
         split-flac|split_flac)
@@ -7553,12 +7586,16 @@ while true; do
             cut_video_clip
             press_enter
             ;;
-        72|0|[qQ]|[eE][xX][iI][tT])
+        beszel|beszel-start|beszel_start|beszel-hub|beszel-agent)
+            manage_beszel
+            press_enter
+            ;;
+        73|0|[qQ]|[eE][xX][iI][tT])
             echo -e "\n${BOLD}${GREEN}Exiting Mix Archive Manager. Goodbye!${NC}\n"
             exit 0
             ;;
         *)
-            echo -e "\n${RED}Invalid option! Please enter a number between 1 and 72 (or 'q' to exit).${NC}"
+            echo -e "\n${RED}Invalid option! Please enter a number between 1 and 73 (or 'q' to exit).${NC}"
             sleep 2
             ;;
     esac

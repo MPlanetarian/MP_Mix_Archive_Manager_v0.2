@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Beszel Hub & Agent
+GenericName=System Monitoring
+Comment=Launch Beszel Hub and Beszel Agent containers
+Exec=/home/mplanetarian/KDE_CONNECT_CMDS/kc_launch_beszel_hub_and_agent.sh
+Icon=utilities-system-monitor
+Terminal=false
+Categories=System;Monitor;Network;
+StartupNotify=false
+X-KDE-GlobalAccel-CommandShortcut=true

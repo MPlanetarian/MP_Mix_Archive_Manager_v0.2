@@ -31,6 +31,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - **Option 38 (manage_video_cut_and_split)**: Upgraded Option 38 to a Video Cutting & Splitting Suite (`Cut_Video.sh` & `Split_Video_File.sh`).
     - Added CLI flags `--split-flac`, `--split-video`, `--split-mp4`, and `--cut-video`.
     - Added direct console menu keyword triggers `split-flac` and `split-video`.
+- **Beszel Server Monitoring Hub & Hardware/GPU Agent (Option 57)**:
+  - Added standalone management script `scripts/beszel.sh` (mirrored to `beszel.sh`, symlinked to `bin/beszel` and `~/.local/bin/beszel`):
+    - Controls Beszel Hub (`beszel` container on port 8090) and Beszel Agent (`beszel-agent` container with NVIDIA GPU passthrough and Podman socket access).
+    - Features starting Hub, Agent, or both simultaneously with automatic container existence checks and launch script fallbacks (`launch_beszel_hub_replace.sh`, `launch_beszel_agent_replace.sh`).
+    - Verifies user `podman.socket` service status and activates it automatically when starting the agent.
+    - Includes live status inspection (container health, uptime, web dashboard HTTP health, agent-to-hub WebSocket status, NVIDIA GPU model/VRAM).
+    - Added direct browser dispatch to open Beszel Web Dashboard (`http://localhost:8090`).
+    - Added live container log viewer and streaming log follower for both Hub and Agent.
+  - Integrated into `Mix_Archive_Manager.sh`:
+    - **Option 57**: `Manage Beszel Server & Monitoring Agent` in Section 6 (System, Network & Hardware Management).
+    - Added CLI flags `--beszel`, `--beszel-start`, `--beszel-hub`, `--beszel-agent`, `--beszel-dashboard`, `--beszel-stop`, and `--beszel-status`.
+    - Added direct sub-option dispatch arguments (`57 1` to start both, `57 2` for Hub, `57 3` for Agent, `57 4` for Dashboard, `57 5` to stop).
+    - Added direct console menu keyword triggers `beszel`, `beszel-start`, `beszel-hub`, and `beszel-agent`.
+  - Registered into `install.sh` for automatic symlink and desktop entry management.
 - **KDE Connect & Desktop Shortcuts for WAN2GP Server Management**:
   - Created dedicated KDE Connect remote commands and scripts (`kc_start_wan2gp_profile45.sh`, `kc_stop_wan2gp.sh`):
     - **Option 56 / 2**: `Start WAN2GP (Profile 4.5 - Low VRAM)` launches WAN2GP in Profile 4.5 in a new Konsole tab/window with active-process pre-check and desktop notification feedback.
@@ -47,6 +61,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Registered remote commands into KDE Connect device configuration (`~/.config/kdeconnect/*/kdeconnect_runcommand/config`) and deployed to `~/KDE_CONNECT_CMDS/`.
   - Created `.desktop` application entries (`ollama-serve.desktop`, `ollama-stop.desktop`) in `desktop/`, `~/.local/share/applications/`, and `~/Desktop/`.
   - Added symlinks `ollama-serve` and `ollama-stop` into `bin/` and `~/.local/bin/`.
+- **KDE Connect & Desktop Shortcuts for Beszel Hub & Agent and dsh-mobile**:
+  - Created dedicated KDE Connect remote commands and scripts:
+    - `Launch Beszel Hub & Agent` (`kc_launch_beszel_hub_and_agent.sh`): Verifies and starts both `beszel` (hub on port 8090) and `beszel-agent` (GPU/system metrics agent) containers with notifications.
+    - `Launch dsh-mobile (DeepSeek Harness)` (`kc_launch_dsh_mobile.sh`): Boots DeepSeek Harness web UI with LAN mobile trust (`--trusted-host 192.168.1.11:3080 --trusted-host 192.168.1.11 --no-open`) in a dedicated Konsole session with port 3080 pre-check and notifications.
+  - Registered remote commands into KDE Connect device configuration (`~/.config/kdeconnect/*/kdeconnect_runcommand/config`) and deployed to `~/KDE_CONNECT_CMDS/`.
+  - Created `.desktop` application entries (`beszel-hub-and-agent.desktop`, `dsh-mobile.desktop`) in `desktop/`, `~/.local/share/applications/`, and `~/Desktop/`.
+  - Added symlinks `beszel-hub-and-agent` and `dsh-mobile` into `bin/` and `~/.local/bin/`.
 
 ## [0.2.0] - 2026-09-14
 

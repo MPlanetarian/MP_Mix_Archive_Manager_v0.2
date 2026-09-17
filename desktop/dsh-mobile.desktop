@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=DeepSeek Harness (dsh-mobile)
+GenericName=AI Harness Web Server
+Comment=Launch DeepSeek Harness web profile with LAN mobile trust (http://192.168.1.11:3080)
+Exec=/home/mplanetarian/KDE_CONNECT_CMDS/kc_launch_dsh_mobile.sh
+Icon=utilities-terminal
+Terminal=false
+Categories=Development;Utility;AI;
+StartupNotify=false
+X-KDE-GlobalAccel-CommandShortcut=true
