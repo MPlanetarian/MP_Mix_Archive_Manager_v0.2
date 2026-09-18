@@ -1106,9 +1106,9 @@ show_stats() {
             *)       st_badge="${BOLD}${CYAN}${CLIAMP_STATE}${NC}" ;;
         esac
         echo -e "  --------------------------------------------------"
-        echo -e "  cliamp Music Player:                      ${st_badge} [${CLIAMP_POS_FMT} / ${CLIAMP_DUR_FMT}] (${CLIAMP_PROGRESS_PCT}%)"
-        echo -e "  cliamp Current Track:                     ${BOLD}${YELLOW}${CLIAMP_TITLE}${NC} - ${CLIAMP_ARTIST}"
-        echo -e "  cliamp Active File Path:                  ${BOLD}${CYAN}${CLIAMP_RESOLVED_PATH}${NC}"
+        echo -e "  Cliamp Music Player:                      ${st_badge} [${CLIAMP_POS_FMT} / ${CLIAMP_DUR_FMT}] (${CLIAMP_PROGRESS_PCT}%)"
+        echo -e "  Cliamp Current Track:                     ${BOLD}${YELLOW}${CLIAMP_TITLE}${NC} - ${CLIAMP_ARTIST}"
+        echo -e "  Cliamp Active File Path:                  ${BOLD}${CYAN}${CLIAMP_RESOLVED_PATH}${NC}"
         if [ -n "$CLIAMP_RESOLVED_PATH" ] && [ -f "$CLIAMP_RESOLVED_PATH" ]; then
             local audio_spec
             audio_spec=$(get_playing_audio_spec_summary "$CLIAMP_RESOLVED_PATH")
@@ -4719,7 +4719,7 @@ manage_audio_players() {
         fi
 
         echo -e "${BOLD}Select an Audio Player to launch / manage:${NC}"
-        echo -e "  ${BOLD}${CYAN} 1)${NC} cliamp Music Player & Current Track Info (${GREEN}Now Playing Path, Controls & Launch${NC})"
+        echo -e "  ${BOLD}${CYAN} 1)${NC} Cliamp Music Player & Current Track Info (${GREEN}Now Playing Path, Controls & Launch${NC})"
         echo -e "  ${BOLD}${CYAN} 2)${NC} Launch Strawberry Music Player (New Window) (${GREEN}strawberry${NC})"
         echo -e "  ${BOLD}${CYAN} 3)${NC} Launch VLC Media Player (${GREEN}vlc / org.videolan.VLC${NC})"
         echo -e "  ${BOLD}${CYAN} 4)${NC} Launch Haruna Media Player (${GREEN}org.kde.haruna${NC})"
@@ -6877,7 +6877,7 @@ while true; do
     echo -e "  ${BOLD}${CYAN}24)${NC} Launch Audacity Audio Editor (${GREEN}audacity${NC})"
     echo -e "  ${BOLD}${CYAN}25)${NC} Launch Audio Players Menu (${GREEN}cliamp, Strawberry, VLC, foobar2000, Winamp, Apple Music...${NC})"
     echo -e "  ${BOLD}${CYAN}26)${NC} Configure Default Audio Player & Startup Autoplay (${GREEN}Current: ${DEFAULT_AUDIO_PLAYER:-cliamp}${NC})"
-    echo -e "  ${BOLD}${CYAN}27)${NC} cliamp Music Player & Track Control (${GREEN}Now Playing Path, Controls & Launch${NC})"
+    echo -e "  ${BOLD}${CYAN}27)${NC} Cliamp Music Player & Track Control (${GREEN}Now Playing Path, Controls & Launch${NC})"
     echo -e "  ${BOLD}${CYAN}28)${NC} View Playing Mix Audio Specifications & Stream Metadata (${GREEN}WAV/FLAC, Bit Depth, 48kHz, Codec, Duration, Size, Title${NC})"
     echo -e "  ${BOLD}${CYAN}29)${NC} Custom Mix Playlists Suite (.m3u8 / .xspf) (${GREEN}Create, Edit & Launch in cliamp/Strawberry/VLC${NC})"
     echo -e "  ${BOLD}${CYAN}30)${NC} Launch Strawberry Music Player (New Window) (${GREEN}strawberry${NC})"
@@ -6928,7 +6928,7 @@ while true; do
     fi
     echo -e "  ${BOLD}${CYAN}62)${NC} Close All Desktop Applications (Keep Manager Open)"
     if [ "$OS_TYPE" = "macos" ]; then
-        echo -e "  ${BOLD}${CYAN}63)${NC} macOS System Maintenance & Cleanup (${GREEN}brew cleanup, purge RAM, caches${NC})"
+        echo -e "  ${BOLD}${CYAN}63)${NC} MacOS System Maintenance & Cleanup (${GREEN}brew cleanup, purge RAM, caches${NC})"
     elif [ "$OS_TYPE" = "windows" ] || [ "$OS_TYPE" = "wsl" ]; then
         echo -e "  ${BOLD}${CYAN}63)${NC} Windows System Maintenance & Cleanup (${GREEN}winget upgrade, clean temp, TRIM${NC})"
     elif [ "$OS_TYPE" = "freebsd" ]; then
