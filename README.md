@@ -432,9 +432,10 @@ DEFAULT_VIDEO_PLAYER="vlc"
 AUTO_PLAY_YOUTUBE_ON_STARTUP="false"
 STARTUP_YOUTUBE_URL=""
 
-# Meteorological & Live Weather Settings (Banner Display)
+# Meteorological & Planetary Ephemeris Settings (Banner Display)
 WEATHER_ENABLED="true"
 WEATHER_LOCATION="Swansea, UK"
+PLANETS_ENABLED="true"
 ```
 
 ---
