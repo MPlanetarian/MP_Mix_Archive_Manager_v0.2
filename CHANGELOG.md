@@ -17,6 +17,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - Native Windows console non-blocking hotkey input using `msvcrt.kbhit()` and `msvcrt.getch()`.
     - Active deck audio tracking via Traktor session history XML (`history_*.nml`) parsing and file handle inspection.
     - Real-time recording file status and multi-directory file size growth detector (`RECORDING_DIRS`) to identify active mix recordings and standby files.
+    - Upgraded recording monitor dashboard to display the last 3 recordings ordered by newest at the top, showing real-time file size, modification date, live write badge (`[● LIVE: Growing]`), and storage path.
+    - Added automatic application launch check (`ensure_traktor_running`): if Traktor Pro is not running when the monitor is launched, it automatically opens Traktor, waits for process initialization, and immediately begins displaying the live monitor.
     - Traktor recording control via Windows `WScript.Shell` / `AppActivate("Traktor")` automation and keyboard shortcuts.
     - Native double-clickable Windows launchers: `traktor_monitor.bat` and `traktor_monitor.ps1`.
   - Maintained full macOS support (`traktor_monitor_macos.command`) with AppleScript System Events menu clicking and CoreAudio queries.
@@ -25,6 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Integrated into `Mix_Archive_Manager.sh` as dedicated **Option 48** in Section 5 (Live Monitors) launching in a new terminal window (`launch_in_terminal` in Konsole, Terminal.app, Windows Terminal `wt.exe`, Alacritty, Foot, XTerm).
   - Added companion launch option in Section 3 Digital Audio Workstations (`manage_daws`).
   - Added process tracking in `view_tasks` for `traktor_monitor` and `Traktor`.
+  - Added minimal pending OS updates status indicator (`get_os_update_status`) to main menu system info banner (cross-platform: macOS SoftwareUpdate, Linux rpm-ostree/update-notifier, Windows reboot-required).
   - Expanded master operations to **72 operations** across 7 logical sections.
 
 - **Advanced Audio File Specification & Stream Inspector (Option 28)**:

@@ -96,6 +96,16 @@ RECORD_STOP_MENU_CANDIDATES: list[tuple[str, str]] = [
 
 
 @dataclass
+class RecordingItem:
+    path: str
+    name: str
+    size: int = 0
+    mtime: float = 0.0
+    is_active: bool = False
+    is_growing: bool = False
+
+
+@dataclass
 class Snapshot:
     ts: datetime
     running: bool = False
@@ -111,6 +121,7 @@ class Snapshot:
     recording_growing: Optional[bool] = None
     recording_active: bool = False
     recording_prefix: str = ""
+    recent_recordings: list[RecordingItem] = field(default_factory=list)
     device_traktor: str = ""
     sample_rate: str = ""
     latency: str = ""
@@ -119,6 +130,7 @@ class Snapshot:
     system_out: str = ""
     notes: list[str] = field(default_factory=list)
     last_action: str = ""
+
 
 
 def run(cmd: list[str], timeout: float = 3.0) -> str:
@@ -225,6 +237,104 @@ def find_traktor_pid() -> Optional[int]:
         if line.isdigit():
             return int(line)
     return None
+
+
+def open_traktor() -> bool:
+    """Attempt to launch Native Instruments Traktor Pro on the host system."""
+    if IS_MACOS:
+        app_paths = [
+            Path("/Applications/Native Instruments/Traktor Pro 3/Traktor.app"),
+            Path("/Applications/Native Instruments/Traktor Pro 4/Traktor.app"),
+            Path("/Applications/Native Instruments/Traktor 3/Traktor.app"),
+            Path("/Applications/Traktor Pro 4.app"),
+            Path("/Applications/Traktor Pro 3.app"),
+            Path("/Applications/Traktor.app"),
+        ]
+        for p in app_paths:
+            if p.exists():
+                try:
+                    subprocess.Popen(["open", str(p)])
+                    return True
+                except Exception:
+                    pass
+
+        try:
+            r = subprocess.run(["open", "-b", TRAKTOR_BUNDLE_ID], capture_output=True, timeout=3.0)
+            if r.returncode == 0:
+                return True
+        except Exception:
+            pass
+
+        for name in ("Traktor Pro 3", "Traktor Pro 4", "Traktor"):
+            try:
+                r = subprocess.run(["open", "-a", name], capture_output=True, timeout=3.0)
+                if r.returncode == 0:
+                    return True
+            except Exception:
+                pass
+        return False
+
+    if IS_WINDOWS:
+        win_candidates = [
+            r"C:\Program Files\Native Instruments\Traktor Pro 4\Traktor.exe",
+            r"C:\Program Files\Native Instruments\Traktor Pro 3\Traktor.exe",
+            r"C:\Program Files\Native Instruments\Traktor 2\Traktor.exe",
+            r"C:\Program Files (x86)\Native Instruments\Traktor Pro 3\Traktor.exe",
+        ]
+        for p in win_candidates:
+            if os.path.isfile(p):
+                try:
+                    os.startfile(p)
+                    return True
+                except Exception:
+                    try:
+                        subprocess.Popen([p])
+                        return True
+                    except Exception:
+                        pass
+        try:
+            subprocess.Popen(["cmd.exe", "/c", "start", "", "Traktor.exe"])
+            return True
+        except Exception:
+            pass
+        return False
+
+    if IS_LINUX:
+        for cmd in ("traktor", "Traktor"):
+            if shutil.which(cmd):
+                try:
+                    subprocess.Popen([cmd])
+                    return True
+                except Exception:
+                    pass
+    return False
+
+
+def ensure_traktor_running(timeout: float = 12.0) -> Optional[int]:
+    """If Traktor is not running already, open it and wait until its process is detected."""
+    pid = find_traktor_pid()
+    if pid:
+        return pid
+
+    print("\n🎛️  Traktor Pro is not currently running.")
+    print("🚀 Launching Native Instruments Traktor Pro...")
+    opened = open_traktor()
+    if not opened:
+        print("⚠️  Could not automatically launch Traktor. Waiting for manual start...\n")
+
+    start_t = time.time()
+    while time.time() - start_t < timeout:
+        time.sleep(1.0)
+        pid = find_traktor_pid()
+        if pid:
+            print(f"✓ Traktor Pro detected (PID: {pid}). Initializing live monitoring...")
+            time.sleep(1.5)
+            return pid
+        elapsed = int(time.time() - start_t)
+        print(f"⏳ Waiting for Traktor Pro to initialize ({elapsed}s)...", end="\r", flush=True)
+
+    print("")
+    return find_traktor_pid()
 
 
 def process_stats(pid: int) -> dict:
@@ -595,6 +705,93 @@ def detect_recording_by_growth(
     return str(newest), size, growing
 
 
+def get_recent_recordings(
+    limit: int = 3,
+    active_path: Optional[str] = None,
+    active_size: Optional[int] = None,
+    active_growing: Optional[bool] = None,
+    is_active: bool = False,
+) -> list[RecordingItem]:
+    """Return the last `limit` recordings across recording directories, ordered by newest first."""
+    seen: dict[str, Path] = {}
+    dirs_to_check: list[Path] = list(RECORDING_DIRS)
+    if active_path:
+        act_p = Path(active_path)
+        try:
+            if act_p.parent.is_dir() and act_p.parent not in dirs_to_check:
+                dirs_to_check.insert(0, act_p.parent)
+        except OSError:
+            pass
+
+    for d in dirs_to_check:
+        if not d.is_dir():
+            continue
+        try:
+            for f in d.iterdir():
+                if f.name.startswith("."):
+                    continue
+                if not f.is_file():
+                    continue
+                if f.suffix.lower() not in (".wav", ".aiff", ".aif", ".mp3", ".flac", ".m4a", ".ogg"):
+                    continue
+                try:
+                    seen[str(f.resolve())] = f
+                except OSError:
+                    pass
+        except OSError:
+            continue
+
+    if active_path:
+        act_p = Path(active_path)
+        try:
+            if act_p.is_file():
+                seen[str(act_p.resolve())] = act_p
+        except OSError:
+            pass
+
+    items: list[RecordingItem] = []
+    now = time.time()
+    act_resolved = None
+    if active_path:
+        try:
+            act_resolved = str(Path(active_path).resolve())
+        except OSError:
+            act_resolved = str(active_path)
+
+    for f in seen.values():
+        try:
+            st = f.stat()
+            f_size = st.st_size
+            f_mtime = st.st_mtime
+            resolved = str(f.resolve())
+            this_is_active = False
+            this_is_growing = False
+
+            if act_resolved and (resolved == act_resolved or str(f) == active_path):
+                this_is_active = is_active
+                this_is_growing = bool(active_growing)
+                if active_size is not None:
+                    f_size = active_size
+                if is_active:
+                    f_mtime = max(f_mtime, now)
+
+            items.append(
+                RecordingItem(
+                    path=str(f),
+                    name=f.name,
+                    size=f_size,
+                    mtime=f_mtime,
+                    is_active=this_is_active,
+                    is_growing=this_is_growing,
+                )
+            )
+        except OSError:
+            continue
+
+    items.sort(key=lambda x: x.mtime, reverse=True)
+    return items[:limit]
+
+
 def is_recording_active(pid: Optional[int] = None) -> bool:
     """Best-effort check if Traktor is currently writing an audio file."""
     if pid is None:
@@ -866,10 +1063,48 @@ def clear_screen() -> None:
         sys.stdout.flush()
 
 
+def format_recent_recordings(
+    recordings: list[RecordingItem],
+    box_w: int,
+    term_h: int = 30,
+) -> list[str]:
+    lines = []
+    lines.append("-" * box_w)
+    lines.append("  LAST 3 RECORDINGS (Newest at Top)")
+    lines.append("-" * box_w)
+    if not recordings:
+        lines.append("  (No audio recordings found in recording directories)")
+        return lines
+
+    first_dir = str(Path(recordings[0].path).parent)
+    show_all_paths = term_h >= 40
+
+    for idx, r in enumerate(recordings, 1):
+        status_badge = ""
+        if r.is_active:
+            if r.is_growing:
+                status_badge = "  [● LIVE: Growing]"
+            else:
+                status_badge = "  [● LIVE: Active Write]"
+
+        date_str = (
+            datetime.fromtimestamp(r.mtime).strftime("%Y-%m-%d %H:%M:%S")
+            if r.mtime
+            else ""
+        )
+        lines.append(f"  [{idx}] {r.name}{status_badge}")
+        lines.append(f"      Size: {human_size(r.size):<10}  │  Modified: {date_str}")
+        if show_all_paths or idx == 1 or str(Path(r.path).parent) != first_dir:
+            lines.append(f"      Path: {r.path}")
+
+    return lines
+
+
 def render(s: Snapshot) -> str:
     lines = []
-    w = shutil.get_terminal_size((100, 30)).columns
+    w, h = shutil.get_terminal_size((100, 30))
     box_w = min(w, 82)
+    term_h = h
 
     title = "🎛️  TRAKTOR PRO LIVE MONITOR & RECORDER  🎛️"
     lines.append("=" * box_w)
@@ -882,14 +1117,8 @@ def render(s: Snapshot) -> str:
         lines.append("  STATUS     Traktor is NOT running")
         lines.append("")
         lines.append("  Start Traktor Pro (macOS, Windows, or Linux) to begin live monitoring.")
-        if s.recording:
-            lines.append("")
-            lines.append("-" * box_w)
-            lines.append("  LAST DETECTED RECORDING")
-            lines.append("-" * box_w)
-            lines.append(f"  File   {Path(s.recording).name}")
-            lines.append(f"  Path   {s.recording}")
-            lines.append(f"  Size   {human_size(s.recording_size)}")
+        lines.append("")
+        lines.extend(format_recent_recordings(s.recent_recordings, box_w, term_h))
     else:
         lines.append(f"  STATUS     ● RUNNING   PID: {s.pid}   Threads: ≈{s.threads}")
         lines.append(
@@ -921,20 +1150,11 @@ def render(s: Snapshot) -> str:
         lines.append("-" * box_w)
         rec_badge = "● RECORDING (Active File Write)" if s.recording_active else "○ IDLE (Not Recording)"
         lines.append(f"  State    {rec_badge}")
-        if s.recording:
-            grow_str = ""
-            if s.recording_growing is True:
-                grow_str = "  [● GROWING: Active mix data stream]"
-            elif s.recording_growing is False:
-                grow_str = "  [○ Size stable / Standby]"
-            lines.append(f"  File     {Path(s.recording).name}{grow_str}")
-            lines.append(f"  Path     {s.recording}")
-            lines.append(f"  Size     {human_size(s.recording_size)}")
-        else:
-            lines.append("  File     (No recording file detected)")
         if s.recording_prefix:
             lines.append(f"  Prefix   {s.recording_prefix}")
         lines.append("  Control  [s] Start Rec  │  [x] Stop Rec  │  [t] Toggle Rec")
+        lines.append("")
+        lines.extend(format_recent_recordings(s.recent_recordings, box_w, term_h))
 
     if s.last_action:
         lines.append("")
@@ -981,6 +1201,16 @@ def take_snapshot(prev_rec_size: Optional[int]) -> Snapshot:
         s.running = False
         path, size, growing = detect_recording_by_growth(s.recording_prefix, prev_rec_size)
         s.recording, s.recording_size, s.recording_growing = path, size, growing
+        s.recent_recordings = get_recent_recordings(
+            limit=3,
+            active_path=s.recording,
+            active_size=s.recording_size,
+            active_growing=s.recording_growing,
+            is_active=False,
+        )
+        if not s.recording and s.recent_recordings:
+            s.recording = s.recent_recordings[0].path
+            s.recording_size = s.recent_recordings[0].size
         return s
 
     s.running = True
@@ -1007,7 +1237,25 @@ def take_snapshot(prev_rec_size: Optional[int]) -> Snapshot:
     if s.recording_growing is True:
         s.recording_active = True
 
+    if s.recording_active and s.recording_growing is None and s.recording:
+        try:
+            s.recording_growing = (time.time() - os.path.getmtime(s.recording)) < 5.0
+        except OSError:
+            pass
+
+    s.recent_recordings = get_recent_recordings(
+        limit=3,
+        active_path=s.recording,
+        active_size=s.recording_size,
+        active_growing=s.recording_growing,
+        is_active=s.recording_active,
+    )
+    if not s.recording and s.recent_recordings:
+        s.recording = s.recent_recordings[0].path
+        s.recording_size = s.recent_recordings[0].size
+
     return s
+
 
 
 def main() -> int:
@@ -1030,6 +1278,11 @@ def main() -> int:
         "--toggle-recording",
         action="store_true",
         help="Toggle Traktor Audio Recorder, then exit",
+    )
+    ap.add_argument(
+        "--no-launch",
+        action="store_true",
+        help="Do not automatically launch Traktor if not running",
     )
     ap.add_argument(
         "--list-menus",
@@ -1066,6 +1319,9 @@ def main() -> int:
         ok, msg = menu_control_recording("toggle")
         print(msg)
         return 0 if ok else 1
+
+    if not args.no_launch:
+        ensure_traktor_running()
 
     prev_size: Optional[int] = None
     last_action = ""
