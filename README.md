@@ -26,7 +26,7 @@ The **Stream of Frequency Mix Archive Manager** provides an interactive, termina
 8. **Active Audio Interface & Latency Display**: Real-time probe of default audio output device and hardware buffer latency (`scripts/get_audio_interface.py`) across PipeWire, ALSA, PulseAudio, macOS CoreAudio, Windows WASAPI, and FreeBSD OSS, displayed on boot and in live status.
 9. **Master Audio Control & Retro Playback**: Instant live master audio mute/unmute toggle directly from the manager menu, custom `.m3u8` / `.xspf` playlist suite (`manage_playlists.sh`), live MPRIS and retro console audio player with real-time playback progress, track metadata, active filesystem paths, and instant cross-platform clipboard copy (`pbcopy` on macOS, `clip.exe` on Windows, `wl-copy`/`xclip` on Linux). Launches cliamp, Strawberry, VLC, foobar2000 (macOS & Windows), Winamp (Windows), Apple Music (macOS), Apple Podcasts (macOS), Haruna, and Kodi.
 10. **Video Production & Procedural Netpbm Art**: Generates 4K UHD, 1080p Full HD, and 720p HD YouTube videos with NVENC/Hardware acceleration, 320kbps AAC, and smooth 5s audio fading (`generate_youtube_video.sh`), synchronized mix-video companion daemon (`sync_video_companion.sh`), procedural gradient binary Netpbm P6 `.PPM` cover art generator with mathematical palettes and typography overlays (`generate_ppm_cover.sh`), video clip cutter (`Cut_Video.sh`), and Electric Sheep screensaver.
-11. **Dynamic System MOTD & Diagnostics**: Auto-updating Message Of The Day banner generator (`update_system_motd.sh`) highlighting the last 5 mixes, dates, times, sizes, formats, and audio specs. Automated rclone mirroring to Google Drive, SMB network share ingestion, multi-platform network services manager (SSH, Samba, FTP), real-time file transfer monitors, and comprehensive archive statistics.
+11. **Dynamic System MOTD & Diagnostics**: Auto-updating Message Of The Day banner generator (`update_system_motd.sh`) highlighting the last 3 mixes, dates, times, sizes, formats, full file names, and audio specs. Automated rclone mirroring to Google Drive, SMB network share ingestion, multi-platform network services manager (SSH, Samba, FTP), real-time file transfer monitors, and comprehensive archive statistics.
 12. **Multi-Platform System Maintenance**: OS-tailored system cleaning (Bazzite `ujust`, macOS Homebrew caches & RAM purge, Windows `winget` update & TRIM, FreeBSD `pkg` cleanup & audit), display configuration, reboot control, and live manager & system uptime tracking.
 13. **Themes & CLI Engine**: 9 custom retro terminal color themes (Cyberpunk, Dracula, Nord, Matrix, Solarized, Tokyo Night, Monokai, Gruvbox, Emerald) and an integrated interactive Bash CLI runner.
 
@@ -152,7 +152,7 @@ MP_Mix_Manager_v0.2/
 ├── sync_video_companion.sh      # Mix-video companion shell launcher
 ├── manage_playlists.py          # Custom playlist suite (.m3u8 / .xspf creator & launcher)
 ├── manage_playlists.sh          # Custom playlist shell launcher
-├── manage_motd.py               # Dynamic System MOTD generator (Last 5 mixes & specs)
+├── manage_motd.py               # Dynamic System MOTD generator (Recent 3 mixes & full file names)
 ├── update_system_motd.sh        # System MOTD update shell launcher
 ├── generate_spek.sh             # Dedicated CLI/GUI acoustic spectrogram suite (Spek, SoX, Praat, Sonic Visualiser)
 ├── send_promo_email.py          # Promotional & publisher outreach email system
@@ -382,7 +382,7 @@ MP_Mix_Manager_v0.2/
 | **66**| **System Maintenance & Cleanup** | Executes platform maintenance (Linux `ujust clean-system`, macOS `brew cleanup` & RAM purge, Windows `winget upgrade` & temp cleanup, FreeBSD `pkg clean`, `pkg upgrade`, `pkg autoremove`). |
 | **67**| **Launch GeeXLab Demo Launcher** | Runs 3D/OpenGL shader demos and GPU stress tests via GeeXLab/FurMark. |
 | **68**| **Burn ISO Image to USB Drive** | Writes bootable ISO files directly to removable USB storage with safety checks and dd progress (macOS `diskutil` / Linux `lsblk`). |
-| **69**| **Dynamic System MOTD Banner Manager** | Dynamic Message Of The Day generator (`update_system_motd.sh`): renders stylized ANSI MOTD table summarizing the last 5 created mixes, dates, times, sizes, formats, and audio specs. |
+| **69**| **Dynamic System MOTD Banner Manager** | Dynamic Message Of The Day generator (`update_system_motd.sh`): renders stylized ANSI MOTD table summarizing the last 3 created mixes, dates, times, sizes, formats, and full file names. |
 
 ### ─── [ SECTION 7: AI, SHELL CLI & SETTINGS ] ───────────────────
 | # | Operation | Description |

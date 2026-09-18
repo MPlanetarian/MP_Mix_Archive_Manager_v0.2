@@ -7,7 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [0.2.1] - 2026-09-17
+## [0.2.1] - 2026-09-18
+
+- **Full File Name MOTD Display & Recent Releases Count Update**:
+  - Upgraded [`scripts/manage_motd.py`](file:///var/home/mplanetarian/MP_Mix_Manager_v0.2/scripts/manage_motd.py) and [`manage_motd.py`](file:///var/home/mplanetarian/MP_Mix_Manager_v0.2/manage_motd.py):
+    - Replaced 38-character filename truncation with the full, un-truncated file name.
+    - Updated column header to `Full File Name`.
+    - Dynamically scales banner borders, headers, and dividers (`banner_width = max(78, 49 + max_name_len)`) to maintain clean alignment with filenames of any length.
+    - Reduced default displayed releases from 5 to 3 (`find_recent_mixes(limit=3)` with `--limit` flag support).
+    - Auto-regenerated active terminal MOTD at [`~/.config/mix-manager/motd`](file:///home/mplanetarian/.config/mix-manager/motd).
+
+- **Multi-Display Window Positioning (Manager on Primary, Strawberry & Cover on Secondary)**:
+  - Upgraded [`scripts/align_mix_windows.py`](file:///var/home/mplanetarian/MP_Mix_Manager_v0.2/scripts/align_mix_windows.py) to automatically detect active monitor configuration:
+    - **Multi-Display Mode (> 1 Displays Active)**:
+      * Mix Archive Manager window is positioned onto the **Primary Display** (Priority 1 screen in KDE Plasma 6 KWin / X11).
+      * Strawberry Audio Player and Cover Art Viewer (Gwenview, feh, loupe, eog) are placed onto the **Secondary Display** (not primary).
+      * Windows on the secondary display are arranged side-by-side with zero overlap (square 1:1 album cover art on the left, Strawberry music player with controls and playlist on the right).
+      * If Tracklist Viewer is also open, windows are arranged in a 3-column layout on the secondary screen.
+    - **Single-Display Mode (<= 1 Display Active)**:
+      * Only triggers multi-display placement if > 1 displays are active. On single-display setups, keeps windows on the active screen with the centered floating HUD layout.
+  - Enhanced [`Mix_Archive_Manager.sh`](file:///var/home/mplanetarian/MP_Mix_Manager_v0.2/Mix_Archive_Manager.sh) & [`bin/mix-archive-manager`](file:///var/home/mplanetarian/MP_Mix_Manager_v0.2/bin/mix-archive-manager):
+    - Emits dynamic terminal window title escape sequences (`printf '\033]0;Mix Archive Manager\007'`) so Konsole and other terminals are immediately recognized.
+    - Updated `align_mix_windows_on_screen()` to pass manager PID and parent terminal PID to `align_mix_windows.py`.
+    - Automatically triggers window alignment on manager startup, during autoplay, on active audio detection, and when launching Strawberry.
 
 - **DeepSeek Harness Web Server & Mobile Interface Management (`dsh-mobile` - Option 59)**:
   - Added standalone controller script `scripts/dsh_mobile.sh` (mirrored to `dsh_mobile.sh`, symlinked to `bin/dsh-mobile`, `bin/manage-dsh-mobile`, `~/.local/bin/dsh-mobile`, and `~/.local/bin/manage-dsh-mobile`):
