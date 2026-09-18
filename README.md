@@ -1,4 +1,4 @@
-# Mix Archive Manager (`MP_Mix_Manager_v0.2`)
+# Mix Archive Manager (`MP_Mix_Archive_Manager_v0.2`)
 
 [![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20macOS%20%7C%20Windows%20%7C%20FreeBSD-blue.svg)](README.md)
 [![macOS](https://img.shields.io/badge/macOS-Sonoma%20%7C%20Sequoia%20%7C%20Apple%20Silicon%20%26%20Intel-silver.svg)]()

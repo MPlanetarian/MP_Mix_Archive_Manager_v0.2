@@ -1351,9 +1351,9 @@ show_stats() {
             *)       st_badge="${BOLD}${CYAN}${CLIAMP_STATE}${NC}" ;;
         esac
         echo -e "  --------------------------------------------------"
-        echo -e "  cliamp Music Player:                      ${st_badge} [${CLIAMP_POS_FMT} / ${CLIAMP_DUR_FMT}] (${CLIAMP_PROGRESS_PCT}%)"
-        echo -e "  cliamp Current Track:                     ${BOLD}${YELLOW}${CLIAMP_TITLE}${NC} - ${CLIAMP_ARTIST}"
-        echo -e "  cliamp Active File Path:                  ${BOLD}${CYAN}${CLIAMP_RESOLVED_PATH}${NC}"
+        echo -e "  Cliamp Music Player:                      ${st_badge} [${CLIAMP_POS_FMT} / ${CLIAMP_DUR_FMT}] (${CLIAMP_PROGRESS_PCT}%)"
+        echo -e "  Cliamp Current Track:                     ${BOLD}${YELLOW}${CLIAMP_TITLE}${NC} - ${CLIAMP_ARTIST}"
+        echo -e "  Cliamp Active File Path:                  ${BOLD}${CYAN}${CLIAMP_RESOLVED_PATH}${NC}"
         if [ -n "$CLIAMP_RESOLVED_PATH" ] && [ -f "$CLIAMP_RESOLVED_PATH" ]; then
             local audio_spec
             audio_spec=$(get_playing_audio_spec_summary "$CLIAMP_RESOLVED_PATH")
@@ -3732,7 +3732,19 @@ launch_garageband() {
 launch_traktor() {
     if [ "$OS_TYPE" = "macos" ]; then
         echo -e "\n${BOLD}${YELLOW}Launching Native Instruments Traktor Pro on macOS...${NC}\n"
-        if open -a "Traktor Pro 4" 2>/dev/null || open -a "Traktor Pro 3" 2>/dev/null || open -a "Traktor" 2>/dev/null; then
+        if [ -d "/Applications/Native Instruments/Traktor Pro 3/Traktor.app" ] && open "/Applications/Native Instruments/Traktor Pro 3/Traktor.app" 2>/dev/null; then
+            echo -e "${GREEN}✓ Traktor Pro launched successfully.${NC}"
+            sleep 1.2
+            return 0
+        elif [ -d "/Applications/Native Instruments/Traktor Pro 4/Traktor.app" ] && open "/Applications/Native Instruments/Traktor Pro 4/Traktor.app" 2>/dev/null; then
+            echo -e "${GREEN}✓ Traktor Pro launched successfully.${NC}"
+            sleep 1.2
+            return 0
+        elif open -b "com.native-instruments.Traktor" 2>/dev/null; then
+            echo -e "${GREEN}✓ Traktor Pro launched successfully.${NC}"
+            sleep 1.2
+            return 0
+        elif open -a "Traktor Pro 4" 2>/dev/null || open -a "Traktor Pro 3" 2>/dev/null || open -a "Traktor" 2>/dev/null; then
             echo -e "${GREEN}✓ Traktor Pro launched successfully.${NC}"
             sleep 1.2
             return 0
@@ -4341,7 +4353,7 @@ manage_daws() {
             else
                 garage_badge="${RED}[NOT INSTALLED]${NC}"
             fi
-            if [ -d "/Applications/Traktor Pro 4.app" ] || [ -d "/Applications/Traktor Pro 3.app" ] || [ -d "/Applications/Traktor.app" ]; then
+            if [ -d "/Applications/Native Instruments/Traktor Pro 3/Traktor.app" ] || [ -d "/Applications/Native Instruments/Traktor Pro 4/Traktor.app" ] || [ -d "/Applications/Traktor Pro 4.app" ] || [ -d "/Applications/Traktor Pro 3.app" ] || [ -d "/Applications/Traktor.app" ] || osascript -e 'id of application "Traktor"' >/dev/null 2>&1; then
                 traktor_badge="${GREEN}✓ INSTALLED${NC}"
             else
                 traktor_badge="${RED}[NOT INSTALLED]${NC}"
@@ -5045,7 +5057,7 @@ manage_audio_players() {
         fi
 
         echo -e "${BOLD}Select an Audio Player to launch / manage:${NC}"
-        echo -e "  ${BOLD}${CYAN} 1)${NC} cliamp Music Player & Current Track Info (${GREEN}Now Playing Path, Controls & Launch${NC})"
+        echo -e "  ${BOLD}${CYAN} 1)${NC} Cliamp Music Player & Current Track Info (${GREEN}Now Playing Path, Controls & Launch${NC})"
         echo -e "  ${BOLD}${CYAN} 2)${NC} Launch Strawberry Music Player (New Window) (${GREEN}strawberry${NC})"
         echo -e "  ${BOLD}${CYAN} 3)${NC} Launch VLC Media Player (${GREEN}vlc / org.videolan.VLC${NC})"
         echo -e "  ${BOLD}${CYAN} 4)${NC} Launch Haruna Media Player (${GREEN}org.kde.haruna${NC})"
@@ -5401,6 +5413,11 @@ launch_traktor_monitor_window() {
 
     case "$tm_choice" in
         1)
+            if ! pgrep -i -f "Traktor.app/Contents/MacOS/Traktor$" >/dev/null 2>&1 && ! pgrep -i -f "Traktor\.exe" >/dev/null 2>&1 && ! pgrep -i -f "Traktor" >/dev/null 2>&1; then
+                echo -e "\n${BOLD}${YELLOW}Traktor Pro is not running. Opening Traktor Pro...${NC}"
+                launch_traktor >/dev/null 2>&1 || true
+                sleep 1.5
+            fi
             echo -e "\n${BOLD}${GREEN}Launching Traktor Live Monitor in a new terminal window...${NC}\n"
             local full_cmd="\"$mon_sh\"; echo ''; echo 'Traktor monitor closed. Press [Enter] to exit...'; read -r"
             if launch_in_terminal "Traktor Live Monitor" "$full_cmd" "window"; then
@@ -5416,6 +5433,11 @@ launch_traktor_monitor_window() {
             fi
             ;;
         2)
+            if ! pgrep -i -f "Traktor.app/Contents/MacOS/Traktor$" >/dev/null 2>&1 && ! pgrep -i -f "Traktor\.exe" >/dev/null 2>&1 && ! pgrep -i -f "Traktor" >/dev/null 2>&1; then
+                echo -e "\n${BOLD}${YELLOW}Traktor Pro is not running. Opening Traktor Pro...${NC}"
+                launch_traktor >/dev/null 2>&1 || true
+                sleep 1.5
+            fi
             echo -e "\n${BOLD}${YELLOW}Launching Traktor Live Monitor in current window (Press 'q' to quit)...${NC}\n"
             sleep 0.8
             trap ':' INT
@@ -7063,8 +7085,89 @@ get_os_badge() {
     fi
 }
 
+_LAST_OS_UPDATE_CHECK=0
+_CACHED_OS_UPDATE_STATUS=""
+
+get_os_update_status() {
+    local now
+    now=$(date +%s 2>/dev/null || echo 0)
+    if [ $((now - _LAST_OS_UPDATE_CHECK)) -lt 60 ] && [ -n "$_CACHED_OS_UPDATE_STATUS" ]; then
+        echo -e "$_CACHED_OS_UPDATE_STATUS"
+        return 0
+    fi
+
+    local status=""
+    if [ "$OS_TYPE" = "macos" ]; then
+        local count=0
+        if [ -f /Library/Preferences/com.apple.SoftwareUpdate.plist ]; then
+            count=$(defaults read /Library/Preferences/com.apple.SoftwareUpdate.plist RecommendedUpdates 2>/dev/null | grep -c "Identifier =" 2>/dev/null || true)
+            count="${count:-0}"
+            if [ "$count" -eq 0 ]; then
+                local last_avail
+                last_avail=$(defaults read /Library/Preferences/com.apple.SoftwareUpdate.plist LastUpdatesAvailable 2>/dev/null || echo 0)
+                [[ "$last_avail" =~ ^[0-9]+$ ]] && count="$last_avail"
+            fi
+        fi
+        if [ "$count" -gt 0 ]; then
+            status="${YELLOW}${count} pending${NC}"
+        else
+            status="${GREEN}Up to date${NC}"
+        fi
+    elif [ "$OS_TYPE" = "windows" ] || [ "$OS_TYPE" = "wsl" ]; then
+        local win_reboot=""
+        if command -v reg.exe >/dev/null 2>&1; then
+            if reg.exe query "HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\WindowsUpdate\\Auto Update\\RebootRequired" >/dev/null 2>&1; then
+                win_reboot="1"
+            fi
+        fi
+        if [ -n "$win_reboot" ]; then
+            status="${YELLOW}Restart pending${NC}"
+        else
+            status="${GREEN}Up to date${NC}"
+        fi
+    elif [ "$OS_TYPE" = "freebsd" ]; then
+        status="${GREEN}Up to date${NC}"
+    else
+        # Linux (Bazzite / Silverblue / Fedora / Ubuntu / Debian / Arch)
+        local ostree_staged=""
+        if command -v rpm-ostree >/dev/null 2>&1; then
+            if rpm-ostree status 2>/dev/null | grep -E -qi "(staged|upgrade available|staged: yes)"; then
+                ostree_staged="1"
+            fi
+        fi
+        if [ -n "$ostree_staged" ]; then
+            status="${YELLOW}1 staged (reboot)${NC}"
+        elif [ -f /var/run/reboot-required ]; then
+            status="${YELLOW}Reboot required${NC}"
+        elif [ -f /var/lib/update-notifier/updates-available ]; then
+            local u_count
+            u_count=$(grep -E "^[0-9]+ updates can be applied" /var/lib/update-notifier/updates-available 2>/dev/null | awk '{print $1}')
+            if [ -n "$u_count" ] && [ "$u_count" -gt 0 ]; then
+                status="${YELLOW}${u_count} pending${NC}"
+            else
+                status="${GREEN}Up to date${NC}"
+            fi
+        else
+            status="${GREEN}Up to date${NC}"
+        fi
+    fi
+
+    _LAST_OS_UPDATE_CHECK="$now"
+    _CACHED_OS_UPDATE_STATUS="$status"
+    echo -e "$status"
+}
+
+# Direct CLI invocation support for manager update & version commands
+if [ "$1" = "update" ] || [ "$1" = "--update" ]; then
+    shift
+    run_sub_script "update_manager.sh" "$@"
+    exit $?
+elif [ "$1" = "version" ] || [ "$1" = "--version" ] || [ "$1" = "-v" ]; then
+    shift
+    run_sub_script "update_manager.sh" --version "$@"
+    exit $?
 # Direct CLI invocation support for WAN2GP server management (e.g. Menu 56 options)
-if [ "$1" = "--wan2gp-start-4.5" ] || [ "$1" = "--wan2gp-p45" ] || { [ "$1" = "56" ] && [ "$2" = "2" ]; }; then
+elif [ "$1" = "--wan2gp-start-4.5" ] || [ "$1" = "--wan2gp-p45" ] || { [ "$1" = "56" ] && [ "$2" = "2" ]; }; then
     wgp_pids=$(pgrep -f "python.*wgp\.py" | tr '\n' ' ')
     if [ -n "$wgp_pids" ]; then
         echo -e "\n${YELLOW}WAN2GP is already running (PID: ${wgp_pids% }). Stop or restart it first.${NC}"
@@ -7199,9 +7302,10 @@ while true; do
     echo -e "${BOLD}${MAGENTA}                     Mix Archive Manager (MP_Mix_Manager_v0.2)                     ${NC}"
     echo -e "${BOLD}${MAGENTA}===================================================================================${NC}"
     os_badge=$(get_os_badge)
+    os_updates=$(get_os_update_status)
     shell_info="Bash ${BASH_VERSION%%(*}"
     current_datetime=$(date "+%A, %B %d, %Y • %T %Z")
-    echo -e "  ${os_badge}  ${BOLD}${BLUE}│${NC}  ${BOLD}${CYAN}🐚 Shell:${NC} ${shell_info}  ${BOLD}${BLUE}│${NC}  ${BOLD}${CYAN}📅 Date:${NC} ${current_datetime}"
+    echo -e "  ${os_badge}  ${BOLD}${BLUE}│${NC}  ${BOLD}${CYAN}🔄 OS Updates:${NC} ${os_updates}  ${BOLD}${BLUE}│${NC}  ${BOLD}${CYAN}🐚 Shell:${NC} ${shell_info}  ${BOLD}${BLUE}│${NC}  ${BOLD}${CYAN}📅 Date:${NC} ${current_datetime}"
     sys_perf=$(get_system_perf_stats)
     echo -e "${sys_perf}"
     audio_interface_disp=$(get_active_audio_interface_display)
@@ -7249,7 +7353,7 @@ while true; do
     echo -e "  ${BOLD}${CYAN}24)${NC} Launch Audacity Audio Editor (${GREEN}audacity${NC})"
     echo -e "  ${BOLD}${CYAN}25)${NC} Launch Audio Players Menu (${GREEN}cliamp, Strawberry, VLC, foobar2000, Winamp, Apple Music...${NC})"
     echo -e "  ${BOLD}${CYAN}26)${NC} Configure Default Audio Player & Startup Autoplay (${GREEN}Current: ${DEFAULT_AUDIO_PLAYER:-strawberry}${NC})"
-    echo -e "  ${BOLD}${CYAN}27)${NC} cliamp Music Player & Track Control (${GREEN}Now Playing Path, Controls & Launch${NC})"
+    echo -e "  ${BOLD}${CYAN}27)${NC} Cliamp Music Player & Track Control (${GREEN}Now Playing Path, Controls & Launch${NC})"
     echo -e "  ${BOLD}${CYAN}28)${NC} View Playing Mix Audio Specifications & Stream Metadata (${GREEN}WAV/FLAC, Bit Depth, 48kHz, Codec, Duration, Size, Title${NC})"
     echo -e "  ${BOLD}${CYAN}29)${NC} Custom Mix Playlists Suite (.m3u8 / .xspf) (${GREEN}Create, Edit & Launch in cliamp/Strawberry/VLC${NC})"
     echo -e "  ${BOLD}${CYAN}30)${NC} Launch Strawberry Music Player (New Window) (${GREEN}strawberry${NC})"
@@ -7313,7 +7417,7 @@ while true; do
     fi
     echo -e "  ${BOLD}${CYAN}67)${NC} Launch GeeXLab Demo Launcher (${GREEN}FurMark_linux64/demo_launcher.sh${NC})"
     echo -e "  ${BOLD}${CYAN}68)${NC} Burn ISO Image to USB Drive (${GREEN}dd / diskutil with safety checks${NC})"
-    echo -e "  ${BOLD}${CYAN}69)${NC} Dynamic System MOTD Banner Manager (${GREEN}Last 5 Mixes, Date/Time, Size, Format & Specs${NC})"
+    echo -e "  ${BOLD}${CYAN}69)${NC} Dynamic System MOTD Banner Manager (${GREEN}Last 3 Mixes, Date/Time, Size, Format & Specs${NC})"
     
     echo -e "\n  ${BOLD}${BLUE}─── [ SECTION 7: AI, SHELL CLI & SETTINGS ] ──────────────────${NC}"
     echo -e "  ${BOLD}${CYAN}70)${NC} Launch AI Assistant / Models (${GREEN}Claude Opus, Claude Sonnet, GPT-OSS, Gemini, Ollama, DeepSeek${NC})"
@@ -7380,6 +7484,7 @@ while true; do
             show_mix_drive_space
             ;;
         12)
+            _LAST_OS_UPDATE_CHECK=0
             # Naturally clears screen and refreshes stats
             ;;
         13)
