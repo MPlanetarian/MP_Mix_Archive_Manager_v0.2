@@ -15,7 +15,7 @@ from pathlib import Path
 # --- ANSI Colors ---
 BOLD = "\033[1m"
 DIM = "\033[2m"
-GREEN = "\033[0;32m"
+GREEN = "\033[1;36m"  # Sweet Cyan (replaced green)
 YELLOW = "\033[0;33m"
 RED = "\033[0;31m"
 BLUE = "\033[0;34m"

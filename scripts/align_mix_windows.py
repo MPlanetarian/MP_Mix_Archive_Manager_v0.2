@@ -3,9 +3,12 @@
 scripts/align_mix_windows.py - Cross-Platform Window Alignment for Mix Manager
 Positions windows according to active monitor configuration:
 - Multi-Display (> 1 displays active):
-  * Mix Archive Manager window is displayed on the PRIMARY display.
-  * Strawberry Audio Player and Cover Art Viewer (and Tracklist if open) are placed on the SECONDARY display.
-  * Windows on the secondary display are arranged side-by-side with zero overlap.
+  * Mix Archive Manager window is displayed on the PRIMARY display (Main Screen).
+  * Strawberry Audio Player and Cover Art Viewer are placed on the SECONDARY display side-by-side.
+  * Windows on the secondary display are arranged with zero overlap: Cover Art (1:1 square on left)
+    and Strawberry (controls, playlist, and waveform on right).
+  * Any tracklist console window is minimized so only the manager is visible on the primary display
+    and only Strawberry and Cover are visible on the secondary display.
 - Single-Display (<= 1 display active):
   * Keeps windows on the single active display, centering Cover Art & Tracklist HUD floating above Manager.
 """
@@ -16,15 +19,29 @@ import time
 import platform
 import subprocess
 import argparse
+import tempfile
 
 def get_args():
     parser = argparse.ArgumentParser(description="Mix Archive Manager Window & Display Aligner")
     parser.add_argument("--mgr-pid", type=int, default=0, help="PID of Mix Archive Manager process")
     parser.add_argument("--parent-pid", type=int, default=0, help="Parent/terminal PID of Manager")
-    parser.add_argument("--timeout", type=float, default=6.0, help="Timeout in seconds for window polling")
+    parser.add_argument("--timeout", type=float, default=8.0, help="Timeout in seconds for window polling")
     return parser.parse_known_args()[0]
 
-def align_kwin(timeout_seconds=6.0, mgr_pid=0, parent_pid=0):
+def is_proc_running(names):
+    """Check if any of the given process names are currently running (excluding own process)."""
+    my_pid = os.getpid()
+    for name in names:
+        try:
+            out = subprocess.check_output(['pgrep', '-i', name], stderr=subprocess.DEVNULL).decode()
+            pids = [int(p) for p in out.split() if p.isdigit() and int(p) != my_pid]
+            if pids:
+                return True
+        except Exception:
+            pass
+    return False
+
+def align_kwin(timeout_seconds=8.0, mgr_pid=0, parent_pid=0):
     """Align windows using KDE Plasma 6 KWin Scripting DBus API."""
     try:
         import dbus
@@ -32,7 +49,8 @@ def align_kwin(timeout_seconds=6.0, mgr_pid=0, parent_pid=0):
         return False
 
     start_time = time.time()
-    success = False
+    poll_interval = 0.25
+    aligned_any = False
 
     while time.time() - start_time < timeout_seconds:
         try:
@@ -40,10 +58,15 @@ def align_kwin(timeout_seconds=6.0, mgr_pid=0, parent_pid=0):
             kwin_obj = bus.get_object('org.kde.KWin', '/Scripting')
             scripting = dbus.Interface(kwin_obj, 'org.kde.kwin.Scripting')
 
+            straw_running = is_proc_running(['strawberry'])
+            cover_running = is_proc_running(['gwenview', 'loupe', 'eog', 'feh'])
+
             js_code = f'''
 (function() {{
     var mgrPid = {mgr_pid};
     var parentPid = {parent_pid};
+    var strawProcRunning = {str(straw_running).lower()};
+    var coverProcRunning = {str(cover_running).lower()};
 
     var screens = workspace.screenOrder;
     if (!screens || screens.length === 0) {{
@@ -79,7 +102,7 @@ def align_kwin(timeout_seconds=6.0, mgr_pid=0, parent_pid=0):
         if (!strawWin) {{
             if (rClass.indexOf('strawberry') !== -1 || 
                 capLower.indexOf('strawberry') !== -1 || 
-                w.desktopFileName === 'org.strawberrymusicplayer.strawberry') {{
+                (w.desktopFileName && w.desktopFileName.indexOf('strawberry') !== -1)) {{
                 strawWin = w;
                 continue;
             }}
@@ -98,11 +121,12 @@ def align_kwin(timeout_seconds=6.0, mgr_pid=0, parent_pid=0):
         if (!coverWin) {{
             if (cap.indexOf('Mix Cover Art Viewer') !== -1 || 
                 rClass.indexOf('gwenview') !== -1 || 
-                cap.indexOf('Gwenview') !== -1 || 
-                (rClass.indexOf('feh') !== -1 && cap.indexOf('Cover') !== -1) ||
+                capLower.indexOf('gwenview') !== -1 || 
+                (w.desktopFileName && w.desktopFileName.indexOf('gwenview') !== -1) ||
                 rClass.indexOf('loupe') !== -1 ||
                 rClass.indexOf('eog') !== -1 ||
-                (cap.indexOf('Cover') !== -1 && rClass.indexOf('konsole') === -1 && rClass.indexOf('sublime') === -1)) {{
+                (rClass.indexOf('feh') !== -1 && capLower.indexOf('cover') !== -1) ||
+                (capLower.indexOf('cover') !== -1 && rClass.indexOf('konsole') === -1 && rClass.indexOf('sublime') === -1 && rClass.indexOf('dolphin') === -1)) {{
                 coverWin = w;
                 continue;
             }}
@@ -118,7 +142,7 @@ def align_kwin(timeout_seconds=6.0, mgr_pid=0, parent_pid=0):
         var pArea = workspace.clientArea(0, primScreen, workspace.currentDesktop);
         var sArea = workspace.clientArea(0, secScreen, workspace.currentDesktop);
 
-        // A. Display the Manager on the PRIMARY display
+        // A. Display ONLY the Manager on the PRIMARY display (Main Screen)
         if (mgrWin) {{
             if (mgrWin.fullScreen) {{
                 mgrWin.fullScreen = false;
@@ -144,49 +168,29 @@ def align_kwin(timeout_seconds=6.0, mgr_pid=0, parent_pid=0):
             workspace.raiseWindow(mgrWin);
         }}
 
-        // B. Place Strawberry and Cover Photo onto the SECONDARY display (not primary)
+        // Minimize any tracklist console window so main screen has only manager
+        if (tlWin) {{
+            tlWin.minimized = true;
+        }}
+
+        // B. Place Strawberry and Cover Photo onto the SECONDARY display (Second Screen)
         var sX = sArea.x;
         var sY = sArea.y;
         var sW = sArea.width;
         var sH = sArea.height;
 
-        // Case 1: Both Cover and Strawberry are present (with optional Tracklist)
-        if (coverWin && strawWin && tlWin) {{
-            var gap = 12;
-            var coverW = Math.min(sH - 40, Math.floor(sW * 0.30));
-            var coverH = coverW;
-            var coverX = sX + 10;
-            var coverY = sY + Math.floor((sH - coverH) / 2);
+        // If an expected player or viewer process is running but window not mapped yet, wait
+        if (strawProcRunning && !strawWin) {{
+            console.warn("MIX_ALIGN_STATE: done=0 straw=0 cover=" + (coverWin ? 1 : 0) + " mgr=" + (mgrWin ? 1 : 0) + " screens=" + numScreens);
+            return;
+        }}
+        if (coverProcRunning && !coverWin) {{
+            console.warn("MIX_ALIGN_STATE: done=0 straw=" + (strawWin ? 1 : 0) + " cover=0 mgr=" + (mgrWin ? 1 : 0) + " screens=" + numScreens);
+            return;
+        }}
 
-            coverWin.fullScreen = false;
-            if (typeof coverWin.setMaximize === 'function') coverWin.setMaximize(false, false);
-            workspace.sendClientToScreen(coverWin, secScreen);
-            coverWin.frameGeometry = {{ x: coverX, y: coverY, width: coverW, height: coverH }};
-            coverWin.keepAbove = true;
-            workspace.raiseWindow(coverWin);
-
-            var tlW = Math.floor(sW * 0.30);
-            var tlX = coverX + coverW + gap;
-            var tlY = sY + 15;
-            var tlH = sH - 30;
-            tlWin.fullScreen = false;
-            tlWin.noBorder = true;
-            workspace.sendClientToScreen(tlWin, secScreen);
-            tlWin.frameGeometry = {{ x: tlX, y: tlY, width: tlW, height: tlH }};
-            tlWin.keepAbove = true;
-            workspace.raiseWindow(tlWin);
-
-            var strawX = tlX + tlW + gap;
-            var strawW = (sX + sW) - strawX - 10;
-            var strawY = sY + 15;
-            var strawH = sH - 30;
-            strawWin.fullScreen = false;
-            if (typeof strawWin.setMaximize === 'function') strawWin.setMaximize(false, false);
-            workspace.sendClientToScreen(strawWin, secScreen);
-            strawWin.frameGeometry = {{ x: strawX, y: strawY, width: strawW, height: strawH }};
-            workspace.raiseWindow(strawWin);
-        }} else if (coverWin && strawWin) {{
-            // Side-by-side: Cover on left (square 1:1), Strawberry on right (controls + playlist)
+        // Case 1: Both Cover and Strawberry are present on secondary display
+        if (coverWin && strawWin) {{
             var gap = 16;
             var coverW = Math.min(sH - 40, Math.floor(sW * 0.42));
             var coverH = coverW;
@@ -209,35 +213,20 @@ def align_kwin(timeout_seconds=6.0, mgr_pid=0, parent_pid=0):
             workspace.sendClientToScreen(strawWin, secScreen);
             strawWin.frameGeometry = {{ x: strawX, y: strawY, width: strawW, height: strawH }};
             workspace.raiseWindow(strawWin);
-        }} else if (strawWin) {{
-            // Only Strawberry open
+
+            console.warn("MIX_ALIGN_STATE: done=1 straw=1 cover=1 mgr=" + (mgrWin ? 1 : 0) + " screens=" + numScreens);
+            return;
+        }} else if (strawWin && !coverProcRunning) {{
+            // Only Strawberry expected and open on secondary display
             strawWin.fullScreen = false;
             if (typeof strawWin.setMaximize === 'function') strawWin.setMaximize(false, false);
             workspace.sendClientToScreen(strawWin, secScreen);
             strawWin.frameGeometry = {{ x: sX + 20, y: sY + 20, width: sW - 40, height: sH - 40 }};
             workspace.raiseWindow(strawWin);
-        }} else if (coverWin && tlWin) {{
-            // Cover and Tracklist on secondary display
-            var targetH = Math.min(760, Math.max(500, Math.floor(sH * 0.65)));
-            var coverW = Math.min(targetH, Math.floor(sW * 0.38));
-            var tlW = Math.min(960, Math.max(680, Math.floor(sW * 0.44)));
-            var gap = 24;
-            var totalW = coverW + gap + tlW;
-            var startX = sX + Math.max(10, Math.floor((sW - totalW) / 2));
-            var startY = sY + Math.max(10, Math.floor((sH - targetH) / 2));
-
-            coverWin.keepAbove = true;
-            workspace.sendClientToScreen(coverWin, secScreen);
-            coverWin.frameGeometry = {{ x: startX, y: startY, width: coverW, height: targetH }};
-            workspace.raiseWindow(coverWin);
-
-            tlWin.keepAbove = true;
-            tlWin.noBorder = true;
-            workspace.sendClientToScreen(tlWin, secScreen);
-            tlWin.frameGeometry = {{ x: startX + coverW + gap, y: startY, width: tlW, height: targetH }};
-            workspace.raiseWindow(tlWin);
-        }} else if (coverWin) {{
-            // Only Cover open
+            console.warn("MIX_ALIGN_STATE: done=1 straw=1 cover=0 mgr=" + (mgrWin ? 1 : 0) + " screens=" + numScreens);
+            return;
+        }} else if (coverWin && !strawProcRunning) {{
+            // Only Cover expected and open on secondary display
             var targetH = Math.min(sH - 40, Math.max(500, Math.floor(sH * 0.85)));
             var coverW = Math.min(targetH, Math.floor(sW * 0.45));
             coverWin.fullScreen = false;
@@ -251,9 +240,15 @@ def align_kwin(timeout_seconds=6.0, mgr_pid=0, parent_pid=0):
             }};
             coverWin.keepAbove = true;
             workspace.raiseWindow(coverWin);
+            console.warn("MIX_ALIGN_STATE: done=1 straw=0 cover=1 mgr=" + (mgrWin ? 1 : 0) + " screens=" + numScreens);
+            return;
+        }} else if (!strawProcRunning && !coverProcRunning) {{
+            // Neither player nor cover running, manager on primary display is aligned
+            console.warn("MIX_ALIGN_STATE: done=1 straw=0 cover=0 mgr=" + (mgrWin ? 1 : 0) + " screens=" + numScreens);
+            return;
         }}
 
-        console.warn("MIX_ALIGN_SUCCESS: Multi-display aligned (primary: mgr, secondary: strawberry/cover)");
+        console.warn("MIX_ALIGN_STATE: done=0 straw=" + (strawWin ? 1 : 0) + " cover=" + (coverWin ? 1 : 0) + " mgr=" + (mgrWin ? 1 : 0) + " screens=" + numScreens);
         return;
     }}
 
@@ -262,6 +257,7 @@ def align_kwin(timeout_seconds=6.0, mgr_pid=0, parent_pid=0):
     // Keep windows on the single display; center HUD floating above manager
     // =========================================================================
     if (!coverWin && !tlWin) {{
+        console.warn("MIX_ALIGN_STATE: done=1 straw=0 cover=0 mgr=" + (mgrWin ? 1 : 0) + " screens=1");
         return;
     }}
 
@@ -314,33 +310,46 @@ def align_kwin(timeout_seconds=6.0, mgr_pid=0, parent_pid=0):
         workspace.raiseWindow(tlWin);
     }}
 
-    console.warn("MIX_ALIGN_SUCCESS: Single-display HUD aligned at Y=" + startY);
+    console.warn("MIX_ALIGN_STATE: done=1 straw=" + (strawWin ? 1 : 0) + " cover=" + (coverWin ? 1 : 0) + " mgr=" + (mgrWin ? 1 : 0) + " screens=1");
 }})();
 '''
-            import tempfile
             with tempfile.NamedTemporaryFile('w', suffix='.js', delete=False) as f:
                 f.write(js_code)
                 tmp_js = f.name
 
+            pname = f"mix_align_{int(time.time() * 1000)}"
             try:
-                num = scripting.loadScript(tmp_js)
-                script_obj = bus.get_object('org.kde.KWin', f'/Scripting/Script{num}')
-                script_obj.run()
-                success = True
+                # In KDE Plasma 6, loadScript requires filePath and pluginName with signature 'ss'
+                num = scripting.loadScript(tmp_js, pname, signature='ss')
+                if num >= 0:
+                    script_obj = bus.get_object('org.kde.KWin', f'/Scripting/Script{num}')
+                    script_obj.run()
+                    aligned_any = True
+                try:
+                    scripting.unloadScript(pname)
+                except Exception:
+                    pass
             finally:
                 if os.path.exists(tmp_js):
                     os.remove(tmp_js)
 
-            if success:
-                time.sleep(0.35)
-                return True
+            # Check journalctl for completion status
+            try:
+                res = subprocess.run(['journalctl', '--user', '-n', '10', '--no-pager'], capture_output=True, text=True)
+                for line in reversed(res.stdout.splitlines()):
+                    if "MIX_ALIGN_STATE:" in line:
+                        if "done=1" in line:
+                            return True
+                        break
+            except Exception:
+                pass
 
         except Exception:
             pass
 
-        time.sleep(0.3)
+        time.sleep(poll_interval)
 
-    return success
+    return aligned_any
 
 def align_x11(mgr_pid=0):
     """Align windows using wmctrl / xdotool / xrandr on X11."""
@@ -407,6 +416,10 @@ def align_x11(mgr_pid=0):
                 subprocess.run(['wmctrl', '-i', '-r', mgr_win, '-e', f"0,{prim['x']},{prim['y']},{prim['w']},{prim['h']}"], check=False)
                 subprocess.run(['wmctrl', '-i', '-r', mgr_win, '-b', 'add,maximized_vert,maximized_horz'], check=False)
 
+            # Minimize tracklist window on multi-display
+            if tl_win:
+                subprocess.run(['wmctrl', '-i', '-r', tl_win, '-b', 'add,hidden'], check=False)
+
             # Secondary display: Cover (left) + Strawberry (right)
             s_x, s_y, s_w, s_h = sec['x'], sec['y'], sec['w'], sec['h']
 
@@ -470,7 +483,6 @@ def shutil_which(cmd):
 
 def main():
     args = get_args()
-    time.sleep(0.2)
     sys_name = platform.system().lower()
 
     if sys_name == 'linux':

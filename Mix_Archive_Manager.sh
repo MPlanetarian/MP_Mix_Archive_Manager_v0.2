@@ -285,13 +285,31 @@ if os.path.exists('/usr/bin/qdbus'):
     fi
 }
 
+get_connected_displays_count() {
+    if command -v kscreen-doctor >/dev/null 2>&1; then
+        local cnt
+        cnt=$(kscreen-doctor -o 2>/dev/null | grep -c "Output: ")
+        [ -n "$cnt" ] && [ "$cnt" -gt 0 ] && echo "$cnt" && return 0
+    fi
+    if command -v xrandr >/dev/null 2>&1; then
+        local cnt
+        cnt=$(xrandr --listmonitors 2>/dev/null | awk '/Monitors:/{print $2}')
+        [ -n "$cnt" ] && [ "$cnt" -gt 0 ] && echo "$cnt" && return 0
+    fi
+    echo 1
+}
+
 align_mix_windows_on_screen() {
     local align_sh="$SCRIPT_DIR/scripts/align_mix_windows.py"
+    [ ! -f "$align_sh" ] && align_sh="$HOME/MP_Mix_Manager_v0.2/scripts/align_mix_windows.py"
+    [ ! -f "$align_sh" ] && align_sh="/var/home/mplanetarian/MP_Mix_Manager_v0.2/scripts/align_mix_windows.py"
+    [ ! -f "$align_sh" ] && align_sh="$HOME/Documents/BASH_SCRIPTS/scripts/align_mix_windows.py"
     [ ! -f "$align_sh" ] && align_sh="$PWD/scripts/align_mix_windows.py"
     if [ -f "$align_sh" ] && command -v python3 >/dev/null 2>&1; then
         local mgr_pid="$$"
         local parent_pid="$PPID"
-        (sleep 0.15; python3 "$align_sh" --mgr-pid "$mgr_pid" --parent-pid "$parent_pid" >/dev/null 2>&1 || true) &
+        (python3 "$align_sh" --mgr-pid "$mgr_pid" --parent-pid "$parent_pid" >/dev/null 2>&1 || true) &
+        disown 2>/dev/null || true
     fi
 }
 
@@ -306,28 +324,33 @@ open_cover_art_window() {
     if [ "$OS_TYPE" = "linux" ] || [ "$OS_TYPE" = "freebsd" ]; then
         ensure_bazzite_borderless_kwin_rule
         if command -v flatpak >/dev/null 2>&1 && flatpak list 2>/dev/null | grep -q "org.kde.gwenview"; then
-            flatpak run org.kde.gwenview --qwindowtitle "$cover_title" "$target" >/dev/null 2>&1 &
-            (sleep 0.15; command -v xprop >/dev/null 2>&1 && xprop -name "$cover_title" -f _NET_WM_STATE 32a -set _NET_WM_STATE _NET_WM_STATE_ABOVE 2>/dev/null || true) &
+            nohup flatpak run org.kde.gwenview "$target" >/dev/null 2>&1 &
+            disown 2>/dev/null || true
             align_mix_windows_on_screen
             return 0
         elif command -v gwenview >/dev/null 2>&1; then
-            gwenview --qwindowtitle "$cover_title" "$target" >/dev/null 2>&1 &
+            nohup gwenview "$target" >/dev/null 2>&1 &
+            disown 2>/dev/null || true
             align_mix_windows_on_screen
             return 0
         elif command -v loupe >/dev/null 2>&1; then
-            loupe "$target" >/dev/null 2>&1 &
+            nohup loupe "$target" >/dev/null 2>&1 &
+            disown 2>/dev/null || true
             align_mix_windows_on_screen
             return 0
         elif command -v eog >/dev/null 2>&1; then
-            eog "$target" >/dev/null 2>&1 &
+            nohup eog "$target" >/dev/null 2>&1 &
+            disown 2>/dev/null || true
             align_mix_windows_on_screen
             return 0
         elif command -v feh >/dev/null 2>&1; then
-            feh --title "$cover_title" --geometry 700x700 "$target" >/dev/null 2>&1 &
+            nohup feh --title "$cover_title" --geometry 700x700 "$target" >/dev/null 2>&1 &
+            disown 2>/dev/null || true
             align_mix_windows_on_screen
             return 0
         elif command -v xdg-open >/dev/null 2>&1; then
-            xdg-open "$target" >/dev/null 2>&1 &
+            nohup xdg-open "$target" >/dev/null 2>&1 &
+            disown 2>/dev/null || true
             align_mix_windows_on_screen
             return 0
         fi
@@ -4460,13 +4483,16 @@ play_audio_file() {
         strawberry)
             if get_strawberry_track_info 2>/dev/null && [ "$STRAWBERRY_STATE" = "playing" ]; then
                 if [ "$STRAWBERRY_RESOLVED_PATH" = "$file" ] || [ "$STRAWBERRY_RAW_PATH" = "$file" ]; then
+                    align_mix_windows_on_screen
                     return 0
                 fi
             fi
             if command -v strawberry >/dev/null 2>&1; then
                 nohup strawberry "$file" >/dev/null 2>&1 &
+                disown 2>/dev/null || true
             elif flatpak list 2>/dev/null | grep -q "org.strawberrymusicplayer.strawberry"; then
                 nohup flatpak run org.strawberrymusicplayer.strawberry "$file" >/dev/null 2>&1 &
+                disown 2>/dev/null || true
             elif [ "$OS_TYPE" = "macos" ]; then
                 open -a Strawberry "$file" >/dev/null 2>&1 &
             fi
@@ -4581,8 +4607,14 @@ execute_startup_autoplay() {
 
     if [ -n "$active_playing_mix" ] || [ "$active_player_name" = "Strawberry" ]; then
         # Audio is already actively playing in the background (e.g. Strawberry).
-        # Do NOT launch cliamp or start another track over it.
-        # Do NOT hijack startup with intermediate tracklist screens; proceed directly to main window.
+        # Open cover art if enabled and not already open
+        if [ "${AUTO_SHOW_COVER_ON_STARTUP:-true}" = "true" ] && [ -n "$active_playing_mix" ]; then
+            local found_cover
+            found_cover=$(find_mix_cover "$active_playing_mix" 2>/dev/null)
+            if [ -n "$found_cover" ] && [ -f "$found_cover" ]; then
+                open_cover_art_window "$found_cover"
+            fi
+        fi
         align_mix_windows_on_screen
         return 0
     fi
@@ -4673,11 +4705,18 @@ if files:
     fi
 
     # 3. Find matching tracklist and open in dedicated new console window
-    local found_tl=""
-    if [ "${AUTO_SHOW_TRACKLIST_ON_STARTUP:-true}" = "true" ]; then
-        found_tl=$(find_mix_tracklist "$selected_mix" 2>/dev/null)
-        if [ -n "$found_tl" ] && [ -f "$found_tl" ]; then
-            open_tracklist_window "$found_tl"
+    # ONLY show tracklist window on startup if single display connected (<= 1).
+    # When >1 displays are connected, only the manager is shown on main screen and
+    # the other two windows (Strawberry + Cover) are placed on the secondary screen.
+    local num_displays
+    num_displays=$(get_connected_displays_count)
+    if [ "$num_displays" -le 1 ]; then
+        local found_tl=""
+        if [ "${AUTO_SHOW_TRACKLIST_ON_STARTUP:-true}" = "true" ]; then
+            found_tl=$(find_mix_tracklist "$selected_mix" 2>/dev/null)
+            if [ -n "$found_tl" ] && [ -f "$found_tl" ]; then
+                open_tracklist_window "$found_tl"
+            fi
         fi
     fi
 
@@ -6859,6 +6898,31 @@ get_planets_above_horizon() {
     fi
 }
 
+get_header_ordinal_date() {
+    local day
+    day=$(date "+%-d")
+    local suffix="th"
+    case "$day" in
+        11|12|13) suffix="th" ;;
+        *1) suffix="st" ;;
+        *2) suffix="nd" ;;
+        *3) suffix="rd" ;;
+    esac
+    echo "${day}${suffix} of $(date '+%B, %Y')"
+}
+
+get_manager_version() {
+    local v_file="$SCRIPT_DIR/VERSION"
+    [ ! -f "$v_file" ] && v_file="$PWD/VERSION"
+    if [ -f "$v_file" ]; then
+        head -n 1 "$v_file" | tr -d ' \t\r\n'
+    elif [ -f "$SCRIPT_DIR/CHANGELOG.md" ]; then
+        grep -E '^## \[[0-9]+\.[0-9]+' "$SCRIPT_DIR/CHANGELOG.md" | head -1 | sed -E 's/.*\[([0-9]+\.[0-9]+\.[0-9]+)\].*/\1/'
+    else
+        echo "0.2.1"
+    fi
+}
+
 manage_weather_menu() {
     while true; do
         clear
@@ -7344,8 +7408,14 @@ while true; do
         fi
     fi
     clear
+    local header_date
+    header_date=$(get_header_ordinal_date)
+    local mgr_ver
+    mgr_ver=$(get_manager_version)
+    local current_time
+    current_time=$(date "+%T")
     echo -e "${BOLD}${MAGENTA}===================================================================================${NC}"
-    echo -e "${BOLD}${MAGENTA}                     Mix Archive Manager (MP_Mix_Manager_v0.2)                     ${NC}"
+    echo -e "${BOLD}${MAGENTA}  MP Mix Archive Manager (${header_date}) | Version: ${mgr_ver} | Current Time: ${current_time}${NC}"
     echo -e "${BOLD}${MAGENTA}===================================================================================${NC}"
     os_badge=$(get_os_badge)
     os_updates=$(get_os_update_status)

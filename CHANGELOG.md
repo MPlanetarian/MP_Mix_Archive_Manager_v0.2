@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.2.1] - 2026-09-18
 
+- **Header Text Refresh with Dynamic Date, Version & Time**:
+  - Updated the top application banner header in [`Mix_Archive_Manager.sh`](file:///var/home/mplanetarian/MP_Mix_Manager_v0.2/Mix_Archive_Manager.sh):
+    - Replaced static `Mix Archive Manager (MP_Mix_Manager_v0.2)` with `MP Mix Archive Manager (<Date>) | Version: <Version> | Current Time: <Time>`.
+    - Added `get_header_ordinal_date()` helper for formatted dates with ordinal day suffixes (e.g. `18th of September, 2026`).
+    - Added `get_manager_version()` helper reading centrally from `VERSION`.
+    - Real-time timestamp refresh (`date "+%T"`).
+
 - **Planetary Horizon Ephemeris Calculator & Banner Integration**:
   - Added standalone ephemeris calculator [`scripts/get_planets.py`](file:///var/home/mplanetarian/MP_Mix_Manager_v0.2/scripts/get_planets.py) and [`scripts/get_planets.sh`](file:///var/home/mplanetarian/MP_Mix_Manager_v0.2/scripts/get_planets.sh) (mirrored to root):
     - Computes real-time altitude, azimuth, and visibility for all 7 major planets using NASA JPL Standish Keplerian orbital elements with 100% offline calculation.
