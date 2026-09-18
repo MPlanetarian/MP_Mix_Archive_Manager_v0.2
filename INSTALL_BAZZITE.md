@@ -189,23 +189,30 @@ NFT_VIDEOS_DIR="/run/media/$USER/DATA/NFT_VIDEOS"
 
 ---
 
-## 9. Step 8: Sudoers Configuration for Firewall & Maintenance
+## 9. Step 8: Sudoers Configuration for Firewall, Maintenance & Reboot
 
-Options 24/25 (**Block/Unblock Internet Access**) require root privileges to load and purge an isolated nftables table (`inet lanonly`).
+Options 24/25 (**Block/Unblock Internet Access**) and Option 74 (**Reboot System**) require root privileges or non-interactive authorization.
 
-To allow running this without entering your password each time, configure a sudoers drop-in:
+To allow running these maintenance tasks and rebooting without entering your password each time, configure a sudoers drop-in:
 
 ```bash
 sudo visudo -f /etc/sudoers.d/mix-manager
 ```
 
-Add the following lines (replace `<username>` with your Bazzite username):
+Add the following lines (replace `<username>` with your Bazzite username or use `%wheel`):
 ```sudoers
 <username> ALL=(ALL) NOPASSWD: /usr/sbin/nft
 <username> ALL=(ALL) NOPASSWD: /usr/sbin/fstrim
 <username> ALL=(ALL) NOPASSWD: /usr/bin/systemctl start sshd, /usr/bin/systemctl stop sshd, /usr/bin/systemctl restart sshd
 <username> ALL=(ALL) NOPASSWD: /usr/bin/systemctl start smb, /usr/bin/systemctl stop smb, /usr/bin/systemctl restart smb
 <username> ALL=(ALL) NOPASSWD: /usr/bin/systemctl start vsftpd, /usr/bin/systemctl stop vsftpd, /usr/bin/systemctl restart vsftpd
+<username> ALL=(ALL) NOPASSWD: /usr/bin/systemctl reboot, /usr/bin/systemctl reboot *, /usr/bin/reboot, /usr/sbin/reboot, /sbin/reboot, /usr/bin/shutdown, /usr/sbin/shutdown, /sbin/shutdown
+```
+
+Alternatively, you can place reboot privileges in a dedicated drop-in file:
+```bash
+echo '%wheel ALL=(ALL) NOPASSWD: /usr/bin/systemctl reboot, /usr/bin/systemctl reboot *, /usr/bin/reboot, /usr/sbin/reboot, /sbin/reboot, /usr/bin/shutdown, /usr/sbin/shutdown, /sbin/shutdown' | sudo tee /etc/sudoers.d/reboot
+sudo chmod 0440 /etc/sudoers.d/reboot
 ```
 
 ---

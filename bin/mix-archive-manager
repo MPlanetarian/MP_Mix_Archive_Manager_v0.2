@@ -49,6 +49,7 @@ if [ -n "${MIX_ARCHIVE_DIR:-}" ] && [ ! -d "$MIX_ARCHIVE_DIR" ]; then
 fi
 
 if [ -f "$SCRIPT" ]; then
+    printf '\033]0;%s\007' "Mix Archive Manager" 2>/dev/null || true
     cd "$TARGET_DIR" && exec bash "$SCRIPT" "$@"
 else
     echo "Error: Mix Archive Manager main script not found at '$SCRIPT'."

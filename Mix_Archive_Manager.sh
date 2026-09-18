@@ -123,6 +123,7 @@ save_theme() {
 
 load_theme
 MANAGER_START_EPOCH="$(date +%s)"
+printf '\033]0;%s\007' "Mix Archive Manager" 2>/dev/null || true
 # Resolve symlinks so SCRIPT_DIR correctly points to codebase directory
 _RESOLVED_SRC="${BASH_SOURCE[0]}"
 while [ -h "$_RESOLVED_SRC" ]; do
@@ -288,7 +289,9 @@ align_mix_windows_on_screen() {
     local align_sh="$SCRIPT_DIR/scripts/align_mix_windows.py"
     [ ! -f "$align_sh" ] && align_sh="$PWD/scripts/align_mix_windows.py"
     if [ -f "$align_sh" ] && command -v python3 >/dev/null 2>&1; then
-        (sleep 0.15; python3 "$align_sh" >/dev/null 2>&1 || true) &
+        local mgr_pid="$$"
+        local parent_pid="$PPID"
+        (sleep 0.15; python3 "$align_sh" --mgr-pid "$mgr_pid" --parent-pid "$parent_pid" >/dev/null 2>&1 || true) &
     fi
 }
 
@@ -4455,6 +4458,7 @@ play_audio_file() {
             elif [ "$OS_TYPE" = "macos" ]; then
                 open -a Strawberry "$file" >/dev/null 2>&1 &
             fi
+            align_mix_windows_on_screen
             ;;
         vlc)
             if command -v vlc >/dev/null 2>&1; then
@@ -4567,6 +4571,7 @@ execute_startup_autoplay() {
         # Audio is already actively playing in the background (e.g. Strawberry).
         # Do NOT launch cliamp or start another track over it.
         # Do NOT hijack startup with intermediate tracklist screens; proceed directly to main window.
+        align_mix_windows_on_screen
         return 0
     fi
 
@@ -4664,10 +4669,8 @@ if files:
         fi
     fi
 
-    # Center and vertically align cover and tracklist on top of the manager window
-    if [ -n "$found_cover" ] || [ -n "$found_tl" ]; then
-        align_mix_windows_on_screen
-    fi
+    # Align windows across displays: Manager on primary display, Strawberry & Cover on secondary display (>1 displays)
+    align_mix_windows_on_screen
 
     # 4. Custom YouTube video URL on startup (only if mix audio is playing!)
     if [ "${AUTO_PLAY_YOUTUBE_ON_STARTUP:-false}" = "true" ] && [ -n "${STARTUP_YOUTUBE_URL:-}" ]; then
@@ -6503,9 +6506,9 @@ reboot_system() {
                 shutdown -r now || sudo shutdown -r now || reboot
             else
                 if command -v systemctl >/dev/null 2>&1; then
-                    systemctl reboot || sudo reboot || reboot
+                    sudo systemctl reboot || sudo reboot || sudo shutdown -r now || systemctl reboot || reboot
                 else
-                    sudo reboot || reboot
+                    sudo reboot || sudo shutdown -r now || reboot
                 fi
             fi
             ;;
@@ -7183,6 +7186,8 @@ fi
 while true; do
     if [ "$STARTUP_AUTOPLAY_EXECUTED" -eq 0 ]; then
         STARTUP_AUTOPLAY_EXECUTED=1
+        printf '\033]0;%s\007' "Mix Archive Manager" 2>/dev/null || true
+        align_mix_windows_on_screen
         if [ "${AUTO_PLAY_ON_STARTUP:-true}" = "true" ]; then
             execute_startup_autoplay
         else

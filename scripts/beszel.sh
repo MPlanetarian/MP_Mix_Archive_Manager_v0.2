@@ -42,6 +42,15 @@ ensure_podman_socket() {
     fi
 }
 
+# Helper: ensure /dev/net/tun is available for rootless podman pasta networking
+ensure_tun_device() {
+    if [ ! -c /dev/net/tun ]; then
+        echo -e "  ${YELLOW}Missing /dev/net/tun. Loading tun kernel module...${NC}"
+        sudo modprobe tun 2>/dev/null || modprobe tun 2>/dev/null || true
+        sleep 0.2
+    fi
+}
+
 # Helper: open URL in browser
 open_dashboard_browser() {
     echo -e "${CYAN}Opening Beszel Dashboard in browser: ${BOLD}${HUB_URL}${NC}"
@@ -65,6 +74,7 @@ open_dashboard_browser() {
 
 start_hub() {
     echo -e "\n${BOLD}${BLUE}=== STARTING BESZEL HUB ===${NC}"
+    ensure_tun_device
     if is_container_running "beszel"; then
         echo -e "${GREEN}✓ Beszel Hub is already running on ${HUB_URL}.${NC}"
         return 0
