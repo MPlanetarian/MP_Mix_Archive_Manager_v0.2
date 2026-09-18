@@ -37,6 +37,23 @@ fi
 TARGET_DIR="${MIX_ARCHIVE_DIR:-$CODEBASE_DIR}"
 SCRIPT="$CODEBASE_DIR/Mix_Archive_Manager.sh"
 
+# Fast-path CLI commands that don't need archive storage mounted
+if [ "${1:-}" = "update" ] || [ "${1:-}" = "--update" ]; then
+    shift
+    if [ -x "$CODEBASE_DIR/scripts/update_manager.sh" ]; then
+        exec bash "$CODEBASE_DIR/scripts/update_manager.sh" "$@"
+    elif [ -x "$CODEBASE_DIR/update_manager.sh" ]; then
+        exec bash "$CODEBASE_DIR/update_manager.sh" "$@"
+    fi
+elif [ "${1:-}" = "version" ] || [ "${1:-}" = "--version" ] || [ "${1:-}" = "-v" ]; then
+    shift
+    if [ -x "$CODEBASE_DIR/scripts/update_manager.sh" ]; then
+        exec bash "$CODEBASE_DIR/scripts/update_manager.sh" --version "$@"
+    elif [ -x "$CODEBASE_DIR/update_manager.sh" ]; then
+        exec bash "$CODEBASE_DIR/update_manager.sh" --version "$@"
+    fi
+fi
+
 # If an external drive was specified in config, wait briefly for mount
 if [ -n "${MIX_ARCHIVE_DIR:-}" ] && [ ! -d "$MIX_ARCHIVE_DIR" ]; then
     echo "Waiting for archive storage to mount..."

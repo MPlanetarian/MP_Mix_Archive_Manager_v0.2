@@ -602,6 +602,13 @@ elif [ "${1:-}" = "--import" ]; then
 elif [ "${1:-}" = "--list" ]; then
     list_and_restore_backups
     exit 0
+elif [ "${1:-}" = "--update" ] || [ "${1:-}" = "update" ]; then
+    if [ -x "$SCRIPT_DIR/update_manager.sh" ]; then
+        "$SCRIPT_DIR/update_manager.sh" "$@"
+    elif [ -x "$SCRIPT_DIR/scripts/update_manager.sh" ]; then
+        "$SCRIPT_DIR/scripts/update_manager.sh" "$@"
+    fi
+    exit 0
 fi
 
 while true; do
@@ -618,17 +625,26 @@ while true; do
     echo -e "  ${BOLD}${CYAN} 3)${NC} ${BOLD}Export Configuration Bundle${NC} ${GREEN}(Portable .tar.gz with Manifest & Hashes)${NC}"
     echo -e "  ${BOLD}${CYAN} 4)${NC} ${BOLD}Import Configuration Bundle${NC} ${GREEN}(Automated Safety Backup & Restore)${NC}"
     echo -e "  ${BOLD}${CYAN} 5)${NC} ${BOLD}List & Restore Historical Backups${NC} ${GREEN}(Rollback to Any Prior Snapshot)${NC}"
+    echo -e "  ${BOLD}${CYAN} 6)${NC} ${BOLD}Check & Install System Updates${NC} ${GREEN}(Latest Mix Manager Release & Git Pull)${NC}"
     echo ""
     echo -e "  ${BOLD}${CYAN} 0)${NC} Return to Main Menu ${DIM}(or 'q')${NC}"
     echo -e "${BOLD}${BLUE}──────────────────────────────────────────────────────────────────────${NC}"
     
-    read -r -p "Enter choice [1-5, or 0 to return]: " opt
+    read -r -p "Enter choice [1-6, or 0 to return]: " opt
     case "$opt" in
         1) migrate_installation_path ;;
         2) backup_current_config ;;
         3) export_config_bundle ;;
         4) import_config_bundle ;;
         5) list_and_restore_backups ;;
+        6)
+            if [ -x "$SCRIPT_DIR/update_manager.sh" ]; then
+                "$SCRIPT_DIR/update_manager.sh"
+            elif [ -x "$SCRIPT_DIR/scripts/update_manager.sh" ]; then
+                "$SCRIPT_DIR/scripts/update_manager.sh"
+            fi
+            press_enter
+            ;;
         0|q|Q|exit) break ;;
         *)
             echo -e "\n${RED}Invalid option!${NC}"

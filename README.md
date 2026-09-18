@@ -233,6 +233,7 @@ MP_Mix_Manager_v0.2/
 │   ├── search_and_import_mixes.py # Universal mix search & importer (Local Drives & SMB)
 │   ├── search_and_import_mixes.sh # Universal mix search shell launcher
 │   ├── manage_installation_config.sh# Installation migration & configuration management
+│   ├── update_manager.sh        # System updater & version checker (mix-archive-manager update)
 │   ├── Check_Find_Tracklists.sh # Traktor Pro history XML parser
 │   ├── MOVE_NOT_CONVERTED_WAVS.sh # Unconverted WAV retrieval engine
 │   ├── SOF_Live_Tracker.sh      # Live tracklist monitor (Strawberry / cliamp)
@@ -390,7 +391,7 @@ MP_Mix_Manager_v0.2/
 | **70**| **Launch AI Assistant / Models (AGY)** | Starts Antigravity CLI AI sessions (Claude Sonnet, Claude Opus, GPT-OSS, Gemini), manages local Ollama models, or launches DeepSeek Harness (`dsh-mobile`). |
 | **71**| **Run Bash CLI Commands** | Built-in interactive Bash shell and direct command execution runner. |
 | **72**| **Manager Themes & Color Palette Switcher** | Switch between 9 terminal themes (Cyberpunk, Dracula, Nord, Matrix, Solarized, Tokyo Night, Monokai, Gruvbox, Emerald, Classic). |
-| **73**| **Manage Installation & Configuration** | Comprehensive installation migration wizard (relocates codebase path and auto-repoints all CLI wrappers and desktop entries), instant timestamped config backups, portable `.tar.gz` config bundle export (with SHA-256 verification and manifest), safe bundle import with pre-import snapshots, and rollback/restore of historical snapshots (`manage_installation_config.sh`). |
+| **73**| **Manage Installation & Configuration** | Comprehensive installation migration wizard (relocates codebase path and auto-repoints all CLI wrappers and desktop entries), instant timestamped config backups, portable `.tar.gz` config bundle export, safe bundle import, rollback/restore of historical snapshots, and automated system update (`mix-archive-manager update` / `update_manager.sh`). |
 | **74**| **Reboot System** | Cross-platform system reboot with safety confirmation dialog (`systemctl reboot`, macOS `osascript`, Windows `shutdown.exe /r`, FreeBSD `shutdown -r now`). |
 | **75**| **Exit Manager** | Cleans up and exits the console session. |
 

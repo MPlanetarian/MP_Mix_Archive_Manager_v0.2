@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.2.1] - 2026-09-18
 
+- **Manager Self-Update System (`mix-archive-manager update` / Option 73)**:
+  - Added dedicated system updater [`scripts/update_manager.sh`](file:///var/home/mplanetarian/MP_Mix_Manager_v0.2/scripts/update_manager.sh) (mirrored to `update_manager.sh`):
+    - Run `mix-archive-manager update` (or `manager update`, `~/manager.sh update`) to automatically check for and install the latest version from remote Git.
+    - If already running the latest version, cleanly reports: `Mix Archive Manager is running the latest version: vX.Y.Z` and active commit hash.
+    - If updates are available, safely stashes uncommitted local changes, pulls/rebases changes, restores permissions, refreshes symlinks in `~/.local/bin`, and updates the dynamic MOTD banner.
+    - Added `--version` / `-v` flag to display currently installed version and commit date.
+    - Added `--check` flag to probe for remote updates without installing.
+  - Added fast-path CLI dispatch in [`bin/mix-archive-manager`](file:///var/home/mplanetarian/MP_Mix_Manager_v0.2/bin/mix-archive-manager) and [`Mix_Archive_Manager.sh`](file:///var/home/mplanetarian/MP_Mix_Manager_v0.2/Mix_Archive_Manager.sh) to bypass disk mounting wait during updates or version queries.
+  - Added Option 6 ("Check & Install System Updates") to [`scripts/manage_installation_config.sh`](file:///var/home/mplanetarian/MP_Mix_Manager_v0.2/scripts/manage_installation_config.sh) (Menu Option 73).
+  - Created [`VERSION`](file:///var/home/mplanetarian/MP_Mix_Manager_v0.2/VERSION) file for centralized version tracking.
+
 - **Full File Name MOTD Display & Recent Releases Count Update**:
   - Upgraded [`scripts/manage_motd.py`](file:///var/home/mplanetarian/MP_Mix_Manager_v0.2/scripts/manage_motd.py) and [`manage_motd.py`](file:///var/home/mplanetarian/MP_Mix_Manager_v0.2/manage_motd.py):
     - Replaced 38-character filename truncation with the full, un-truncated file name.
