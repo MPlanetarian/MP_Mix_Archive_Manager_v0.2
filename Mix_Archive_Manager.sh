@@ -6848,16 +6848,31 @@ get_current_weather() {
     fi
 }
 
+get_planets_above_horizon() {
+    [ "${PLANETS_ENABLED:-true}" != "true" ] && return 0
+
+    local planets_py="$SCRIPT_DIR/scripts/get_planets.py"
+    [ ! -f "$planets_py" ] && planets_py="$PWD/scripts/get_planets.py"
+    if [ -f "$planets_py" ] && command -v python3 >/dev/null 2>&1; then
+        local loc="${WEATHER_LOCATION:-Swansea, UK}"
+        python3 "$planets_py" --location "$loc" 2>/dev/null
+    fi
+}
+
 manage_weather_menu() {
     while true; do
         clear
         echo -e "${BOLD}${MAGENTA}======================================================================${NC}"
-        echo -e "${BOLD}${MAGENTA}             METEOROLOGICAL & LIVE WEATHER SETTINGS                   ${NC}"
+        echo -e "${BOLD}${MAGENTA}        METEOROLOGICAL & PLANETARY EPHEMERIS SETTINGS                 ${NC}"
         echo -e "${BOLD}${MAGENTA}======================================================================${NC}\n"
         local w_badge="${RED}DISABLED${NC}"
         [ "${WEATHER_ENABLED:-true}" = "true" ] && w_badge="${GREEN}ENABLED${NC}"
-        echo -e "  • ${BOLD}Weather Banner Display:${NC} ${w_badge}"
-        echo -e "  • ${BOLD}Configured Location:${NC}    ${BOLD}${CYAN}${WEATHER_LOCATION:-Not Set}${NC}"
+        local p_badge="${RED}DISABLED${NC}"
+        [ "${PLANETS_ENABLED:-true}" = "true" ] && p_badge="${GREEN}ENABLED${NC}"
+
+        echo -e "  • ${BOLD}Weather Banner Display:${NC}   ${w_badge}"
+        echo -e "  • ${BOLD}Planets Banner Display:${NC}   ${p_badge}"
+        echo -e "  • ${BOLD}Configured Location:${NC}      ${BOLD}${CYAN}${WEATHER_LOCATION:-Not Set}${NC}"
 
         local weather_sh="$SCRIPT_DIR/scripts/get_weather.sh"
         [ ! -f "$weather_sh" ] && weather_sh="$PWD/scripts/get_weather.sh"
@@ -6865,18 +6880,31 @@ manage_weather_menu() {
             local current_w
             current_w=$("$weather_sh" get 2>/dev/null)
             if [ -n "$current_w" ]; then
-                echo -e "  • ${BOLD}Current Conditions:${NC}     ${WHITE}${current_w}${NC}"
+                echo -e "  • ${BOLD}Current Conditions:${NC}       ${WHITE}${current_w}${NC}"
             fi
         fi
-        echo -e "  • ${BOLD}Config File:${NC}            ${DIM}${SCRIPT_DIR}/config.env${NC}\n"
+
+        local planets_py="$SCRIPT_DIR/scripts/get_planets.py"
+        [ ! -f "$planets_py" ] && planets_py="$PWD/scripts/get_planets.py"
+        if [ -f "$planets_py" ] && command -v python3 >/dev/null 2>&1; then
+            local current_p
+            current_p=$(python3 "$planets_py" --location "${WEATHER_LOCATION:-Swansea, UK}" 2>/dev/null)
+            if [ -n "$current_p" ]; then
+                echo -e "  • ${BOLD}Planets Above Horizon:${NC}    ${current_p#*Planets: }"
+            fi
+        fi
+
+        echo -e "  • ${BOLD}Config File:${NC}              ${DIM}${SCRIPT_DIR}/config.env${NC}\n"
 
         echo -e "${BOLD}Select an option:${NC}"
         echo -e "  ${BOLD}${CYAN} 1)${NC} Toggle Weather Display (${w_badge})"
-        echo -e "  ${BOLD}${CYAN} 2)${NC} Change / Update Weather Location (${BOLD}${WEATHER_LOCATION:-Swansea, UK}${NC})"
-        echo -e "  ${BOLD}${CYAN} 3)${NC} Force Refresh Weather Now (Fetch live meteorological data)"
-        echo -e "  ${BOLD}${CYAN} 4)${NC} Remove / Clear Weather Location (Disables weather display)"
+        echo -e "  ${BOLD}${CYAN} 2)${NC} Toggle Planets Above Horizon Display (${p_badge})"
+        echo -e "  ${BOLD}${CYAN} 3)${NC} Change / Update Observer Location (${BOLD}${WEATHER_LOCATION:-Swansea, UK}${NC})"
+        echo -e "  ${BOLD}${CYAN} 4)${NC} Force Refresh Weather Now (Fetch live meteorological data)"
+        echo -e "  ${BOLD}${CYAN} 5)${NC} View Full Planetary Ephemeris (All 7 Planets Altitude & Compass Heading)"
+        echo -e "  ${BOLD}${CYAN} 6)${NC} Remove / Clear Location (Disables weather display)"
         echo -e "  ${BOLD}${CYAN} 0)${NC} Return to Previous Menu\n"
-        read -r -p "Enter choice [0-4]: " w_choice
+        read -r -p "Enter choice [0-6]: " w_choice
 
         case "$w_choice" in
             1)
@@ -6890,6 +6918,16 @@ manage_weather_menu() {
                 sleep 1
                 ;;
             2)
+                if [ "${PLANETS_ENABLED:-true}" = "true" ]; then
+                    PLANETS_ENABLED="false"
+                else
+                    PLANETS_ENABLED="true"
+                fi
+                save_config_setting "PLANETS_ENABLED" "$PLANETS_ENABLED"
+                echo -e "\n${GREEN}✓ Planets display set to '${PLANETS_ENABLED}' and saved to config.env!${NC}"
+                sleep 1
+                ;;
+            3)
                 echo ""
                 echo -e "Current Location: ${CYAN}${WEATHER_LOCATION:-Swansea, UK}${NC}"
                 read -r -p "Enter new location (e.g. 'Swansea, UK', 'London, UK', 'Cardiff, UK'): " new_loc
@@ -6899,24 +6937,32 @@ manage_weather_menu() {
                     save_config_setting "WEATHER_LOCATION" "$WEATHER_LOCATION"
                     save_config_setting "WEATHER_ENABLED" "true"
                     [ -x "$weather_sh" ] && "$weather_sh" clear >/dev/null 2>&1 || true
-                    echo -e "\n${GREEN}✓ Weather location updated to '${WEATHER_LOCATION}'!${NC}"
+                    echo -e "\n${GREEN}✓ Observer location updated to '${WEATHER_LOCATION}'!${NC}"
                     sleep 1
                 fi
                 ;;
-            3)
+            4)
                 echo ""
                 if [ -x "$weather_sh" ]; then
                     "$weather_sh" refresh
                 fi
                 sleep 1.2
                 ;;
-            4)
+            5)
+                echo ""
+                if [ -f "$planets_py" ] && command -v python3 >/dev/null 2>&1; then
+                    python3 "$planets_py" --all --location "${WEATHER_LOCATION:-Swansea, UK}"
+                fi
+                echo ""
+                read -r -p "Press Enter to return to settings..."
+                ;;
+            6)
                 WEATHER_LOCATION=""
                 WEATHER_ENABLED="false"
                 save_config_setting "WEATHER_LOCATION" ""
                 save_config_setting "WEATHER_ENABLED" "false"
                 [ -x "$weather_sh" ] && "$weather_sh" clear >/dev/null 2>&1 || true
-                echo -e "\n${YELLOW}✓ Weather location cleared and weather display disabled.${NC}"
+                echo -e "\n${YELLOW}✓ Observer location cleared and weather display disabled.${NC}"
                 sleep 1.2
                 ;;
             0|[qQ])
@@ -7313,6 +7359,10 @@ while true; do
     if [ "${WEATHER_ENABLED:-true}" = "true" ] && [ -n "${WEATHER_LOCATION:-}" ]; then
         current_weather=$(get_current_weather)
         [ -n "$current_weather" ] && echo -e "${current_weather}"
+    fi
+    if [ "${PLANETS_ENABLED:-true}" = "true" ]; then
+        current_planets=$(get_planets_above_horizon)
+        [ -n "$current_planets" ] && echo -e "${current_planets}"
     fi
     echo -e "${BOLD}${MAGENTA}-----------------------------------------------------------------------------------${NC}"
     echo ""

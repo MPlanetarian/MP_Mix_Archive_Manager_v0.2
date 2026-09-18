@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.2.1] - 2026-09-18
 
+- **Planetary Horizon Ephemeris Calculator & Banner Integration**:
+  - Added standalone ephemeris calculator [`scripts/get_planets.py`](file:///var/home/mplanetarian/MP_Mix_Manager_v0.2/scripts/get_planets.py) and [`scripts/get_planets.sh`](file:///var/home/mplanetarian/MP_Mix_Manager_v0.2/scripts/get_planets.sh) (mirrored to root):
+    - Computes real-time altitude, azimuth, and visibility for all 7 major planets using NASA JPL Standish Keplerian orbital elements with 100% offline calculation.
+    - Integrated live planetary visibility banner below weather in the manager main application loop.
+    - Added planetary ephemeris configuration (`PLANETS_ENABLED`) and full celestial viewer in Meteorological & Planetary Settings.
+
 - **Manager Self-Update System (`mix-archive-manager update` / Option 73)**:
   - Added dedicated system updater [`scripts/update_manager.sh`](file:///var/home/mplanetarian/MP_Mix_Manager_v0.2/scripts/update_manager.sh) (mirrored to `update_manager.sh`):
     - Run `mix-archive-manager update` (or `manager update`, `~/manager.sh update`) to automatically check for and install the latest version from remote Git.
