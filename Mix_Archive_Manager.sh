@@ -2098,30 +2098,14 @@ launch_strawberry() {
 
 launch_video_playlists() {
     echo -e "\n${BOLD}${BLUE}=== LAUNCH VIDEO PLAYLISTS (VLC) ===${NC}"
-    echo -e "  ${BOLD}${CYAN}1)${NC} Play Defasten Playlist in VLC (${GREEN}Defasten.xspf${NC})"
-    echo -e "  ${BOLD}${CYAN}2)${NC} Play NFT Videos Playlist in VLC (${GREEN}NFT_VIDEOS.xspf${NC})"
-    echo -e "  ${BOLD}${CYAN}3)${NC} Play Defasten Across 4 Screens (${GREEN}play_defasten_4screens.sh${NC})"
-    echo -e "  ${BOLD}${CYAN}4)${NC} Regenerate NFT Playlist from /run/media/mplanetarian/DATA/NFT_VIDEOS"
-    echo -e "  ${BOLD}${CYAN}5)${NC} Return to Main Menu"
+    echo -e "  ${BOLD}${CYAN}1)${NC} Play NFT Videos Playlist in VLC (${GREEN}NFT_VIDEOS.xspf${NC})"
+    echo -e "  ${BOLD}${CYAN}2)${NC} Regenerate NFT Playlist from /run/media/mplanetarian/DATA/NFT_VIDEOS"
+    echo -e "  ${BOLD}${CYAN}3)${NC} Return to Main Menu"
     echo ""
-    read -r -p "Enter choice [1-5]: " v_choice
+    read -r -p "Enter choice [1-3]: " v_choice
 
     case $v_choice in
         1)
-            local defasten_pl="$HOME/Desktop/DESKTOP/Defasten.xspf"
-            [ ! -f "$defasten_pl" ] && defasten_pl="$HOME/Desktop/Defasten.xspf"
-            [ ! -f "$defasten_pl" ] && defasten_pl="$HOME/Desktop/DESKTOP/Defasten.m3u"
-            [ ! -f "$defasten_pl" ] && defasten_pl="$HOME/Desktop/Defasten.m3u"
-            if [ -f "$defasten_pl" ]; then
-                echo -e "${GREEN}Launching VLC with Defasten playlist...${NC}"
-                nohup vlc "$defasten_pl" >/dev/null 2>&1 &
-                sleep 1.2
-            else
-                echo -e "${RED}Error: Defasten playlist not found on Desktop or Desktop/DESKTOP!${NC}"
-                press_enter
-            fi
-            ;;
-        2)
             if [ -x "$HOME/.local/bin/update-nft-playlist" ]; then
                 "$HOME/.local/bin/update-nft-playlist" --quiet
             fi
@@ -2138,19 +2122,7 @@ launch_video_playlists() {
                 press_enter
             fi
             ;;
-        3)
-            local script="$HOME/Desktop/DESKTOP/play_defasten_4screens.sh"
-            [ ! -f "$script" ] && script="$HOME/Desktop/play_defasten_4screens.sh"
-            if [ -f "$script" ]; then
-                echo -e "${GREEN}Launching Defasten on 4 screens...${NC}"
-                bash "$script" --detach || true
-                sleep 1.2
-            else
-                echo -e "${RED}Error: $script not found!${NC}"
-                press_enter
-            fi
-            ;;
-        4)
+        2)
             if [ -x "$HOME/.local/bin/update-nft-playlist" ]; then
                 "$HOME/.local/bin/update-nft-playlist"
             else
@@ -2158,7 +2130,7 @@ launch_video_playlists() {
             fi
             press_enter
             ;;
-        5)
+        3)
             return
             ;;
         *)
@@ -8087,7 +8059,7 @@ while true; do
         echo -e "  ${BOLD}${CYAN}66)${NC} Open Windows Sound Settings (${GREEN}control.exe mmsys.cpl${NC})"
     else
         echo -e "  ${BOLD}${CYAN}65)${NC} Switch Desktop to Plasma Wayland (HDR Gaming on Hisense & Steam BPM)"
-        echo -e "  ${BOLD}${CYAN}66)${NC} Switch Desktop to Plasma X11 (Workstation 4-Screen Defasten)"
+        echo -e "  ${BOLD}${CYAN}66)${NC} Switch Desktop to Plasma X11 (Standard Workstation)"
     fi
     echo -e "  ${BOLD}${CYAN}67)${NC} Close All Desktop Applications (Keep Manager Open)"
     if [ "$OS_TYPE" = "macos" ]; then
