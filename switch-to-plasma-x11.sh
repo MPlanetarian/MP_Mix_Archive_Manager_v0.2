@@ -42,6 +42,7 @@ else
         sudo bash -c "mkdir -p '$PLASMALogin_CONF_D' && echo '[Greeter]' > '$CONF_FILE' && echo 'PreselectedSession=plasmax11.desktop' >> '$CONF_FILE' && sed -i 's/^Session=.*/Session=plasmax11.desktop/' /etc/plasmalogin.conf 2>/dev/null || true"
     fi
 fi
+rm -f "$HOME/.config/start_steam_gaming_session" 2>/dev/null || true
 echo -e "${GREEN}[✓] Plasma X11 (plasmax11.desktop) preselected for next session.${NC}"
 
 echo ""

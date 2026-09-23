@@ -89,6 +89,7 @@ else
         sudo bash -c "mkdir -p '$PLASMALogin_CONF_D' && echo '[Greeter]' > '$CONF_FILE' && echo 'PreselectedSession=plasma.desktop' >> '$CONF_FILE' && sed -i 's/^Session=.*/Session=plasma.desktop/' /etc/plasmalogin.conf 2>/dev/null || true"
     fi
 fi
+touch "$HOME/.config/start_steam_gaming_session" 2>/dev/null || true
 echo -e "${GREEN}[✓] Plasma Wayland (plasma.desktop) preselected for next session.${NC}"
 
 # 4. Gracefully close X11 background applications (preserving terminal/manager)

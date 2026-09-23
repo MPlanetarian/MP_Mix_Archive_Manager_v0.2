@@ -77,17 +77,38 @@ def get_display_priorities():
             if ls.startswith('Output:'):
                 parts = ls.split()
                 if len(parts) >= 3:
-                    curr = {'name': parts[2], 'priority': 999}
+                    curr = {'name': parts[2], 'priority': 999, 'enabled': False}
                     outputs.append(curr)
+            elif curr and ls.startswith('enabled'):
+                curr['enabled'] = True
             elif curr and ls.startswith('priority '):
                 p_parts = ls.split()
                 if len(p_parts) >= 2 and p_parts[1].isdigit():
                     curr['priority'] = int(p_parts[1])
-        outputs.sort(key=lambda x: x['priority'])
-        if len(outputs) >= 1:
-            prim_name = outputs[0]['name']
-        if len(outputs) >= 2:
-            sec_name = outputs[1]['name']
+
+        enabled_outputs = [o for o in outputs if o.get('enabled')]
+        if not enabled_outputs:
+            enabled_outputs = outputs
+
+        # Priority rule:
+        # DP-3 is the primary workstation monitor at (0,0)
+        # DP-2 is the secondary extended monitor at (1920,0)
+        dp3 = next((o for o in enabled_outputs if o['name'] == 'DP-3'), None)
+        dp2 = next((o for o in enabled_outputs if o['name'] == 'DP-2'), None)
+        if dp3:
+            prim_name = 'DP-3'
+            if dp2:
+                sec_name = 'DP-2'
+            else:
+                others = [o for o in enabled_outputs if o['name'] != 'DP-3']
+                others.sort(key=lambda x: x['priority'])
+                sec_name = others[0]['name'] if others else None
+        else:
+            enabled_outputs.sort(key=lambda x: x['priority'])
+            if len(enabled_outputs) >= 1:
+                prim_name = enabled_outputs[0]['name']
+            if len(enabled_outputs) >= 2:
+                sec_name = enabled_outputs[1]['name']
     except Exception:
         pass
     return prim_name, sec_name
@@ -559,8 +580,14 @@ def align_x11(mgr_pid=0):
                 cover_win = wid
 
         if num_screens > 1:
-            prim = screens[0]
-            sec = screens[1]
+            dp3 = next((s for s in screens if s['name'] == 'DP-3'), None)
+            dp2 = next((s for s in screens if s['name'] == 'DP-2'), None)
+            if dp3:
+                prim = dp3
+                sec = dp2 if dp2 else next((s for s in screens if s['name'] != 'DP-3'), screens[1])
+            else:
+                prim = screens[0]
+                sec = screens[1]
 
             # Manager -> Primary display: ALWAYS centered and NEVER full screen
             if mgr_win:
