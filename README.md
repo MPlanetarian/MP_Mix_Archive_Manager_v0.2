@@ -29,7 +29,7 @@ flowchart LR
     F --> G["🎛️ Auto-Load Decks A, B, C & D"]
 ```
 
-### 🎧 Why Every Traktor DJ on Mac Needs This:
+### 🎧 Why Every Traktor DJ on Mac/Windows Needs This:
 - 🔍 **Auto-Detection Across Traktor Versions**: Automatically detects your installed Traktor Pro release (Traktor 3, Traktor Pro 3.11+, Traktor Pro 4) and instantly discovers your session History `.nml` archives without needing any manual path configuration.
 - 📜 **Interactive Session History Browser**: Lists all your past performance sessions with session dates, start timestamps, and total tracks played.
 - 👁️ **Console Tracklist Preview**: Inspect the full played setlist (Artist, Title, Duration, Key, BPM) in your terminal *before* committing to generate.
