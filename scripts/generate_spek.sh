@@ -220,7 +220,10 @@ High-Resolution Acoustic Spectrogram Generator (Cross-Platform)
 
 Options:
   -i, --input <file>        Single input audio file (WAV, FLAC, MP3, AAC, etc.)
+  --single-file <file>      Generate Spek in-place in same directory as audio file (<name>.spek)
   -d, --dir <dir>           Directory containing audio files to batch process
+  --multiple-dir <dir>      Scan directory and generate Speks in-place (<name>.spek)
+  --in-place                Save spectrogram in same folder as audio file with .spek extension
   -o, --output-dir <dir>    Destination directory for PNG spectrograms (default: SPEK_OUTPUTS)
   -r, --res <WxH>           Spectrogram resolution (default: 1920x1080)
   -s, --scale <log|lin>     Frequency scale: 'log' (default) or 'lin'
@@ -228,10 +231,13 @@ Options:
   -g, --gui                 Launch native Spek GUI application if installed
   -a, --all                 Batch process all WAVs & FLACs in standard archive directories
   --open                    Automatically open the generated spectrogram in the default image viewer
+  --no-view                 Do not prompt to view generated Spek file
   -h, --help                Show this help message and exit
 
 Examples:
   $(basename "$0") -i "mix.flac"
+  $(basename "$0") --single-file "/path/to/mix.flac"
+  $(basename "$0") --multiple-dir "/path/to/music_folder"
   $(basename "$0") -i "mix.wav" --open
   $(basename "$0") -d "FLAC_CONVERTED_OUTPUTS" -o "SPEK_OUTPUTS"
   $(basename "$0") -i "mix.flac" -g
@@ -248,9 +254,33 @@ COLOR_SCHEME="intensity"
 LAUNCH_GUI=0
 PROCESS_ALL=0
 AUTO_OPEN=0
+IN_PLACE=0
+PROMPT_VIEW=1
 
 while [ $# -gt 0 ]; do
     case "$1" in
+        --single-file|--single)
+            INPUT_FILE="$2"
+            IN_PLACE=1
+            shift 2
+            ;;
+        --multiple-dir|--multiple)
+            INPUT_DIR="$2"
+            IN_PLACE=1
+            shift 2
+            ;;
+        --in-place)
+            IN_PLACE=1
+            shift
+            ;;
+        --no-view)
+            PROMPT_VIEW=0
+            shift
+            ;;
+        --view)
+            PROMPT_VIEW=1
+            shift
+            ;;
         -i|--input)
             INPUT_FILE="$2"
             shift 2
@@ -396,12 +426,155 @@ generate_single_spek() {
     fi
 }
 
+generate_single_spek_in_place() {
+    local in_file="$1"
+    local prompt_view="${2:-1}"
+
+    # Strip quotes and spaces
+    in_file="$(echo "$in_file" | sed -e "s/^['\"]//" -e "s/['\"]$//" | xargs 2>/dev/null || echo "$in_file")"
+    if [[ "$in_file" == "~"* ]]; then
+        in_file="${HOME}${in_file:1}"
+    fi
+
+    if [ ! -f "$in_file" ]; then
+        echo -e "${RED}Error: File '$in_file' does not exist!${NC}" >&2
+        return 1
+    fi
+
+    local dir_path
+    dir_path="$(cd "$(dirname "$in_file")" 2>/dev/null && pwd || dirname "$in_file")"
+    local base
+    base="$(basename "$in_file")"
+    local stem="${base%.*}"
+    local out_spek="${dir_path}/${stem}.spek"
+    local out_spek_png="${dir_path}/${stem}.spek.png"
+
+    echo -e "  ${BOLD}${BLUE}Analyzing:${NC} ${GREEN}${base}${NC}"
+    echo -e "  • ${BOLD}Location:${NC}     ${CYAN}${dir_path}${NC}"
+    echo -e "  • ${BOLD}Output File:${NC}  ${GREEN}${stem}.spek${NC}"
+
+    local start_time
+    start_time=$(date +%s)
+
+    ffmpeg -hide_banner -loglevel error -y -i "$in_file" \
+        -lavfi "showspectrumpic=s=${RESOLUTION}:mode=combined:color=${COLOR_SCHEME}:scale=${SCALE}:legend=1:saturation=1.2" \
+        -frames:v 1 "$out_spek_png"
+
+    local exit_code=$?
+    local end_time
+    end_time=$(date +%s)
+    local elapsed=$((end_time - start_time))
+
+    if [ $exit_code -eq 0 ] && [ -f "$out_spek_png" ]; then
+        cp -f "$out_spek_png" "$out_spek"
+        local out_size
+        out_size=$(du -h "$out_spek_png" | cut -f1)
+        echo -e "\n${BOLD}${GREEN}======================================================================${NC}"
+        echo -e "${BOLD}${GREEN}✓ Spek Spectrogram Generated Successfully!${NC}"
+        echo -e "  • ${BOLD}Spek File:${NC}      ${GREEN}${out_spek}${NC}"
+        echo -e "  • ${BOLD}Image File:${NC}     ${GREEN}${out_spek_png}${NC}"
+        echo -e "  • ${BOLD}Saved to:${NC}       ${dir_path}"
+        echo -e "  • ${BOLD}Size / Time:${NC}    ${out_size} (completed in ${elapsed}s)"
+        echo -e "${BOLD}${GREEN}======================================================================${NC}\n"
+
+        if [ "$prompt_view" -eq 1 ]; then
+            read -r -p "Do you want to view the Spek file after it has been fully generated? [Y/n]: " view_ask
+            if [[ "$view_ask" =~ ^[Yy]?$ ]] || [ -z "$view_ask" ]; then
+                echo -e "${CYAN}Displaying Spek file in image viewer...${NC}"
+                open_image_viewer "$out_spek_png"
+            fi
+        fi
+        return 0
+    else
+        echo -e "\n${RED}✗ Failed to generate Spek spectrogram for '$base'${NC}" >&2
+        return 1
+    fi
+}
+
+generate_multiple_speks_in_place() {
+    local target_dir="$1"
+
+    # Strip quotes and spaces
+    target_dir="$(echo "$target_dir" | sed -e "s/^['\"]//" -e "s/['\"]$//" | xargs 2>/dev/null || echo "$target_dir")"
+    if [[ "$target_dir" == "~"* ]]; then
+        target_dir="${HOME}${target_dir:1}"
+    fi
+
+    if [ ! -d "$target_dir" ]; then
+        echo -e "${RED}Error: Directory '$target_dir' does not exist!${NC}" >&2
+        return 1
+    fi
+
+    target_dir="$(cd "$target_dir" 2>/dev/null && pwd || echo "$target_dir")"
+
+    shopt -s nullglob nocaseglob
+    local targets=("$target_dir"/*.flac "$target_dir"/*.wav "$target_dir"/*.mp3 "$target_dir"/*.m4a "$target_dir"/*.ogg "$target_dir"/*.aiff "$target_dir"/*.aif)
+    shopt -u nullglob nocaseglob
+
+    if [ ${#targets[@]} -eq 0 ]; then
+        echo -e "${YELLOW}No WAV, MP3, or FLAC audio files found in '$target_dir'.${NC}"
+        return 0
+    fi
+
+    echo -e "${CYAN}Found ${#targets[@]} audio file(s) in '$target_dir'. Starting in-place Spek generation...${NC}\n"
+    local count=0
+    local success_count=0
+    local total=${#targets[@]}
+
+    for f in "${targets[@]}"; do
+        count=$((count + 1))
+        local base
+        base="$(basename "$f")"
+        local stem="${base%.*}"
+        local file_dir
+        file_dir="$(dirname "$f")"
+        local out_spek="${file_dir}/${stem}.spek"
+        local out_spek_png="${file_dir}/${stem}.spek.png"
+
+        echo -e "  ${BOLD}[${count}/${total}]${NC} ${CYAN}Analyzing:${NC} ${base}"
+
+        ffmpeg -hide_banner -loglevel error -y -i "$f" \
+            -lavfi "showspectrumpic=s=${RESOLUTION}:mode=combined:color=${COLOR_SCHEME}:scale=${SCALE}:legend=1:saturation=1.2" \
+            -frames:v 1 "$out_spek_png"
+
+        if [ $? -eq 0 ] && [ -f "$out_spek_png" ]; then
+            cp -f "$out_spek_png" "$out_spek"
+            local sz
+            sz=$(du -h "$out_spek_png" | cut -f1)
+            echo -e "      ${GREEN}✓ Generated:${NC} ${stem}.spek (${sz})"
+            success_count=$((success_count + 1))
+        else
+            echo -e "      ${RED}✗ Failed generating Spek for: ${base}${NC}"
+        fi
+    done
+
+    echo -e "\n${BOLD}${GREEN}======================================================================${NC}"
+    echo -e "${BOLD}${GREEN}✓ Batch Spek Generation Complete!${NC}"
+    echo -e "  • ${BOLD}Success:${NC}        ${success_count} / ${total} Spek files generated"
+    echo -e "  • ${BOLD}Location:${NC}       ${target_dir}"
+    echo -e "  • ${BOLD}File Format:${NC}    <filename>.spek & <filename>.spek.png"
+    echo -e "${BOLD}${GREEN}======================================================================${NC}\n"
+    return 0
+}
+
 echo -e "${BOLD}${MAGENTA}======================================================================${NC}"
 echo -e "${BOLD}${MAGENTA}      ACOUSTIC SPECTRUM ANALYSER & SPECTROGRAM GENERATOR (SPEK)       ${NC}"
 echo -e "${BOLD}${MAGENTA}         Cross-Platform: Linux • macOS • Windows • FreeBSD            ${NC}"
 echo -e "${BOLD}${MAGENTA}======================================================================${NC}\n"
 
-# Mode 1: Single input file
+# In-Place Single File
+if [ -n "$INPUT_FILE" ] && [ "$IN_PLACE" -eq 1 ]; then
+    generate_single_spek_in_place "$INPUT_FILE" "$PROMPT_VIEW"
+    exit $?
+fi
+
+# In-Place Directory
+if [ -n "$INPUT_DIR" ] && [ "$IN_PLACE" -eq 1 ]; then
+    generate_multiple_speks_in_place "$INPUT_DIR"
+    exit $?
+fi
+
+# Mode 1: Single input file (Output to OUTPUT_DIR)
 if [ -n "$INPUT_FILE" ]; then
     generate_single_spek "$INPUT_FILE" "$OUTPUT_DIR" "$AUTO_OPEN"
     exit $?
@@ -464,21 +637,54 @@ fi
 
 # Interactive Mode if no arguments provided
 echo -e "${BOLD}Select a Spectrogram Generation Mode:${NC}"
-echo -e "  ${BOLD}${CYAN}1)${NC} Generate Spek for a Single Audio Mix (Search or Select from Archive)"
-echo -e "  ${BOLD}${CYAN}2)${NC} Batch Generate Speks for all FLACs in ${BOLD}FLAC_CONVERTED_OUTPUTS/${NC}"
-echo -e "  ${BOLD}${CYAN}3)${NC} Batch Generate Speks for all WAVs in ${BOLD}CONVERTED_WAV_FILES/${NC}"
-echo -e "  ${BOLD}${CYAN}4)${NC} Batch Generate Speks for WAV/FLAC files in Current Directory ($PWD)"
-echo -e "  ${BOLD}${CYAN}5)${NC} Launch Native Spek GUI Application (macOS / Windows / Linux / FreeBSD)"
-echo -e "  ${BOLD}${CYAN}6)${NC} Open Spectrograms Output Folder (${BOLD}${OUTPUT_DIR}/${NC})"
-echo -e "  ${BOLD}${CYAN}7)${NC} Launch Sonic Visualiser (Open mix in Sonic Visualiser Spectrogram pane)"
-echo -e "  ${BOLD}${CYAN}8)${NC} Generate SoX High-Resolution Spectrogram (Viridis, Magma, Rainbow, Mono)"
-echo -e "  ${BOLD}${CYAN}9)${NC} Launch Praat / Kwave / Audacity Spectral Analyzer"
-echo -e "  ${BOLD}${CYAN}0)${NC} Exit\n"
+echo -e "  ${BOLD}${CYAN} 1)${NC} ${BOLD}${GREEN}Generate Spectrogram using Spek for WAV/MP3/FLAC (Single File)${NC}"
+echo -e "  ${BOLD}${CYAN} 2)${NC} ${BOLD}${GREEN}Generate Speks for Multiple WAV/MP3/FLAC Files (Scan Directory Path)${NC}"
+echo -e "  ${BOLD}${BLUE}──────────────────────────────────────────────────────────────────${NC}"
+echo -e "  ${BOLD}${CYAN} 3)${NC} Generate Spek for Single Mix from Archive (Search or Select & Auto-Open)"
+echo -e "  ${BOLD}${CYAN} 4)${NC} Batch Generate Speks for all FLACs in ${BOLD}FLAC_CONVERTED_OUTPUTS/${NC}"
+echo -e "  ${BOLD}${CYAN} 5)${NC} Batch Generate Speks for all WAVs in ${BOLD}CONVERTED_WAV_FILES/${NC}"
+echo -e "  ${BOLD}${CYAN} 6)${NC} Batch Generate Speks for WAV/FLAC files in Current Directory ($PWD)"
+echo -e "  ${BOLD}${CYAN} 7)${NC} Launch Native Spek GUI Application (macOS / Windows / Linux / FreeBSD)"
+echo -e "  ${BOLD}${CYAN} 8)${NC} Open Spectrograms Output Folder (${BOLD}${OUTPUT_DIR}/${NC})"
+echo -e "  ${BOLD}${CYAN} 9)${NC} Launch Sonic Visualiser (Open mix in Sonic Visualiser Spectrogram pane)"
+echo -e "  ${BOLD}${CYAN}10)${NC} Generate SoX High-Resolution Spectrogram (Viridis, Magma, Rainbow, Mono)"
+echo -e "  ${BOLD}${CYAN}11)${NC} Launch Praat / Kwave / Audacity Spectral Analyzer"
+echo -e "  ${BOLD}${CYAN} 0)${NC} Exit\n"
 
-read -r -p "Enter choice [0-9]: " choice
+read -r -p "Enter choice [0-11]: " choice
 
 case "$choice" in
     1)
+        echo -e "\n${BOLD}${MAGENTA}=== GENERATE SPECTROGRAM USING SPEK FOR WAV/MP3/FLAC (SINGLE FILE) ===${NC}\n"
+        echo -e "${CYAN}Please enter the path to the .FLAC, MP3 or WAV audio mix file:${NC}"
+        read -e -r -p "Audio File Path: " raw_path
+        local s_path
+        s_path="$(echo "$raw_path" | sed -e "s/^['\"]//" -e "s/['\"]$//" | xargs 2>/dev/null || echo "$raw_path")"
+        if [ -n "$s_path" ]; then
+            if [[ "$s_path" == "~"* ]]; then
+                s_path="${HOME}${s_path:1}"
+            fi
+            generate_single_spek_in_place "$s_path" 1
+        else
+            echo -e "${YELLOW}No path provided. Returning...${NC}"
+        fi
+        ;;
+    2)
+        echo -e "\n${BOLD}${MAGENTA}=== GENERATE SPEKS FOR MULTIPLE WAV/MP3/FLAC FILES ===${NC}\n"
+        echo -e "${CYAN}Please enter a path where one or more audio files exist:${NC}"
+        read -e -r -p "Directory Path: " raw_dir
+        local s_dir
+        s_dir="$(echo "$raw_dir" | sed -e "s/^['\"]//" -e "s/['\"]$//" | xargs 2>/dev/null || echo "$raw_dir")"
+        if [ -n "$s_dir" ]; then
+            if [[ "$s_dir" == "~"* ]]; then
+                s_dir="${HOME}${s_dir:1}"
+            fi
+            generate_multiple_speks_in_place "$s_dir"
+        else
+            echo -e "${YELLOW}No path provided. Returning...${NC}"
+        fi
+        ;;
+    3)
         shopt -s nullglob nocaseglob
         audio_list=(
             "FLAC_CONVERTED_OUTPUTS"/*.flac
@@ -545,27 +751,27 @@ case "$choice" in
             echo -e "${RED}Invalid selection.${NC}"
         fi
         ;;
-    2)
+    4)
         echo ""
         "$0" -d "FLAC_CONVERTED_OUTPUTS" -o "$OUTPUT_DIR"
         ;;
-    3)
+    5)
         echo ""
         "$0" -d "CONVERTED_WAV_FILES" -o "$OUTPUT_DIR"
         ;;
-    4)
+    6)
         echo ""
         "$0" -d "$PWD" -o "$OUTPUT_DIR"
         ;;
-    5)
+    7)
         echo ""
         launch_native_spek_gui "" || true
         ;;
-    6)
+    8)
         echo -e "\n${CYAN}Opening ${OUTPUT_DIR}/...${NC}"
         open_image_viewer "$OUTPUT_DIR"
         ;;
-    7)
+    9)
         echo ""
         read -r -p "Enter path to audio mix (or press Enter to select recent): " sfile
         if [ -z "$sfile" ]; then
@@ -573,7 +779,7 @@ case "$choice" in
         fi
         launch_sonic_visualiser "$sfile" || true
         ;;
-    8)
+    10)
         echo ""
         read -r -p "Enter path to audio mix (or press Enter for newest): " sxfile
         if [ -z "$sxfile" ]; then
@@ -587,7 +793,7 @@ case "$choice" in
         [ "$cmap_choice" = "4" ] && cmap="mono"
         generate_sox_spectrogram "$sxfile" "$OUTPUT_DIR" "$cmap"
         ;;
-    9)
+    11)
         echo ""
         read -r -p "Enter path to audio mix (or press Enter for newest): " prfile
         if [ -z "$prfile" ]; then

@@ -4412,6 +4412,190 @@ open_mix_in_daw() {
     esac
 }
 
+generate_spek_single_file() {
+    echo -e "\n${BOLD}${MAGENTA}======================================================================${NC}"
+    echo -e "${BOLD}${MAGENTA}   GENERATE SPECTROGRAM USING SPEK FOR WAV/MP3/FLAC (SINGLE FILE)     ${NC}"
+    echo -e "${BOLD}${MAGENTA}======================================================================${NC}\n"
+    echo -e "${CYAN}Please enter the full path to the .FLAC, MP3 or WAV audio mix file:${NC}"
+    read -e -r -p "Audio Mix Path: " raw_path
+
+    local audio_path
+    audio_path="$(echo "$raw_path" | sed -e "s/^['\"]//" -e "s/['\"]$//" | xargs 2>/dev/null || echo "$raw_path")"
+    if [ -z "$audio_path" ]; then
+        echo -e "${YELLOW}Operation cancelled.${NC}"
+        press_enter
+        return 0
+    fi
+
+    if [[ "$audio_path" == "~"* ]]; then
+        audio_path="${HOME}${audio_path:1}"
+    fi
+
+    if [ "$OS_TYPE" = "wsl" ] && command -v wslpath >/dev/null 2>&1; then
+        if [[ "$audio_path" =~ ^[A-Za-z]: ]]; then
+            audio_path="$(wslpath -u "$audio_path" 2>/dev/null || echo "$audio_path")"
+        fi
+    elif [ "$OS_TYPE" = "windows" ] && command -v cygpath >/dev/null 2>&1; then
+        audio_path="$(cygpath -u "$audio_path" 2>/dev/null || echo "$audio_path")"
+    fi
+
+    if [ ! -f "$audio_path" ]; then
+        echo -e "\n${RED}Error: Audio mix file not found at '$audio_path'!${NC}"
+        press_enter
+        return 1
+    fi
+
+    local script="$SCRIPT_DIR/generate_spek.sh"
+    [ ! -f "$script" ] && script="./generate_spek.sh"
+    [ ! -f "$script" ] && script="$SCRIPT_DIR/scripts/generate_spek.sh"
+
+    if [ -f "$script" ]; then
+        bash "$script" --single-file "$audio_path"
+    else
+        local dir_path
+        dir_path="$(cd "$(dirname "$audio_path")" 2>/dev/null && pwd || dirname "$audio_path")"
+        local base_name
+        base_name="$(basename "$audio_path")"
+        local stem="${base_name%.*}"
+        local out_spek="${dir_path}/${stem}.spek"
+        local out_spek_png="${dir_path}/${stem}.spek.png"
+
+        echo -e "\n${BOLD}${CYAN}Generating Spek spectrogram...${NC}"
+        echo -e "  • ${BOLD}Input Audio:${NC}   ${GREEN}${base_name}${NC}"
+        echo -e "  • ${BOLD}Location:${NC}      ${dir_path}"
+        echo -e "  • ${BOLD}Output File:${NC}   ${stem}.spek"
+
+        if ! command -v ffmpeg >/dev/null 2>&1; then
+            echo -e "${RED}Error: ffmpeg is required to generate spectrograms.${NC}"
+            press_enter
+            return 1
+        fi
+
+        local start_time
+        start_time=$(date +%s)
+        ffmpeg -hide_banner -loglevel error -y -i "$audio_path" \
+            -lavfi "showspectrumpic=s=1920x1080:mode=combined:color=intensity:scale=log:legend=1:saturation=1.2" \
+            -frames:v 1 "$out_spek_png"
+
+        if [ $? -eq 0 ] && [ -f "$out_spek_png" ]; then
+            cp -f "$out_spek_png" "$out_spek"
+            local sz
+            sz=$(du -h "$out_spek_png" | cut -f1)
+            local end_time
+            end_time=$(date +%s)
+            local elapsed=$((end_time - start_time))
+            echo -e "\n${BOLD}${GREEN}======================================================================${NC}"
+            echo -e "${BOLD}${GREEN}✓ Spek Spectrogram Generated Successfully!${NC}"
+            echo -e "  • ${BOLD}Spek File:${NC}      ${GREEN}${out_spek}${NC}"
+            echo -e "  • ${BOLD}Image File:${NC}     ${GREEN}${out_spek_png}${NC}"
+            echo -e "  • ${BOLD}Saved to:${NC}       ${dir_path}"
+            echo -e "  • ${BOLD}Size / Time:${NC}    ${sz} (completed in ${elapsed}s)"
+            echo -e "${BOLD}${GREEN}======================================================================${NC}\n"
+
+            read -r -p "Do you want to view the Spek file after it has been fully generated? [Y/n]: " view_ask
+            if [[ "$view_ask" =~ ^[Yy]?$ ]] || [ -z "$view_ask" ]; then
+                echo -e "${CYAN}Displaying Spek file in image viewer...${NC}"
+                open_path "$out_spek_png"
+            fi
+        else
+            echo -e "\n${RED}✗ Failed to generate Spek spectrogram for '$base_name'.${NC}"
+        fi
+    fi
+    press_enter
+}
+
+generate_spek_multiple_files() {
+    echo -e "\n${BOLD}${MAGENTA}======================================================================${NC}"
+    echo -e "${BOLD}${MAGENTA}       GENERATE SPEKS FOR MULTIPLE WAV/MP3/FLAC FILES                 ${NC}"
+    echo -e "${BOLD}${MAGENTA}======================================================================${NC}\n"
+    echo -e "${CYAN}Please enter a path where one or more audio files exist:${NC}"
+    read -e -r -p "Directory Path: " raw_dir
+
+    local dir_path
+    dir_path="$(echo "$raw_dir" | sed -e "s/^['\"]//" -e "s/['\"]$//" | xargs 2>/dev/null || echo "$raw_dir")"
+    if [ -z "$dir_path" ]; then
+        echo -e "${YELLOW}Operation cancelled.${NC}"
+        press_enter
+        return 0
+    fi
+
+    if [[ "$dir_path" == "~"* ]]; then
+        dir_path="${HOME}${dir_path:1}"
+    fi
+
+    if [ "$OS_TYPE" = "wsl" ] && command -v wslpath >/dev/null 2>&1; then
+        if [[ "$dir_path" =~ ^[A-Za-z]: ]]; then
+            dir_path="$(wslpath -u "$dir_path" 2>/dev/null || echo "$dir_path")"
+        fi
+    elif [ "$OS_TYPE" = "windows" ] && command -v cygpath >/dev/null 2>&1; then
+        dir_path="$(cygpath -u "$dir_path" 2>/dev/null || echo "$dir_path")"
+    fi
+
+    if [ ! -d "$dir_path" ]; then
+        echo -e "\n${RED}Error: Directory not found at '$dir_path'!${NC}"
+        press_enter
+        return 1
+    fi
+
+    local script="$SCRIPT_DIR/generate_spek.sh"
+    [ ! -f "$script" ] && script="./generate_spek.sh"
+    [ ! -f "$script" ] && script="$SCRIPT_DIR/scripts/generate_spek.sh"
+
+    if [ -f "$script" ]; then
+        bash "$script" --multiple-dir "$dir_path"
+    else
+        dir_path="$(cd "$dir_path" 2>/dev/null && pwd || echo "$dir_path")"
+        shopt -s nullglob nocaseglob
+        local audio_files=("$dir_path"/*.flac "$dir_path"/*.wav "$dir_path"/*.mp3 "$dir_path"/*.m4a "$dir_path"/*.ogg "$dir_path"/*.aiff "$dir_path"/*.aif)
+        shopt -u nullglob nocaseglob
+
+        if [ ${#audio_files[@]} -eq 0 ]; then
+            echo -e "\n${YELLOW}No WAV, MP3, or FLAC audio files found in '$dir_path'.${NC}"
+            press_enter
+            return 0
+        fi
+
+        echo -e "\n${BOLD}${CYAN}Found ${#audio_files[@]} audio file(s) in '$dir_path'. Starting Spek generation...${NC}\n"
+        local count=0
+        local success_count=0
+        local total=${#audio_files[@]}
+
+        for f in "${audio_files[@]}"; do
+            count=$((count + 1))
+            local base
+            base="$(basename "$f")"
+            local stem="${base%.*}"
+            local file_dir
+            file_dir="$(dirname "$f")"
+            local out_spek="${file_dir}/${stem}.spek"
+            local out_spek_png="${file_dir}/${stem}.spek.png"
+
+            echo -e "  ${BOLD}[${count}/${total}]${NC} ${CYAN}Analyzing:${NC} ${base}"
+            ffmpeg -hide_banner -loglevel error -y -i "$f" \
+                -lavfi "showspectrumpic=s=1920x1080:mode=combined:color=intensity:scale=log:legend=1:saturation=1.2" \
+                -frames:v 1 "$out_spek_png"
+
+            if [ $? -eq 0 ] && [ -f "$out_spek_png" ]; then
+                cp -f "$out_spek_png" "$out_spek"
+                local sz
+                sz=$(du -h "$out_spek_png" | cut -f1)
+                echo -e "      ${GREEN}✓ Generated:${NC} ${stem}.spek (${sz})"
+                success_count=$((success_count + 1))
+            else
+                echo -e "      ${RED}✗ Failed generating Spek for: ${base}${NC}"
+            fi
+        done
+
+        echo -e "\n${BOLD}${GREEN}======================================================================${NC}"
+        echo -e "${BOLD}${GREEN}✓ Batch Spek Generation Complete!${NC}"
+        echo -e "  • ${BOLD}Success:${NC}        ${success_count} / ${total} Spek files generated"
+        echo -e "  • ${BOLD}Location:${NC}       ${dir_path}"
+        echo -e "  • ${BOLD}File Format:${NC}    <filename>.spek & <filename>.spek.png"
+        echo -e "${BOLD}${GREEN}======================================================================${NC}\n"
+    fi
+    press_enter
+}
+
 manage_spek_generation() {
     local script="$SCRIPT_DIR/generate_spek.sh"
     [ ! -f "$script" ] && script="./generate_spek.sh"
@@ -4425,45 +4609,80 @@ manage_spek_generation() {
         echo -e "${BOLD}${MAGENTA}======================================================================${NC}\n"
 
         echo -e "${BOLD}Select a Spectrogram Generation Option:${NC}"
-        echo -e "  ${BOLD}${CYAN}1)${NC} Generate Spek for Single Mix (${GREEN}Search or Select from Archive & Auto-Open${NC})"
-        echo -e "  ${BOLD}${CYAN}2)${NC} Batch Generate Speks for all FLACs in ${BOLD}FLAC_CONVERTED_OUTPUTS/${NC}"
-        echo -e "  ${BOLD}${CYAN}3)${NC} Batch Generate Speks for all WAVs in ${BOLD}CONVERTED_WAV_FILES/${NC}"
-        echo -e "  ${BOLD}${CYAN}4)${NC} Batch Generate Speks for all Audio Files in Current Directory ($PWD)"
-        echo -e "  ${BOLD}${CYAN}5)${NC} Launch Native Spek GUI Application (${GREEN}Spek.app / spek.exe / spek${NC})"
-        echo -e "  ${BOLD}${CYAN}6)${NC} Browse Generated Spectrograms in ${BOLD}SPEK_OUTPUTS/${NC}"
-        echo -e "  ${BOLD}${CYAN}0)${NC} Return to Main Menu\n"
-        read -r -p "Enter choice [0-6]: " sp_choice
+        echo -e "  ${BOLD}${CYAN} 1)${NC} ${BOLD}${GREEN}Generate Spectrogram using Spek for WAV/MP3/FLAC (Single File)${NC}"
+        echo -e "  ${BOLD}${CYAN} 2)${NC} ${BOLD}${GREEN}Generate Speks for Multiple WAV/MP3/FLAC Files (Scan Directory Path)${NC}"
+        echo -e "  ${BOLD}${BLUE}──────────────────────────────────────────────────────────────────${NC}"
+        echo -e "  ${BOLD}${CYAN} 3)${NC} Generate Spek for Single Mix from Archive (${GREEN}Search or Select & Auto-Open${NC})"
+        echo -e "  ${BOLD}${CYAN} 4)${NC} Batch Generate Speks for all FLACs in ${BOLD}FLAC_CONVERTED_OUTPUTS/${NC}"
+        echo -e "  ${BOLD}${CYAN} 5)${NC} Batch Generate Speks for all WAVs in ${BOLD}CONVERTED_WAV_FILES/${NC}"
+        echo -e "  ${BOLD}${CYAN} 6)${NC} Batch Generate Speks for all Audio Files in Current Directory ($PWD)"
+        echo -e "  ${BOLD}${CYAN} 7)${NC} Launch Native Spek GUI Application (${GREEN}Spek.app / spek.exe / spek${NC})"
+        echo -e "  ${BOLD}${CYAN} 8)${NC} Browse Generated Spectrograms in ${BOLD}SPEK_OUTPUTS/${NC}"
+        echo -e "  ${BOLD}${CYAN} 9)${NC} Sonic Visualiser, SoX & Spectral Analyzers Menu"
+        echo -e "  ${BOLD}${CYAN} 0)${NC} Return to Main Menu\n"
+        read -r -p "Enter choice [0-9]: " sp_choice
 
         case "$sp_choice" in
             1)
+                generate_spek_single_file
+                ;;
+            2)
+                generate_spek_multiple_files
+                ;;
+            3)
                 echo ""
                 bash "$script"
                 press_enter
                 ;;
-            2)
+            4)
                 echo -e "\n${BOLD}${YELLOW}Batch generating spectrograms for FLAC_CONVERTED_OUTPUTS/...${NC}\n"
                 bash "$script" -d "FLAC_CONVERTED_OUTPUTS" -o "SPEK_OUTPUTS"
                 press_enter
                 ;;
-            3)
+            5)
                 echo -e "\n${BOLD}${YELLOW}Batch generating spectrograms for CONVERTED_WAV_FILES/...${NC}\n"
                 bash "$script" -d "CONVERTED_WAV_FILES" -o "SPEK_OUTPUTS"
                 press_enter
                 ;;
-            4)
+            6)
                 echo -e "\n${BOLD}${YELLOW}Batch generating spectrograms for Current Directory ($PWD)...${NC}\n"
                 bash "$script" -d "$PWD" -o "SPEK_OUTPUTS"
                 press_enter
                 ;;
-            5)
+            7)
                 echo ""
                 bash "$script" -g
                 press_enter
                 ;;
-            6)
+            8)
                 echo -e "\n${CYAN}Opening SPEK_OUTPUTS/ directory...${NC}"
                 open_path "$PWD/SPEK_OUTPUTS"
                 sleep 1
+                ;;
+            9)
+                echo -e "\n${BOLD}${MAGENTA}=== ADVANCED SPECTRAL ANALYZERS & SOX SUITE ===${NC}\n"
+                echo -e "  ${BOLD}${CYAN}1)${NC} Launch Sonic Visualiser (Open mix in Spectrogram pane)"
+                echo -e "  ${BOLD}${CYAN}2)${NC} Generate SoX High-Resolution Spectrogram (Viridis, Magma, Rainbow, Mono)"
+                echo -e "  ${BOLD}${CYAN}3)${NC} Launch Praat / Kwave / Audacity Spectral Analyzer"
+                echo -e "  ${BOLD}${CYAN}0)${NC} Back to Spek Menu\n"
+                read -r -p "Enter choice [0-3]: " a_choice
+                case "$a_choice" in
+                    1)
+                        read -e -r -p "Enter path to audio mix (or press Enter): " sfile
+                        bash "$script" -i "$sfile" --gui 2>/dev/null || bash "$script"
+                        press_enter
+                        ;;
+                    2)
+                        read -e -r -p "Enter path to audio mix: " sxfile
+                        bash "$script" -i "$sxfile" -c "magma"
+                        press_enter
+                        ;;
+                    3)
+                        read -e -r -p "Enter path to audio mix: " prfile
+                        bash "$script" -i "$prfile" --gui 2>/dev/null || true
+                        press_enter
+                        ;;
+                esac
                 ;;
             0|[qQ])
                 return 0
@@ -7637,7 +7856,7 @@ while true; do
     echo -e "\n  ${BOLD}${BLUE}─── [ SECTION 3: AUDIO PLAYBACK, DAWS & SOUND SUITE ] ───────${NC}"
     echo -e "  ${BOLD}${CYAN}21)${NC} Digital Audio Workstations (DAWs) Menu (${GREEN}Reaper, Logic Pro, FL Studio, Traktor, Ardour, Bitwig...${NC})"
     echo -e "  ${BOLD}${CYAN}22)${NC} Open Mix WAV/FLAC Audio File in DAW (${GREEN}Direct Mix Search/Select & Dispatch${NC})"
-    echo -e "  ${BOLD}${CYAN}23)${NC} Acoustic Spectrogram Suite & Audio Analysis (${GREEN}Spek, Sonic Visualiser, SoX 24-bit, Praat, Kwave${NC})"
+    echo -e "  ${BOLD}${CYAN}23)${NC} Generate Spectrograms using Spek & Analysis Suite (${GREEN}Single & Multiple In-Place, SoX, Praat${NC})"
     echo -e "  ${BOLD}${CYAN}24)${NC} Launch Audacity Audio Editor (${GREEN}audacity${NC})"
     echo -e "  ${BOLD}${CYAN}25)${NC} Launch Audio Players Menu (${GREEN}cliamp, Strawberry, VLC, foobar2000, Winamp, Apple Music...${NC})"
     echo -e "  ${BOLD}${CYAN}26)${NC} Configure Default Audio Player & Startup Autoplay (${GREEN}Current: ${DEFAULT_AUDIO_PLAYER:-strawberry}${NC})"
