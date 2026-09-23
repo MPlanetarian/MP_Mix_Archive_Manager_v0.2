@@ -264,7 +264,6 @@ MP_Mix_Manager_v0.2/
 │   ├── wan2gp_flux_batch.py     # Flux Klein 9B batch generation
 │   ├── wan2gp_ltx_batch.py      # LTX Video 2B/13B batch generation
 │   ├── clear-wan2gp-logs.sh     # AI generation log pruner
-│   ├── detect_and_move_people.py# YOLOv8 human presence detection
 │   └── remove_duplicate_images.py # Byte-for-byte duplicate image remover
 │
 ├── desktop/

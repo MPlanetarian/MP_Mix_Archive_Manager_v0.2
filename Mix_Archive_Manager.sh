@@ -1563,12 +1563,6 @@ view_tasks() {
         echo -e "  [${GREEN}RUNNING${NC}] WAN2GP LTX Video Batch Processor (PID: ${ltx_pids})"
         ((tasks_found++))
     fi
-    if pgrep -f "detect_and_move_people\.py" > /dev/null; then
-        local pd_pids
-        pd_pids=$(pgrep -f "detect_and_move_people\.py" | tr '\n' ' ')
-        echo -e "  [${GREEN}RUNNING${NC}] WebP Person Detector & Converter (PID: ${pd_pids})"
-        ((tasks_found++))
-    fi
     if pgrep -f "remove_duplicate_images\.py" > /dev/null; then
         local dup_pids
         dup_pids=$(pgrep -f "remove_duplicate_images\.py" | tr '\n' ' ')
@@ -2481,21 +2475,6 @@ clear_wan2gp_logs() {
     fi
 }
 
-run_person_detector() {
-    echo -e "\n${BOLD}${GREEN}=== WEBP PERSON DETECTION & JPEG CONVERTER ===${NC}\n"
-    local script="./detect_and_move_people.py"
-    [ ! -f "$script" ] && script="$SCRIPT_DIR/detect_and_move_people.py"
-    [ ! -f "$script" ] && script="${MIX_ARCHIVE_DIR:-$SCRIPT_DIR/MIX_ARCHIVE}/detect_and_move_people.py"
-
-    if [ -f "$script" ]; then
-        python3 "$script"
-    else
-        echo -e "${RED}Error: detect_and_move_people.py not found at $script!${NC}"
-    fi
-    echo ""
-    read -r -p "Press [Enter] to return to the WAN2GP menu..."
-}
-
 run_duplicate_image_remover() {
     echo -e "\n${BOLD}${GREEN}=== BYTE-FOR-BYTE DUPLICATE IMAGE REMOVER ===${NC}\n"
     local script="./remove_duplicate_images.py"
@@ -2556,12 +2535,6 @@ manage_wan2gp() {
             fi
         fi
 
-        local person_pids
-        person_pids=$(pgrep -f "detect_and_move_people\.py" | tr '\n' ' ')
-        if [ -n "$person_pids" ]; then
-            echo -e "  Person Detector:  ${BOLD}${GREEN}● RUNNING${NC} (PID: ${person_pids})"
-        fi
-
         local dup_pids
         dup_pids=$(pgrep -f "remove_duplicate_images\.py" | tr '\n' ' ')
         if [ -n "$dup_pids" ]; then
@@ -2588,11 +2561,10 @@ manage_wan2gp() {
         echo -e "  ${BOLD}${CYAN}17)${NC} Run LTX Video 13B Batch Video Processor [${BOLD}Pure Image-to-Video${NC}] (No Control Video)"
         echo -e "  ${BOLD}${CYAN}18)${NC} Run LTX Video 13B in ${BOLD}${GREEN}Watch Mode${NC} [${BOLD}${YELLOW}Single Control Video${NC}]"
         echo -e "  ${BOLD}${CYAN}19)${NC} Run LTX Video 13B in ${BOLD}${GREEN}Watch Mode${NC} [${BOLD}Pure Image-to-Video${NC}]"
-        echo -e "  ${BOLD}${CYAN}20)${NC} Detect Persons in WebP & Move/Convert to JPEG (${GREEN}detect_and_move_people.py${NC})"
-        echo -e "  ${BOLD}${CYAN}21)${NC} Scan & Remove Byte-for-Byte Duplicate Images (${GREEN}remove_duplicate_images.py${NC})"
-        echo -e "  ${BOLD}${CYAN}22)${NC} Return to Main Menu"
+        echo -e "  ${BOLD}${CYAN}20)${NC} Scan & Remove Byte-for-Byte Duplicate Images (${GREEN}remove_duplicate_images.py${NC})"
+        echo -e "  ${BOLD}${CYAN}21)${NC} Return to Main Menu"
         echo ""
-        read -r -p "Enter choice [1-22]: " w_choice
+        read -r -p "Enter choice [1-21]: " w_choice
 
         case $w_choice in
             1)
@@ -2689,12 +2661,9 @@ manage_wan2gp() {
                 launch_wan2gp_ltx_batch_terminal "--watch --no-control" "13b"
                 ;;
             20)
-                run_person_detector
-                ;;
-            21)
                 run_duplicate_image_remover
                 ;;
-            22)
+            21)
                 return 0
                 ;;
             *)
