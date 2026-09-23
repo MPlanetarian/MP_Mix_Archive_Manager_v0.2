@@ -38,7 +38,9 @@ flowchart LR
 - 🚀 **Instant Full-Screen Stage Dispatch**:
   - Automatically brings Traktor Pro to the front in **Full Screen** mode.
 > [!TIP]
-> **Ready to level up your workflow?** Clone or download the repository, launch `./manager_macos.command` (or select Option 33 on macOS), and experience effortless set reconstruction and instant stage prep. Star the repo to follow new updates!
+> **Ready to level up your workflow?** Clone or download the repository, launch `./manager_macos.command` (or select Option 33 on macOS) -   
+33) Generate Playlist from History Files on Traktor 3 (v3.11.1 Key Sorted / Decks Ready)
+, and experience effortless set reconstruction and instant stage prep. Star the repo to follow new updates!
 
 ### 🕹️ How It Works in 3 Quick Steps:
 1. **Launch the Manager on macOS**:
