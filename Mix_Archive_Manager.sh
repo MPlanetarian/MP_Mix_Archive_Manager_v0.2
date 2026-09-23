@@ -7074,6 +7074,25 @@ toggle_audio_mute() {
     sleep 1.2
 }
 
+manage_mix_scheduler() {
+    echo -e "\n${BOLD}${BLUE}=== DJ MIX SCHEDULER (PLAYS LOUDLY VIA DEFAULT AUDIO PLAYER) ===${NC}\n"
+    local py_script="$SCRIPT_DIR/scripts/schedule_mix_playback.py"
+    if [ ! -f "$py_script" ]; then
+        py_script="$SCRIPT_DIR/schedule_mix_playback.py"
+    fi
+    if [ ! -f "$py_script" ]; then
+        py_script="./scripts/schedule_mix_playback.py"
+    fi
+    if [ -x "$SCRIPT_DIR/scripts/schedule_mix_playback.sh" ]; then
+        "$SCRIPT_DIR/scripts/schedule_mix_playback.sh" --player "${DEFAULT_AUDIO_PLAYER:-strawberry}"
+    elif command -v python3 >/dev/null 2>&1 && [ -f "$py_script" ]; then
+        python3 "$py_script" --player "${DEFAULT_AUDIO_PLAYER:-strawberry}"
+    else
+        echo -e "${RED}Error: schedule_mix_playback script not found!${NC}"
+        press_enter
+    fi
+}
+
 get_manager_uptime() {
     local now
     now=$(date +%s)
@@ -7799,6 +7818,14 @@ while true; do
         else
             check_and_show_currently_playing_mix
         fi
+        # Ensure DJ mix scheduler daemon is active if pending scheduled mixes exist
+        if [ -f "$HOME/.config/mix-manager/scheduled_mixes.json" ] && grep -q '"status": "pending"' "$HOME/.config/mix-manager/scheduled_mixes.json" 2>/dev/null; then
+            if [ -f "$SCRIPT_DIR/scripts/schedule_mix_playback.py" ]; then
+                python3 "$SCRIPT_DIR/scripts/schedule_mix_playback.py" --ensure-daemon >/dev/null 2>&1 &
+            elif [ -f "$SCRIPT_DIR/scripts/schedule_mix_playback.sh" ]; then
+                "$SCRIPT_DIR/scripts/schedule_mix_playback.sh" --ensure-daemon >/dev/null 2>&1 &
+            fi
+        fi
     fi
     clear
     echo -e "${BOLD}${MAGENTA}===================================================================================${NC}"
@@ -7880,82 +7907,83 @@ while true; do
     echo -e "  ${BOLD}${CYAN}34)${NC} Show Connected USB MIDI Devices (${GREEN}list-midi-devices${NC})"
     echo -e "  ${BOLD}${CYAN}35)${NC} Studio Hardware & Software Inspector (${GREEN}PipeWire, ALSA, DAWs, MIDI Controllers & Surfaces${NC})"
     echo -e "  ${BOLD}${CYAN}36)${NC} Toggle Audio Mute / Unmute & Master Volume Control (${GREEN}Instant PipeWire/ALSA Mute${NC})"
+    echo -e "  ${BOLD}${CYAN}37)${NC} Schedule DJ Mix or Multiple DJ Mixes to Play Loudly (${GREEN}Uses Default Audio Player${NC})"
     
     echo -e "\n  ${BOLD}${BLUE}─── [ SECTION 4: VIDEO PRODUCTION, ART & VISUAL MEDIA ] ─────${NC}"
-    echo -e "  ${BOLD}${CYAN}37)${NC} Generate YouTube Video (4K UHD, 1080p, 720p with NVENC/Hardware)"
-    echo -e "  ${BOLD}${CYAN}38)${NC} Cut or Split Video File (.mp4 / .mkv) (${GREEN}Cut_Video.sh / Split_Video_File.sh${NC})"
-    echo -e "  ${BOLD}${CYAN}39)${NC} Launch Video Playlists (NFT Videos (VLC))"
-    echo -e "  ${BOLD}${CYAN}40)${NC} Launch Specific Video in Default Video Player (${GREEN}${DEFAULT_VIDEO_PLAYER:-vlc}${NC})"
-    echo -e "  ${BOLD}${CYAN}41)${NC} Launch GIMP Image Editor (${GREEN}gimp / org.gimp.GIMP${NC})"
-    echo -e "  ${BOLD}${CYAN}42)${NC} Convert Cover Art & Resize / Byte Target (${GREEN}1MB Podcast, WebP/JPG/PNG, Sizes${NC})"
-    echo -e "  ${BOLD}${CYAN}43)${NC} View Cover Art by Mix Number (External Viewer)"
-    echo -e "  ${BOLD}${CYAN}44)${NC} Procedural Gradient .PPM Cover Art Generator (${GREEN}Netpbm P6 Binary, Palettes, Typography Overlays${NC})"
-    echo -e "  ${BOLD}${CYAN}45)${NC} Launch Electric Sheep Generative Screensaver (${GREEN}electricsheep / infinidream${NC})"
-    echo -e "  ${BOLD}${CYAN}46)${NC} Synchronized Mix-Video Companion Player Daemon (${GREEN}Auto-play Video on Mix Start, Close on Stop${NC})"
+    echo -e "  ${BOLD}${CYAN}38)${NC} Generate YouTube Video (4K UHD, 1080p, 720p with NVENC/Hardware)"
+    echo -e "  ${BOLD}${CYAN}39)${NC} Cut or Split Video File (.mp4 / .mkv) (${GREEN}Cut_Video.sh / Split_Video_File.sh${NC})"
+    echo -e "  ${BOLD}${CYAN}40)${NC} Launch Video Playlists (NFT Videos (VLC))"
+    echo -e "  ${BOLD}${CYAN}41)${NC} Launch Specific Video in Default Video Player (${GREEN}${DEFAULT_VIDEO_PLAYER:-vlc}${NC})"
+    echo -e "  ${BOLD}${CYAN}42)${NC} Launch GIMP Image Editor (${GREEN}gimp / org.gimp.GIMP${NC})"
+    echo -e "  ${BOLD}${CYAN}43)${NC} Convert Cover Art & Resize / Byte Target (${GREEN}1MB Podcast, WebP/JPG/PNG, Sizes${NC})"
+    echo -e "  ${BOLD}${CYAN}44)${NC} View Cover Art by Mix Number (External Viewer)"
+    echo -e "  ${BOLD}${CYAN}45)${NC} Procedural Gradient .PPM Cover Art Generator (${GREEN}Netpbm P6 Binary, Palettes, Typography Overlays${NC})"
+    echo -e "  ${BOLD}${CYAN}46)${NC} Launch Electric Sheep Generative Screensaver (${GREEN}electricsheep / infinidream${NC})"
+    echo -e "  ${BOLD}${CYAN}47)${NC} Synchronized Mix-Video Companion Player Daemon (${GREEN}Auto-play Video on Mix Start, Close on Stop${NC})"
     
     echo -e "\n  ${BOLD}${BLUE}─── [ SECTION 5: LIVE MONITORS & SYSTEM DIAGNOSTICS ] ───────${NC}"
-    echo -e "  ${BOLD}${CYAN}47)${NC} Launch Live Tracklist Monitor (${GREEN}SOF_Live_Tracker.sh${NC})"
-    echo -e "  ${BOLD}${CYAN}48)${NC} Launch Traktor Live Monitor & Audio Recorder (${GREEN}New Window - CPU, Tracks, Recording, Audio I/O${NC})"
-    echo -e "  ${BOLD}${CYAN}49)${NC} Launch Live File Transfer Monitor (${GREEN}transfer-monitor${NC})"
-    echo -e "  ${BOLD}${CYAN}50)${NC} Launch Chrome Upload Monitor (${GREEN}Podcast Connect / Web Uploads${NC})"
-    echo -e "  ${BOLD}${CYAN}51)${NC} View Advanced Archive Statistics (${GREEN}SOF_Archive_Stats.sh${NC})"
-    echo -e "  ${BOLD}${CYAN}52)${NC} View Running Background Tasks"
-    echo -e "  ${BOLD}${CYAN}53)${NC} Launch Resource Monitor (${GREEN}btop${NC})"
-    echo -e "  ${BOLD}${CYAN}54)${NC} Launch GPU Process Monitor (${GREEN}nvtop${NC})"
-    echo -e "  ${BOLD}${CYAN}55)${NC} Launch System Process Monitor (${GREEN}top${NC})"
+    echo -e "  ${BOLD}${CYAN}48)${NC} Launch Live Tracklist Monitor (${GREEN}SOF_Live_Tracker.sh${NC})"
+    echo -e "  ${BOLD}${CYAN}49)${NC} Launch Traktor Live Monitor & Audio Recorder (${GREEN}New Window - CPU, Tracks, Recording, Audio I/O${NC})"
+    echo -e "  ${BOLD}${CYAN}50)${NC} Launch Live File Transfer Monitor (${GREEN}transfer-monitor${NC})"
+    echo -e "  ${BOLD}${CYAN}51)${NC} Launch Chrome Upload Monitor (${GREEN}Podcast Connect / Web Uploads${NC})"
+    echo -e "  ${BOLD}${CYAN}52)${NC} View Advanced Archive Statistics (${GREEN}SOF_Archive_Stats.sh${NC})"
+    echo -e "  ${BOLD}${CYAN}53)${NC} View Running Background Tasks"
+    echo -e "  ${BOLD}${CYAN}54)${NC} Launch Resource Monitor (${GREEN}btop${NC})"
+    echo -e "  ${BOLD}${CYAN}55)${NC} Launch GPU Process Monitor (${GREEN}nvtop${NC})"
+    echo -e "  ${BOLD}${CYAN}56)${NC} Launch System Process Monitor (${GREEN}top${NC})"
     
     echo -e "\n  ${BOLD}${BLUE}─── [ SECTION 6: SYSTEM, NETWORK & HARDWARE MANAGEMENT ] ────${NC}"
-    echo -e "  ${BOLD}${CYAN}56)${NC} Manage WAN2GP Server (Start, Stop, Restart in Profile 2 or 4.5)"
-    echo -e "  ${BOLD}${CYAN}57)${NC} Manage Beszel Server & Monitoring Agent (${GREEN}Start Hub & Agent, Status, Dashboard :8090${NC})"
-    echo -e "  ${BOLD}${CYAN}58)${NC} Manage Ollama Server (${GREEN}ollama serve in distrobox, Chat, Models, Logs :11434${NC})"
-    echo -e "  ${BOLD}${CYAN}59)${NC} Manage DeepSeek Harness Server (${GREEN}dsh-mobile - Start, Stop, Mobile Web UI :3080${NC})"
-    echo -e "  ${BOLD}${CYAN}60)${NC} Manage Network Services (SSH, Samba, FTP - Start, Stop, Restart All)"
-    echo -e "  ${BOLD}${CYAN}61)${NC} Block Internet Access (LAN Only) (${GREEN}block-internet${NC})"
-    echo -e "  ${BOLD}${CYAN}62)${NC} Restore / Unblock Internet Access (${GREEN}unblock-internet${NC})"
+    echo -e "  ${BOLD}${CYAN}57)${NC} Manage WAN2GP Server (Start, Stop, Restart in Profile 2 or 4.5)"
+    echo -e "  ${BOLD}${CYAN}58)${NC} Manage Beszel Server & Monitoring Agent (${GREEN}Start Hub & Agent, Status, Dashboard :8090${NC})"
+    echo -e "  ${BOLD}${CYAN}59)${NC} Manage Ollama Server (${GREEN}ollama serve in distrobox, Chat, Models, Logs :11434${NC})"
+    echo -e "  ${BOLD}${CYAN}60)${NC} Manage DeepSeek Harness Server (${GREEN}dsh-mobile - Start, Stop, Mobile Web UI :3080${NC})"
+    echo -e "  ${BOLD}${CYAN}61)${NC} Manage Network Services (SSH, Samba, FTP - Start, Stop, Restart All)"
+    echo -e "  ${BOLD}${CYAN}62)${NC} Block Internet Access (LAN Only) (${GREEN}block-internet${NC})"
+    echo -e "  ${BOLD}${CYAN}63)${NC} Restore / Unblock Internet Access (${GREEN}unblock-internet${NC})"
     if [ "$OS_TYPE" = "macos" ]; then
-        echo -e "  ${BOLD}${CYAN}63)${NC} Open macOS Display Settings (${GREEN}Displays, Arrangement & HDR${NC})"
-        echo -e "  ${BOLD}${CYAN}64)${NC} Open macOS Audio MIDI Setup (${GREEN}Sample Rates & Output Devices${NC})"
+        echo -e "  ${BOLD}${CYAN}64)${NC} Open macOS Display Settings (${GREEN}Displays, Arrangement & HDR${NC})"
+        echo -e "  ${BOLD}${CYAN}65)${NC} Open macOS Audio MIDI Setup (${GREEN}Sample Rates & Output Devices${NC})"
     elif [ "$OS_TYPE" = "windows" ] || [ "$OS_TYPE" = "wsl" ]; then
-        echo -e "  ${BOLD}${CYAN}63)${NC} Open Windows Display Settings (${GREEN}ms-settings:display - HDR & Scale${NC})"
-        echo -e "  ${BOLD}${CYAN}64)${NC} Open Windows Sound Settings (${GREEN}control.exe mmsys.cpl${NC})"
+        echo -e "  ${BOLD}${CYAN}64)${NC} Open Windows Display Settings (${GREEN}ms-settings:display - HDR & Scale${NC})"
+        echo -e "  ${BOLD}${CYAN}65)${NC} Open Windows Sound Settings (${GREEN}control.exe mmsys.cpl${NC})"
     else
-        echo -e "  ${BOLD}${CYAN}63)${NC} Switch Desktop to Plasma Wayland (HDR Gaming on Hisense & Steam BPM)"
-        echo -e "  ${BOLD}${CYAN}64)${NC} Switch Desktop to Plasma X11 (Workstation 4-Screen Defasten)"
+        echo -e "  ${BOLD}${CYAN}64)${NC} Switch Desktop to Plasma Wayland (HDR Gaming on Hisense & Steam BPM)"
+        echo -e "  ${BOLD}${CYAN}65)${NC} Switch Desktop to Plasma X11 (Workstation 4-Screen Defasten)"
     fi
-    echo -e "  ${BOLD}${CYAN}65)${NC} Close All Desktop Applications (Keep Manager Open)"
+    echo -e "  ${BOLD}${CYAN}66)${NC} Close All Desktop Applications (Keep Manager Open)"
     if [ "$OS_TYPE" = "macos" ]; then
-        echo -e "  ${BOLD}${CYAN}66)${NC} macOS System Maintenance & Cleanup (${GREEN}drive space, brew cleanup, purge RAM, caches${NC})"
+        echo -e "  ${BOLD}${CYAN}67)${NC} macOS System Maintenance & Cleanup (${GREEN}drive space, brew cleanup, purge RAM, caches${NC})"
     elif [ "$OS_TYPE" = "windows" ] || [ "$OS_TYPE" = "wsl" ]; then
-        echo -e "  ${BOLD}${CYAN}66)${NC} Windows System Maintenance & Cleanup (${GREEN}drive space, winget upgrade, clean temp, TRIM${NC})"
+        echo -e "  ${BOLD}${CYAN}67)${NC} Windows System Maintenance & Cleanup (${GREEN}drive space, winget upgrade, clean temp, TRIM${NC})"
     elif [ "$OS_TYPE" = "freebsd" ]; then
-        echo -e "  ${BOLD}${CYAN}66)${NC} FreeBSD System Maintenance & Cleanup (${GREEN}drive space, pkg upgrade, clean, autoremove${NC})"
+        echo -e "  ${BOLD}${CYAN}67)${NC} FreeBSD System Maintenance & Cleanup (${GREEN}drive space, pkg upgrade, clean, autoremove${NC})"
     else
-        echo -e "  ${BOLD}${CYAN}66)${NC} Bazzite System Maintenance & Cleanup (${GREEN}drive space, ujust clean-system, update, trim, logs${NC})"
+        echo -e "  ${BOLD}${CYAN}67)${NC} Bazzite System Maintenance & Cleanup (${GREEN}drive space, ujust clean-system, update, trim, logs${NC})"
     fi
-    echo -e "  ${BOLD}${CYAN}67)${NC} Launch GeeXLab Demo Launcher (${GREEN}FurMark_linux64/demo_launcher.sh${NC})"
-    echo -e "  ${BOLD}${CYAN}68)${NC} Burn ISO Image to USB Drive (${GREEN}dd / diskutil with safety checks${NC})"
-    echo -e "  ${BOLD}${CYAN}69)${NC} Dynamic System MOTD Banner Manager (${GREEN}Last 3 Mixes, Date/Time, Size, Format & Specs${NC})"
+    echo -e "  ${BOLD}${CYAN}68)${NC} Launch GeeXLab Demo Launcher (${GREEN}FurMark_linux64/demo_launcher.sh${NC})"
+    echo -e "  ${BOLD}${CYAN}69)${NC} Burn ISO Image to USB Drive (${GREEN}dd / diskutil with safety checks${NC})"
+    echo -e "  ${BOLD}${CYAN}70)${NC} Dynamic System MOTD Banner Manager (${GREEN}Last 3 Mixes, Date/Time, Size, Format & Specs${NC})"
     
     echo -e "\n  ${BOLD}${BLUE}─── [ SECTION 7: AI, SHELL CLI & SETTINGS ] ──────────────────${NC}"
-    echo -e "  ${BOLD}${CYAN}70)${NC} Launch AI Assistant / Models (${GREEN}Claude Opus, Claude Sonnet, GPT-OSS, Gemini, Ollama, DeepSeek${NC})"
-    echo -e "  ${BOLD}${CYAN}71)${NC} Run Bash CLI Commands (${GREEN}Interactive Shell & Direct Runner${NC})"
-    echo -e "  ${BOLD}${CYAN}72)${NC} Manager Themes & Color Palette Switcher (${GREEN}8 Themes + Classic${NC})"
-    echo -e "  ${BOLD}${CYAN}73)${NC} Manage Installation & Configuration (${GREEN}Migrate Path, Backup, Export & Import Config${NC})"
+    echo -e "  ${BOLD}${CYAN}71)${NC} Launch AI Assistant / Models (${GREEN}Claude Opus, Claude Sonnet, GPT-OSS, Gemini, Ollama, DeepSeek${NC})"
+    echo -e "  ${BOLD}${CYAN}72)${NC} Run Bash CLI Commands (${GREEN}Interactive Shell & Direct Runner${NC})"
+    echo -e "  ${BOLD}${CYAN}73)${NC} Manager Themes & Color Palette Switcher (${GREEN}8 Themes + Classic${NC})"
+    echo -e "  ${BOLD}${CYAN}74)${NC} Manage Installation & Configuration (${GREEN}Migrate Path, Backup, Export & Import Config${NC})"
     if [ "$OS_TYPE" = "macos" ]; then
-        echo -e "  ${BOLD}${CYAN}74)${NC} Reboot System (${RED}macOS restart with confirmation${NC})"
+        echo -e "  ${BOLD}${CYAN}75)${NC} Reboot System (${RED}macOS restart with confirmation${NC})"
     elif [ "$OS_TYPE" = "windows" ] || [ "$OS_TYPE" = "wsl" ]; then
-        echo -e "  ${BOLD}${CYAN}74)${NC} Reboot System (${RED}Windows restart with confirmation${NC})"
+        echo -e "  ${BOLD}${CYAN}75)${NC} Reboot System (${RED}Windows restart with confirmation${NC})"
     elif [ "$OS_TYPE" = "freebsd" ]; then
-        echo -e "  ${BOLD}${CYAN}74)${NC} Reboot System (${RED}FreeBSD restart with confirmation${NC})"
+        echo -e "  ${BOLD}${CYAN}75)${NC} Reboot System (${RED}FreeBSD restart with confirmation${NC})"
     else
-        echo -e "  ${BOLD}${CYAN}74)${NC} Reboot System (${RED}systemctl reboot with confirmation${NC})"
+        echo -e "  ${BOLD}${CYAN}75)${NC} Reboot System (${RED}systemctl reboot with confirmation${NC})"
     fi
     
     echo -e "\n  ${BOLD}${BLUE}──────────────────────────────────────────────────────────────${NC}"
     get_manager_uptime
-    echo -e "  ${BOLD}${CYAN}75)${NC} Exit Manager ${DIM}(or 0 / q)${NC}"
+    echo -e "  ${BOLD}${CYAN}76)${NC} Exit Manager ${DIM}(or 0 / q)${NC}"
     echo ""
-    read -r -p "Enter choice [1-75, or q to exit]: " choice
+    read -r -p "Enter choice [1-76, or q to exit]: " choice
     
     case $choice in
         1)
@@ -8085,37 +8113,40 @@ while true; do
             toggle_audio_mute
             ;;
         37)
-            generate_youtube_video
+            manage_mix_scheduler
             ;;
         38)
-            manage_video_cut_and_split
+            generate_youtube_video
             ;;
         39)
-            launch_video_playlists
+            manage_video_cut_and_split
             ;;
         40)
-            manage_video_dispatcher
+            launch_video_playlists
             ;;
         41)
-            launch_gimp
+            manage_video_dispatcher
             ;;
         42)
-            manage_cover_converter
+            launch_gimp
             ;;
         43)
+            manage_cover_converter
+            ;;
+        44)
             view_cover
             press_enter
             ;;
-        44)
+        45)
             generate_ppm_cover_menu
             ;;
-        45)
+        46)
             launch_electricsheep
             ;;
-        46)
+        47)
             manage_sync_video_companion_menu
             ;;
-        47)
+        48)
             echo -e "\n${BOLD}${YELLOW}Launching Live Tracklist Monitor (Press Ctrl+C to return to menu)...${NC}\n"
             sleep 1
             trap ':' INT
@@ -8123,10 +8154,10 @@ while true; do
             trap - INT
             press_enter
             ;;
-        48)
+        49)
             launch_traktor_monitor_window
             ;;
-        49)
+        50)
             echo -e "\n${BOLD}${YELLOW}Launching Live File Transfer Monitor (Press Ctrl+C to return to menu)...${NC}\n"
             sleep 1
             trap ':' INT
@@ -8140,7 +8171,7 @@ while true; do
             trap - INT
             press_enter
             ;;
-        50)
+        51)
             echo -e "\n${BOLD}${YELLOW}Launching Chrome Upload Monitor (Press Ctrl+C to return to menu)...${NC}\n"
             sleep 1
             trap ':' INT
@@ -8162,17 +8193,17 @@ while true; do
             trap - INT
             press_enter
             ;;
-        51)
+        52)
             echo -e "\n${BOLD}${YELLOW}Loading Advanced Archive Statistics...${NC}\n"
             sleep 0.5
             run_sub_script "SOF_Archive_Stats.sh"
             press_enter
             ;;
-        52)
+        53)
             view_tasks
             press_enter
             ;;
-        53)
+        54)
             echo -e "\n${BOLD}${YELLOW}Launching btop Resource Monitor (Press 'q' to exit)...${NC}\n"
             sleep 0.5
             trap ':' INT
@@ -8184,7 +8215,7 @@ while true; do
             fi
             trap - INT
             ;;
-        54)
+        55)
             echo -e "\n${BOLD}${YELLOW}Launching nvtop GPU Monitor (Press 'q' to exit)...${NC}\n"
             sleep 0.5
             trap ':' INT
@@ -8196,7 +8227,7 @@ while true; do
             fi
             trap - INT
             ;;
-        55)
+        56)
             echo -e "\n${BOLD}${YELLOW}Launching top Process Monitor (Press 'q' to exit)...${NC}\n"
             sleep 0.5
             trap ':' INT
@@ -8208,61 +8239,61 @@ while true; do
             fi
             trap - INT
             ;;
-        56)
+        57)
             manage_wan2gp
             ;;
-        57)
+        58)
             manage_beszel
             ;;
-        58)
+        59)
             manage_ollama
             ;;
-        59)
+        60)
             manage_dsh_mobile
             ;;
-        60)
+        61)
             manage_network_services
             ;;
-        61)
+        62)
             block_internet
             ;;
-        62)
+        63)
             unblock_internet
             ;;
-        63)
+        64)
             switch_to_wayland
             ;;
-        64)
+        65)
             switch_to_x11
             ;;
-        65)
+        66)
             close_all_desktop_apps
             ;;
-        66)
+        67)
             manage_system_maintenance
             ;;
-        67)
+        68)
             launch_geexlab_demos
             ;;
-        68)
+        69)
             burn_iso_to_usb
             ;;
-        69)
+        70)
             manage_system_motd_menu
             ;;
-        70)
+        71)
             manage_ai_models
             ;;
-        71)
+        72)
             run_bash_cli
             ;;
-        72)
+        73)
             manage_themes
             ;;
-        73)
+        74)
             manage_installation_and_config
             ;;
-        74)
+        75)
             reboot_system
             ;;
         split-flac|split_flac)
@@ -8289,12 +8320,12 @@ while true; do
             manage_dsh_mobile
             press_enter
             ;;
-        75|0|[qQ]|[eE][xX][iI][tT])
+        76|0|[qQ]|[eE][xX][iI][tT])
             echo -e "\n${BOLD}${GREEN}Exiting Mix Archive Manager. Goodbye!${NC}\n"
             exit 0
             ;;
         *)
-            echo -e "\n${RED}Invalid option! Please enter a number between 1 and 75 (or 'q' to exit).${NC}"
+            echo -e "\n${RED}Invalid option! Please enter a number between 1 and 76 (or 'q' to exit).${NC}"
             sleep 2
             ;;
     esac
