@@ -6,7 +6,8 @@ import shutil
 import datetime
 
 # Setup paths and connection info
-DEST_DIR = "/run/media/mplanetarian/WD BLACK B/MIX_ARCHIVE"
+_base = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+DEST_DIR = os.environ.get("MIX_ARCHIVE_DIR") or os.path.join(_base, "MIX_ARCHIVE")
 LOG_DIR = os.path.join(DEST_DIR, "IMPORT_LOGS")
 os.makedirs(LOG_DIR, exist_ok=True)
 

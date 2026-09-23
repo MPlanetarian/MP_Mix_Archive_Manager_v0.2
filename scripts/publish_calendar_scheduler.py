@@ -193,9 +193,13 @@ def render_month_calendar(year, month, scheduled_by_date):
 def list_archive_mixes():
     """Discover mixes in archive to suggest for scheduling."""
     base_dir = get_base_dir()
+    env_dir = os.environ.get("MIX_ARCHIVE_DIR")
+    arch_dir = Path(env_dir) if env_dir and Path(env_dir).is_dir() else (base_dir / "MIX_ARCHIVE")
     archive_paths = [
+        arch_dir / "FLAC_CONVERTED_OUTPUTS",
+        arch_dir,
+        base_dir / "MIX_ARCHIVE" / "FLAC_CONVERTED_OUTPUTS",
         base_dir / "FLAC_CONVERTED_OUTPUTS",
-        Path("/run/media/mplanetarian/WD BLACK B/MIX_ARCHIVE/FLAC_CONVERTED_OUTPUTS"),
         base_dir / "CONVERTED_WAV_FILES"
     ]
     mixes = []

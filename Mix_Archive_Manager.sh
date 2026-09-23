@@ -587,7 +587,7 @@ find_mix_tracklist() {
         echo "directly on disk for this mix file."
         echo ""
         echo "To auto-generate complete tracklists from your Traktor"
-        echo "history or audio metadata, launch Option 15 in the"
+        echo "history or audio metadata, launch Option 16 in the"
         echo "Mix Archive Manager."
         echo "=================================================="
     } > "$tmp_tl" 2>/dev/null
@@ -808,13 +808,41 @@ fi
 OUTPUT_DIR="${OUTPUT_DIR:-FLAC_CONVERTED_OUTPUTS}"
 ARCHIVE_DIR="${ARCHIVE_DIR:-CONVERTED_WAV_FILES}"
 
-# Resolve relative storage paths to MIX_ARCHIVE_DIR if mounted
+is_mix_archive_configured() {
+    if [ "${MIX_ARCHIVE_CONFIGURED:-false}" = "true" ] && [ -n "${MIX_ARCHIVE_DIR:-}" ]; then
+        return 0
+    fi
+    return 1
+}
+
+# Determine target working archive directory
+if is_mix_archive_configured && [ -d "$MIX_ARCHIVE_DIR" ]; then
+    cd "$MIX_ARCHIVE_DIR" || exit 1
+else
+    # Fallback to Application Root Folder 'MIX_ARCHIVE'
+    MIX_ARCHIVE_DIR="${MIX_ARCHIVE_DIR:-$SCRIPT_DIR/MIX_ARCHIVE}"
+    mkdir -p "$SCRIPT_DIR/MIX_ARCHIVE/FLAC_CONVERTED_OUTPUTS" 2>/dev/null || true
+    mkdir -p "$SCRIPT_DIR/MIX_ARCHIVE/CONVERTED_WAV_FILES" 2>/dev/null || true
+    if [ -d "$MIX_ARCHIVE_DIR" ]; then
+        cd "$MIX_ARCHIVE_DIR" 2>/dev/null || cd "$SCRIPT_DIR/MIX_ARCHIVE" 2>/dev/null || cd "$SCRIPT_DIR" || exit 1
+    else
+        cd "$SCRIPT_DIR/MIX_ARCHIVE" 2>/dev/null || cd "$SCRIPT_DIR" || exit 1
+    fi
+fi
+
+# Resolve relative storage paths to active archive folder
 if [ -n "${MIX_ARCHIVE_DIR:-}" ] && [ -d "$MIX_ARCHIVE_DIR" ]; then
     if [ ! -d "$OUTPUT_DIR" ] && [ -d "$MIX_ARCHIVE_DIR/$OUTPUT_DIR" ]; then
         OUTPUT_DIR="$MIX_ARCHIVE_DIR/$OUTPUT_DIR"
+    elif [ ! -d "$OUTPUT_DIR" ]; then
+        mkdir -p "$MIX_ARCHIVE_DIR/FLAC_CONVERTED_OUTPUTS" 2>/dev/null || true
+        OUTPUT_DIR="$MIX_ARCHIVE_DIR/FLAC_CONVERTED_OUTPUTS"
     fi
     if [ ! -d "$ARCHIVE_DIR" ] && [ -d "$MIX_ARCHIVE_DIR/$ARCHIVE_DIR" ]; then
         ARCHIVE_DIR="$MIX_ARCHIVE_DIR/$ARCHIVE_DIR"
+    elif [ ! -d "$ARCHIVE_DIR" ]; then
+        mkdir -p "$MIX_ARCHIVE_DIR/CONVERTED_WAV_FILES" 2>/dev/null || true
+        ARCHIVE_DIR="$MIX_ARCHIVE_DIR/CONVERTED_WAV_FILES"
     fi
 fi
 
@@ -846,46 +874,38 @@ path = sys.argv[3]
 try:
     with open(path, 'r', encoding='utf-8') as f:
         c = f.read()
-    pat = rf'^[ 	]*{re.escape(key)}=.*$'
+    pat = rf'^[ \t]*{re.escape(key)}=.*$'
     if re.search(pat, c, re.MULTILINE):
         new_c = re.sub(pat, f'{key}=\"{val}\"', c, flags=re.MULTILINE)
     else:
-        new_c = c.rstrip() + f'
-{key}=\"{val}\"
-'
+        new_c = c.rstrip() + f'\n{key}=\"{val}\"\n'
     with open(path, 'w', encoding='utf-8') as f:
         f.write(new_c)
 except Exception:
     pass
 " "$key" "$val" "$cfg_file" 2>/dev/null || true
-}
 
-# Determine target working archive directory across Linux, macOS, and Windows
-if [ -n "${MIX_ARCHIVE_DIR:-}" ] && [ -d "$MIX_ARCHIVE_DIR" ]; then
-    cd "$MIX_ARCHIVE_DIR" || exit 1
-elif [ -d "/run/media/$USER/WD BLACK B/MIX_ARCHIVE" ]; then
-    cd "/run/media/$USER/WD BLACK B/MIX_ARCHIVE" || exit 1
-elif [ -d "/run/media/mplanetarian/WD BLACK B/MIX_ARCHIVE" ]; then
-    cd "/run/media/mplanetarian/WD BLACK B/MIX_ARCHIVE" || exit 1
-elif [ -d "/Volumes/WD BLACK B/MIX_ARCHIVE" ]; then
-    cd "/Volumes/WD BLACK B/MIX_ARCHIVE" || exit 1
-elif [ -d "/Volumes/MIX_ARCHIVE" ]; then
-    cd "/Volumes/MIX_ARCHIVE" || exit 1
-elif [ -d "/d/MIX_ARCHIVE" ]; then
-    cd "/d/MIX_ARCHIVE" || exit 1
-elif [ -d "/e/MIX_ARCHIVE" ]; then
-    cd "/e/MIX_ARCHIVE" || exit 1
-elif [ -d "D:/MIX_ARCHIVE" ]; then
-    cd "D:/MIX_ARCHIVE" || exit 1
-elif [ -d "E:/MIX_ARCHIVE" ]; then
-    cd "E:/MIX_ARCHIVE" || exit 1
-elif [ -d "/mnt/d/MIX_ARCHIVE" ]; then
-    cd "/mnt/d/MIX_ARCHIVE" || exit 1
-elif [ -d "/mnt/e/MIX_ARCHIVE" ]; then
-    cd "/mnt/e/MIX_ARCHIVE" || exit 1
-elif [ -d "$SCRIPT_DIR" ]; then
-    cd "$SCRIPT_DIR" || exit 1
-fi
+    if [ -f "$HOME/.config/mix-manager/config.env" ]; then
+        python3 -c "
+import sys, re
+key = sys.argv[1]
+val = sys.argv[2]
+path = sys.argv[3]
+try:
+    with open(path, 'r', encoding='utf-8') as f:
+        c = f.read()
+    pat = rf'^[ \t]*{re.escape(key)}=.*$'
+    if re.search(pat, c, re.MULTILINE):
+        new_c = re.sub(pat, f'{key}=\"{val}\"', c, flags=re.MULTILINE)
+    else:
+        new_c = c.rstrip() + f'\n{key}=\"{val}\"\n'
+    with open(path, 'w', encoding='utf-8') as f:
+        f.write(new_c)
+except Exception:
+    pass
+" "$key" "$val" "$HOME/.config/mix-manager/config.env" 2>/dev/null || true
+    fi
+}
 
 run_sub_script() {
     local script_name="$1"
@@ -1249,12 +1269,11 @@ get_cliamp_track_info() {
                 bname=$(basename "$CLIAMP_RAW_PATH")
                 for dir in \
                     "${MIX_ARCHIVE_DIR:-}" \
-                    "/run/media/$USER/WD BLACK B/MIX_ARCHIVE" \
-                    "/run/media/$USER/WD BLACK B/MIX_ARCHIVE/CONVERTED_WAV_FILES" \
-                    "/run/media/$USER/WD BLACK B/MIX_ARCHIVE/FLAC_CONVERTED_OUTPUTS" \
-                    "/run/media/mplanetarian/WD BLACK B/MIX_ARCHIVE" \
-                    "/run/media/mplanetarian/WD BLACK B/MIX_ARCHIVE/CONVERTED_WAV_FILES" \
-                    "/run/media/mplanetarian/WD BLACK B/MIX_ARCHIVE/FLAC_CONVERTED_OUTPUTS" \
+                    "${MIX_ARCHIVE_DIR:-}/CONVERTED_WAV_FILES" \
+                    "${MIX_ARCHIVE_DIR:-}/FLAC_CONVERTED_OUTPUTS" \
+                    "$SCRIPT_DIR/MIX_ARCHIVE" \
+                    "$SCRIPT_DIR/MIX_ARCHIVE/CONVERTED_WAV_FILES" \
+                    "$SCRIPT_DIR/MIX_ARCHIVE/FLAC_CONVERTED_OUTPUTS" \
                     "/Volumes/WD BLACK B/MIX_ARCHIVE" \
                     "/Volumes/WD BLACK B/MIX_ARCHIVE/CONVERTED_WAV_FILES" \
                     "/Volumes/WD BLACK B/MIX_ARCHIVE/FLAC_CONVERTED_OUTPUTS" \
@@ -2466,9 +2485,7 @@ run_person_detector() {
     echo -e "\n${BOLD}${GREEN}=== WEBP PERSON DETECTION & JPEG CONVERTER ===${NC}\n"
     local script="./detect_and_move_people.py"
     [ ! -f "$script" ] && script="$SCRIPT_DIR/detect_and_move_people.py"
-    [ ! -f "$script" ] && script="$SCRIPT_DIR/scripts/detect_and_move_people.py"
-    [ ! -f "$script" ] && script="/run/media/$USER/WD BLACK B/MIX_ARCHIVE/detect_and_move_people.py"
-    [ ! -f "$script" ] && script="/run/media/mplanetarian/WD BLACK B/MIX_ARCHIVE/detect_and_move_people.py"
+    [ ! -f "$script" ] && script="${MIX_ARCHIVE_DIR:-$SCRIPT_DIR/MIX_ARCHIVE}/detect_and_move_people.py"
 
     if [ -f "$script" ]; then
         python3 "$script"
@@ -2484,8 +2501,7 @@ run_duplicate_image_remover() {
     local script="./remove_duplicate_images.py"
     [ ! -f "$script" ] && script="$SCRIPT_DIR/remove_duplicate_images.py"
     [ ! -f "$script" ] && script="$SCRIPT_DIR/scripts/remove_duplicate_images.py"
-    [ ! -f "$script" ] && script="/run/media/$USER/WD BLACK B/MIX_ARCHIVE/remove_duplicate_images.py"
-    [ ! -f "$script" ] && script="/run/media/mplanetarian/WD BLACK B/MIX_ARCHIVE/remove_duplicate_images.py"
+    [ ! -f "$script" ] && script="${MIX_ARCHIVE_DIR:-$SCRIPT_DIR/MIX_ARCHIVE}/remove_duplicate_images.py"
     [ ! -f "$script" ] && script="$HOME/Documents/BASH_SCRIPTS/remove_duplicate_images.py"
 
     if [ -f "$script" ]; then
@@ -4244,9 +4260,8 @@ open_mix_in_daw() {
     shopt -s nullglob nocaseglob
     local wav_candidates=(
         "${ARCHIVE_DIR}"/*.wav
-        "$PWD"/*.wav
-        "/run/media/$USER/WD BLACK B/MIX_ARCHIVE/CONVERTED_WAV_FILES"/*.wav
-        "/run/media/$USER/WD BLACK B/MIX_ARCHIVE"/*.wav
+        "${MIX_ARCHIVE_DIR:-$SCRIPT_DIR/MIX_ARCHIVE}/CONVERTED_WAV_FILES"/*.wav
+        "${MIX_ARCHIVE_DIR:-$SCRIPT_DIR/MIX_ARCHIVE}"/*.wav
         "${OUTPUT_DIR}"/*.flac
         "$PWD"/*.flac
     )
@@ -5748,14 +5763,7 @@ get_system_perf_stats() {
     [ -z "$ram_info" ] && ram_info="Available"
 
     # 3. Disk Info (Mix Drive Only)
-    local mix_target="$PWD"
-    if [ -n "${MIX_ARCHIVE_DIR:-}" ] && [ -d "$MIX_ARCHIVE_DIR" ]; then
-        mix_target="$MIX_ARCHIVE_DIR"
-    elif [ -d "/run/media/$USER/WD BLACK B/MIX_ARCHIVE" ]; then
-        mix_target="/run/media/$USER/WD BLACK B/MIX_ARCHIVE"
-    elif [ -d "/run/media/mplanetarian/WD BLACK B/MIX_ARCHIVE" ]; then
-        mix_target="/run/media/mplanetarian/WD BLACK B/MIX_ARCHIVE"
-    fi
+    local mix_target="${MIX_ARCHIVE_DIR:-$SCRIPT_DIR/MIX_ARCHIVE}"
     local d_avail="" d_pct=""
     read -r _ _ _ d_avail d_pct _ < <(df -h "$mix_target" 2>/dev/null | tail -n 1)
     if [ -n "$d_avail" ]; then
@@ -5942,15 +5950,7 @@ show_mix_drive_space() {
     echo -e "${BOLD}${MAGENTA}             MIX STORAGE DRIVE - DISK SPACE USAGE REPORT             ${NC}"
     echo -e "${BOLD}${MAGENTA}======================================================================${NC}\n"
 
-    local mix_target="$PWD"
-    if [ -n "${MIX_ARCHIVE_DIR:-}" ] && [ -d "$MIX_ARCHIVE_DIR" ]; then
-        mix_target="$MIX_ARCHIVE_DIR"
-    elif [ -d "/run/media/$USER/WD BLACK B/MIX_ARCHIVE" ]; then
-        mix_target="/run/media/$USER/WD BLACK B/MIX_ARCHIVE"
-    elif [ -d "/run/media/mplanetarian/WD BLACK B/MIX_ARCHIVE" ]; then
-        mix_target="/run/media/mplanetarian/WD BLACK B/MIX_ARCHIVE"
-    fi
-
+    local mix_target="${MIX_ARCHIVE_DIR:-$SCRIPT_DIR/MIX_ARCHIVE}"
     echo -e "${BOLD}Target Archive Location:${NC} ${GREEN}${mix_target}${NC}\n"
 
     # Only show THIS drive
@@ -6010,6 +6010,165 @@ show_mix_drive_space() {
     echo -e "  • MP3 Deliverables:    ${YELLOW}${mp3_count}${NC} files\n"
 
     press_enter
+}
+
+configure_mix_archive_folder() {
+    while true; do
+        clear
+        echo -e "${BOLD}${MAGENTA}======================================================================${NC}"
+        echo -e "${BOLD}${MAGENTA}           CONFIGURE DEFAULT MIX ARCHIVE STORAGE FOLDER               ${NC}"
+        echo -e "${BOLD}${MAGENTA}======================================================================${NC}\n"
+        
+        local current_path="${MIX_ARCHIVE_DIR:-}"
+        local status_str
+        if is_mix_archive_configured && [ -d "$current_path" ]; then
+            status_str="${GREEN}Configured & Accessible${NC}"
+        elif is_mix_archive_configured; then
+            status_str="${YELLOW}Configured but Unmounted / Not Found${NC}"
+        else
+            status_str="${RED}Not Configured (Defaulting to: ${SCRIPT_DIR}/MIX_ARCHIVE)${NC}"
+        fi
+        
+        echo -e "  • Current Archive Path : ${BOLD}${CYAN}${current_path:-$SCRIPT_DIR/MIX_ARCHIVE}${NC}"
+        echo -e "  • Configuration Status : ${status_str}\n"
+        echo -e "${BOLD}${BLUE}----------------------------------------------------------------------${NC}"
+        echo -e "  ${BOLD}${CYAN}1)${NC} Enter New Mix Archive Folder Path ${GREEN}(Custom Directory Path)${NC}"
+        echo -e "  ${BOLD}${CYAN}2)${NC} Auto-Detect & Select from Connected Drives / Volumes"
+        echo -e "  ${BOLD}${CYAN}3)${NC} Reset to Application Root Folder ${YELLOW}(${SCRIPT_DIR}/MIX_ARCHIVE)${NC}"
+        echo -e "${BOLD}${BLUE}----------------------------------------------------------------------${NC}"
+        echo -e "  ${BOLD}0)${NC} Return to Main Menu ${DIM}(or q)${NC}\n"
+        
+        read -r -p "Enter choice [1-3, 0 to return]: " opt
+        case "$opt" in
+            1)
+                echo ""
+                echo -e "${BOLD}Enter full path to your Mix Archive storage directory:${NC}"
+                echo -e "${DIM}(e.g. /run/media/$USER/MY_DRIVE/MIX_ARCHIVE or /Volumes/EXTERNAL/MIX_ARCHIVE)${NC}"
+                read -e -r -p "Path: " new_dir
+                new_dir="${new_dir#"${new_dir%%[![:space:]]*}"}"
+                new_dir="${new_dir%"${new_dir##*[![:space:]]}"}"
+                new_dir="${new_dir%\"}"
+                new_dir="${new_dir#\"}"
+                new_dir="${new_dir%\'}"
+                new_dir="${new_dir#\'}"
+                
+                # Expand tilde ~
+                if [[ "$new_dir" =~ ^~(/.*)?$ ]]; then
+                    new_dir="${HOME}${new_dir:1}"
+                fi
+                
+                [ -z "$new_dir" ] && continue
+                
+                if [ ! -d "$new_dir" ]; then
+                    echo -e "\n${YELLOW}Directory does not exist:${NC} ${new_dir}"
+                    read -r -p "Would you like to create this directory now? [y/N]: " create_ans
+                    if [[ "$create_ans" =~ ^[yY] ]]; then
+                        mkdir -p "$new_dir" 2>/dev/null || {
+                            echo -e "${RED}Error: Failed to create directory. Check permissions.${NC}"
+                            sleep 2
+                            continue
+                        }
+                    else
+                        continue
+                    fi
+                fi
+                
+                # Setup subdirectories
+                mkdir -p "$new_dir/FLAC_CONVERTED_OUTPUTS" "$new_dir/CONVERTED_WAV_FILES" 2>/dev/null || true
+                
+                MIX_ARCHIVE_DIR="$new_dir"
+                MIX_ARCHIVE_CONFIGURED="true"
+                OUTPUT_DIR="$new_dir/FLAC_CONVERTED_OUTPUTS"
+                ARCHIVE_DIR="$new_dir/CONVERTED_WAV_FILES"
+                export MIX_ARCHIVE_DIR MIX_ARCHIVE_CONFIGURED OUTPUT_DIR ARCHIVE_DIR
+                
+                save_config_setting "MIX_ARCHIVE_DIR" "$new_dir"
+                save_config_setting "MIX_ARCHIVE_CONFIGURED" "true"
+                
+                cd "$new_dir" 2>/dev/null || true
+                echo -e "\n${GREEN}✓ Mix Archive Storage Folder successfully configured and saved!${NC}"
+                echo -e "  New Archive Location: ${BOLD}${WHITE}${new_dir}${NC}"
+                sleep 2
+                return 0
+                ;;
+            2)
+                local found_dirs=()
+                echo -e "\n${CYAN}Scanning mounted drives and volumes for candidate mix folders...${NC}"
+                shopt -s nullglob
+                for d in "/run/media/$USER"/* "/run/media/mplanetarian"/* "/Volumes"/* "/media/$USER"/* "/mnt"/*; do
+                    if [ -d "$d" ]; then
+                        [ -d "$d/MIX_ARCHIVE" ] && found_dirs+=("$d/MIX_ARCHIVE")
+                        [ -d "$d/Mixes" ] && found_dirs+=("$d/Mixes")
+                        [ -d "$d/MIXES" ] && found_dirs+=("$d/MIXES")
+                        found_dirs+=("$d")
+                    fi
+                done
+                shopt -u nullglob
+                
+                local unique_dirs=()
+                local seen_dirs=()
+                for f_dir in "${found_dirs[@]}"; do
+                    local real_d
+                    real_d="$(cd "$f_dir" 2>/dev/null && pwd -P || echo "$f_dir")"
+                    if [[ ! " ${seen_dirs[*]} " =~ " ${real_d} " ]]; then
+                        seen_dirs+=("$real_d")
+                        unique_dirs+=("$f_dir")
+                    fi
+                done
+                
+                if [ ${#unique_dirs[@]} -eq 0 ]; then
+                    echo -e "\n${YELLOW}No external mounted drives detected.${NC}"
+                    sleep 1.5
+                    continue
+                fi
+                
+                echo -e "\n${BOLD}Available Storage Locations:${NC}"
+                local idx=1
+                for u_dir in "${unique_dirs[@]}"; do
+                    local note=""
+                    [ -d "$u_dir/FLAC_CONVERTED_OUTPUTS" ] && note=" ${GREEN}(Contains FLAC_CONVERTED_OUTPUTS)${NC}"
+                    echo -e "  ${BOLD}${CYAN}${idx})${NC} ${u_dir}${note}"
+                    ((idx++))
+                done
+                echo -e "  ${BOLD}0)${NC} Back"
+                
+                read -r -p "Select a location [1-${#unique_dirs[@]}, 0]: " sel_idx
+                if [[ "$sel_idx" =~ ^[0-9]+$ ]] && [ "$sel_idx" -ge 1 ] && [ "$sel_idx" -le "${#unique_dirs[@]}" ]; then
+                    local chosen_dir="${unique_dirs[$((sel_idx - 1))]}"
+                    mkdir -p "$chosen_dir/FLAC_CONVERTED_OUTPUTS" "$chosen_dir/CONVERTED_WAV_FILES" 2>/dev/null || true
+                    MIX_ARCHIVE_DIR="$chosen_dir"
+                    MIX_ARCHIVE_CONFIGURED="true"
+                    OUTPUT_DIR="$chosen_dir/FLAC_CONVERTED_OUTPUTS"
+                    ARCHIVE_DIR="$chosen_dir/CONVERTED_WAV_FILES"
+                    export MIX_ARCHIVE_DIR MIX_ARCHIVE_CONFIGURED OUTPUT_DIR ARCHIVE_DIR
+                    save_config_setting "MIX_ARCHIVE_DIR" "$chosen_dir"
+                    save_config_setting "MIX_ARCHIVE_CONFIGURED" "true"
+                    cd "$chosen_dir" 2>/dev/null || true
+                    echo -e "\n${GREEN}✓ Mix Archive Storage Folder successfully set to:${NC} ${BOLD}${WHITE}${chosen_dir}${NC}"
+                    sleep 2
+                    return 0
+                fi
+                ;;
+            3)
+                local root_archive="$SCRIPT_DIR/MIX_ARCHIVE"
+                mkdir -p "$root_archive/FLAC_CONVERTED_OUTPUTS" "$root_archive/CONVERTED_WAV_FILES" 2>/dev/null || true
+                MIX_ARCHIVE_DIR="$root_archive"
+                MIX_ARCHIVE_CONFIGURED="true"
+                OUTPUT_DIR="$root_archive/FLAC_CONVERTED_OUTPUTS"
+                ARCHIVE_DIR="$root_archive/CONVERTED_WAV_FILES"
+                export MIX_ARCHIVE_DIR MIX_ARCHIVE_CONFIGURED OUTPUT_DIR ARCHIVE_DIR
+                save_config_setting "MIX_ARCHIVE_DIR" "$root_archive"
+                save_config_setting "MIX_ARCHIVE_CONFIGURED" "true"
+                cd "$root_archive" 2>/dev/null || true
+                echo -e "\n${GREEN}✓ Mix Archive Storage Folder reset to Application Root Folder:${NC} ${BOLD}${WHITE}${root_archive}${NC}"
+                sleep 2
+                return 0
+                ;;
+            0|[qQ])
+                return 0
+                ;;
+        esac
+    done
 }
 
 manage_audio_conversion() {
@@ -6463,7 +6622,7 @@ search_and_play_mix() {
 
     echo -e "\n${CYAN}Searching archive for '${query}'...${NC}"
 
-    local search_dirs=("$OUTPUT_DIR" "$PWD" "${OUTPUT_DIR%/*}/CONVERTED_WAV_FILES" "/run/media/$USER/WD BLACK B/MIX_ARCHIVE" "/run/media/$USER/WD BLACK B/MIX_ARCHIVE/FLAC_CONVERTED_OUTPUTS")
+    local search_dirs=("$OUTPUT_DIR" "$PWD" "${OUTPUT_DIR%/*}/CONVERTED_WAV_FILES" "${MIX_ARCHIVE_DIR:-$SCRIPT_DIR/MIX_ARCHIVE}" "${MIX_ARCHIVE_DIR:-$SCRIPT_DIR/MIX_ARCHIVE}/FLAC_CONVERTED_OUTPUTS")
     local matches=()
     local seen_names=()
 
@@ -6672,7 +6831,7 @@ manage_cover_converter() {
                 ;;
             5)
                 local cov_dir="$PWD/COVERS"
-                [ ! -d "$cov_dir" ] && cov_dir="/run/media/$USER/WD BLACK B/MIX_ARCHIVE/COVERS"
+                [ ! -d "$cov_dir" ] && cov_dir="${MIX_ARCHIVE_DIR:-$SCRIPT_DIR/MIX_ARCHIVE}/COVERS"
                 if [ -d "$cov_dir" ]; then
                     echo -e "\n${BOLD}${YELLOW}Batch converting covers in: $cov_dir${NC}\n"
                     python3 "$script" -d "$cov_dir" --bytes 1MB -f jpg
@@ -7849,6 +8008,10 @@ while true; do
         [ -n "$current_planets" ] && echo -e "${current_planets}"
     fi
     echo -e "${BOLD}${MAGENTA}-----------------------------------------------------------------------------------${NC}"
+    if ! is_mix_archive_configured; then
+        echo -e "\n  ${BOLD}${RED}⚠️  Please be advised you have not configured your Mix Archive Folder, Please use option 13 to Configure this now.${NC}"
+        echo -e "  ${DIM}${YELLOW}(Currently using application root folder: ${SCRIPT_DIR}/MIX_ARCHIVE)${NC}"
+    fi
     echo ""
     
     show_stats
@@ -7869,121 +8032,128 @@ while true; do
     echo -e "  ${BOLD}${CYAN}10)${NC} Back up FLAC Outputs to Google Drive (${GREEN}backup_to_gdrive.sh${NC})"
     echo -e "  ${BOLD}${CYAN}11)${NC} Show Mix Storage Drive Space Remaining (${GREEN}Mix Drive Only${NC})"
     echo -e "  ${BOLD}${CYAN}12)${NC} Refresh Archive Status & File Counts (Rescan WAVs, FLACs & Tracklists)"
+    archive_disp=""
+    if is_mix_archive_configured; then
+        archive_disp="${GREEN}${MIX_ARCHIVE_DIR}${NC}"
+    else
+        archive_disp="${RED}Not Configured${NC} ${DIM}(Root: ${SCRIPT_DIR}/MIX_ARCHIVE)${NC}"
+    fi
+    echo -e "  ${BOLD}${CYAN}13)${NC} Configure Default Mix Archive Storage Folder (${archive_disp})"
     
     echo -e "\n  ${BOLD}${BLUE}─── [ SECTION 2: TRACKLIST, METADATA & PROMOTION ] ──────────${NC}"
-    echo -e "  ${BOLD}${CYAN}13)${NC} Tracklist Management Suite (${GREEN}Browse, Search, View, Export HTML & PDF${NC})"
-    echo -e "  ${BOLD}${CYAN}14)${NC} Search for Mix & Auto-Play with Live Tracklist View (${GREEN}cliamp Window${NC})"
-    echo -e "  ${BOLD}${CYAN}15)${NC} Scan & Generate Missing Tracklists (${GREEN}Check_Find_Tracklists.sh${NC})"
-    echo -e "  ${BOLD}${CYAN}16)${NC} Generate Master Tracklist HTML Index (${GREEN}Generate_Master_Tracklist.sh${NC})"
-    echo -e "  ${BOLD}${CYAN}17)${NC} Launch MusicBrainz Picard Meta Tag Editor (${GREEN}Auto-install if missing${NC})"
-    echo -e "  ${BOLD}${CYAN}18)${NC} Promotional & Publisher Outreach Emails (${GREEN}Promoters, Publishers, Radio, Labels${NC})"
-    echo -e "  ${BOLD}${CYAN}19)${NC} Mix Publishing Schedule & Multi-Platform Syndication (${GREEN}Apple Podcasts, Spotify, YouTube, SoundCloud, RSS, iCal${NC})"
-    echo -e "  ${BOLD}${CYAN}20)${NC} Go Shopping for New Music (${GREEN}Beatport, Apple Music & Bandcamp Tabs${NC})"
+    echo -e "  ${BOLD}${CYAN}14)${NC} Tracklist Management Suite (${GREEN}Browse, Search, View, Export HTML & PDF${NC})"
+    echo -e "  ${BOLD}${CYAN}15)${NC} Search for Mix & Auto-Play with Live Tracklist View (${GREEN}cliamp Window${NC})"
+    echo -e "  ${BOLD}${CYAN}16)${NC} Scan & Generate Missing Tracklists (${GREEN}Check_Find_Tracklists.sh${NC})"
+    echo -e "  ${BOLD}${CYAN}17)${NC} Generate Master Tracklist HTML Index (${GREEN}Generate_Master_Tracklist.sh${NC})"
+    echo -e "  ${BOLD}${CYAN}18)${NC} Launch MusicBrainz Picard Meta Tag Editor (${GREEN}Auto-install if missing${NC})"
+    echo -e "  ${BOLD}${CYAN}19)${NC} Promotional & Publisher Outreach Emails (${GREEN}Promoters, Publishers, Radio, Labels${NC})"
+    echo -e "  ${BOLD}${CYAN}20)${NC} Mix Publishing Schedule & Multi-Platform Syndication (${GREEN}Apple Podcasts, Spotify, YouTube, SoundCloud, RSS, iCal${NC})"
+    echo -e "  ${BOLD}${CYAN}21)${NC} Go Shopping for New Music (${GREEN}Beatport, Apple Music & Bandcamp Tabs${NC})"
     
     echo -e "\n  ${BOLD}${BLUE}─── [ SECTION 3: AUDIO PLAYBACK, DAWS & SOUND SUITE ] ───────${NC}"
-    echo -e "  ${BOLD}${CYAN}21)${NC} Digital Audio Workstations (DAWs) Menu (${GREEN}Reaper, Logic Pro, FL Studio, Traktor, Ardour, Bitwig...${NC})"
-    echo -e "  ${BOLD}${CYAN}22)${NC} Open Mix WAV/FLAC Audio File in DAW (${GREEN}Direct Mix Search/Select & Dispatch${NC})"
-    echo -e "  ${BOLD}${CYAN}23)${NC} Generate Spectrograms using Spek & Analysis Suite (${GREEN}Single & Multiple In-Place, SoX, Praat${NC})"
-    echo -e "  ${BOLD}${CYAN}24)${NC} Launch Audacity Audio Editor (${GREEN}audacity${NC})"
-    echo -e "  ${BOLD}${CYAN}25)${NC} Launch Audio Players Menu (${GREEN}cliamp, Strawberry, VLC, foobar2000, Winamp, Apple Music...${NC})"
-    echo -e "  ${BOLD}${CYAN}26)${NC} Configure Default Audio Player & Startup Autoplay (${GREEN}Current: ${DEFAULT_AUDIO_PLAYER:-strawberry}${NC})"
-    echo -e "  ${BOLD}${CYAN}27)${NC} Cliamp Music Player & Track Control (${GREEN}Now Playing Path, Controls & Launch${NC})"
-    echo -e "  ${BOLD}${CYAN}28)${NC} View Playing Mix Audio Specifications & Stream Metadata (${GREEN}WAV/FLAC, Bit Depth, 48kHz, Codec, Duration, Size, Title${NC})"
-    echo -e "  ${BOLD}${CYAN}29)${NC} Custom Mix Playlists Suite (.m3u8 / .xspf) (${GREEN}Create, Edit & Launch in cliamp/Strawberry/VLC${NC})"
-    echo -e "  ${BOLD}${CYAN}30)${NC} Launch Strawberry Music Player (New Window) (${GREEN}strawberry${NC})"
-    echo -e "  ${BOLD}${CYAN}31)${NC} Launch VLC Media Player (${GREEN}vlc / org.videolan.VLC${NC})"
+    echo -e "  ${BOLD}${CYAN}22)${NC} Digital Audio Workstations (DAWs) Menu (${GREEN}Reaper, Logic Pro, FL Studio, Traktor, Ardour, Bitwig...${NC})"
+    echo -e "  ${BOLD}${CYAN}23)${NC} Open Mix WAV/FLAC Audio File in DAW (${GREEN}Direct Mix Search/Select & Dispatch${NC})"
+    echo -e "  ${BOLD}${CYAN}24)${NC} Generate Spectrograms using Spek & Analysis Suite (${GREEN}Single & Multiple In-Place, SoX, Praat${NC})"
+    echo -e "  ${BOLD}${CYAN}25)${NC} Launch Audacity Audio Editor (${GREEN}audacity${NC})"
+    echo -e "  ${BOLD}${CYAN}26)${NC} Launch Audio Players Menu (${GREEN}cliamp, Strawberry, VLC, foobar2000, Winamp, Apple Music...${NC})"
+    echo -e "  ${BOLD}${CYAN}27)${NC} Configure Default Audio Player & Startup Autoplay (${GREEN}Current: ${DEFAULT_AUDIO_PLAYER:-strawberry}${NC})"
+    echo -e "  ${BOLD}${CYAN}28)${NC} Cliamp Music Player & Track Control (${GREEN}Now Playing Path, Controls & Launch${NC})"
+    echo -e "  ${BOLD}${CYAN}29)${NC} View Playing Mix Audio Specifications & Stream Metadata (${GREEN}WAV/FLAC, Bit Depth, 48kHz, Codec, Duration, Size, Title${NC})"
+    echo -e "  ${BOLD}${CYAN}30)${NC} Custom Mix Playlists Suite (.m3u8 / .xspf) (${GREEN}Create, Edit & Launch in cliamp/Strawberry/VLC${NC})"
+    echo -e "  ${BOLD}${CYAN}31)${NC} Launch Strawberry Music Player (New Window) (${GREEN}strawberry${NC})"
+    echo -e "  ${BOLD}${CYAN}32)${NC} Launch VLC Media Player (${GREEN}vlc / org.videolan.VLC${NC})"
     if [ "$OS_TYPE" = "macos" ]; then
         local t_ver
         t_ver="$(get_traktor_version_mac 2>/dev/null || echo "3")"
         if [ -n "$t_ver" ] && [ "$t_ver" != "3" ]; then
-            echo -e "  ${BOLD}${CYAN}32)${NC} Generate Playlist from History Files on Traktor 3 (${GREEN}v${t_ver} Key Sorted / Decks Ready${NC})"
+            echo -e "  ${BOLD}${CYAN}33)${NC} Generate Playlist from History Files on Traktor 3 (${GREEN}v${t_ver} Key Sorted / Decks Ready${NC})"
         else
-            echo -e "  ${BOLD}${CYAN}32)${NC} Generate Playlist from History Files on Traktor 3 (${GREEN}Key Sorted / Decks Ready${NC})"
+            echo -e "  ${BOLD}${CYAN}33)${NC} Generate Playlist from History Files on Traktor 3 (${GREEN}Key Sorted / Decks Ready${NC})"
         fi
     else
-        echo -e "  ${BOLD}${CYAN}32)${NC} Launch Haruna Media Player (${GREEN}org.kde.haruna${NC})"
+        echo -e "  ${BOLD}${CYAN}33)${NC} Launch Haruna Media Player (${GREEN}org.kde.haruna${NC})"
     fi
-    echo -e "  ${BOLD}${CYAN}33)${NC} Launch Kodi Entertainment Center (${GREEN}tv.kodi.Kodi${NC})"
-    echo -e "  ${BOLD}${CYAN}34)${NC} Show Connected USB MIDI Devices (${GREEN}list-midi-devices${NC})"
-    echo -e "  ${BOLD}${CYAN}35)${NC} Studio Hardware & Software Inspector (${GREEN}PipeWire, ALSA, DAWs, MIDI Controllers & Surfaces${NC})"
-    echo -e "  ${BOLD}${CYAN}36)${NC} Toggle Audio Mute / Unmute & Master Volume Control (${GREEN}Instant PipeWire/ALSA Mute${NC})"
-    echo -e "  ${BOLD}${CYAN}37)${NC} Schedule DJ Mix or Multiple DJ Mixes to Play Loudly (${GREEN}Uses Default Audio Player${NC})"
+    echo -e "  ${BOLD}${CYAN}34)${NC} Launch Kodi Entertainment Center (${GREEN}tv.kodi.Kodi${NC})"
+    echo -e "  ${BOLD}${CYAN}35)${NC} Show Connected USB MIDI Devices (${GREEN}list-midi-devices${NC})"
+    echo -e "  ${BOLD}${CYAN}36)${NC} Studio Hardware & Software Inspector (${GREEN}PipeWire, ALSA, DAWs, MIDI Controllers & Surfaces${NC})"
+    echo -e "  ${BOLD}${CYAN}37)${NC} Toggle Audio Mute / Unmute & Master Volume Control (${GREEN}Instant PipeWire/ALSA Mute${NC})"
+    echo -e "  ${BOLD}${CYAN}38)${NC} Schedule DJ Mix or Multiple DJ Mixes to Play Loudly (${GREEN}Uses Default Audio Player${NC})"
     
     echo -e "\n  ${BOLD}${BLUE}─── [ SECTION 4: VIDEO PRODUCTION, ART & VISUAL MEDIA ] ─────${NC}"
-    echo -e "  ${BOLD}${CYAN}38)${NC} Generate YouTube Video (4K UHD, 1080p, 720p with NVENC/Hardware)"
-    echo -e "  ${BOLD}${CYAN}39)${NC} Cut or Split Video File (.mp4 / .mkv) (${GREEN}Cut_Video.sh / Split_Video_File.sh${NC})"
-    echo -e "  ${BOLD}${CYAN}40)${NC} Launch Video Playlists (NFT Videos (VLC))"
-    echo -e "  ${BOLD}${CYAN}41)${NC} Launch Specific Video in Default Video Player (${GREEN}${DEFAULT_VIDEO_PLAYER:-vlc}${NC})"
-    echo -e "  ${BOLD}${CYAN}42)${NC} Launch GIMP Image Editor (${GREEN}gimp / org.gimp.GIMP${NC})"
-    echo -e "  ${BOLD}${CYAN}43)${NC} Convert Cover Art & Resize / Byte Target (${GREEN}1MB Podcast, WebP/JPG/PNG, Sizes${NC})"
-    echo -e "  ${BOLD}${CYAN}44)${NC} View Cover Art by Mix Number (External Viewer)"
-    echo -e "  ${BOLD}${CYAN}45)${NC} Procedural Gradient .PPM Cover Art Generator (${GREEN}Netpbm P6 Binary, Palettes, Typography Overlays${NC})"
-    echo -e "  ${BOLD}${CYAN}46)${NC} Launch Electric Sheep Generative Screensaver (${GREEN}electricsheep / infinidream${NC})"
-    echo -e "  ${BOLD}${CYAN}47)${NC} Synchronized Mix-Video Companion Player Daemon (${GREEN}Auto-play Video on Mix Start, Close on Stop${NC})"
+    echo -e "  ${BOLD}${CYAN}39)${NC} Generate YouTube Video (4K UHD, 1080p, 720p with NVENC/Hardware)"
+    echo -e "  ${BOLD}${CYAN}40)${NC} Cut or Split Video File (.mp4 / .mkv) (${GREEN}Cut_Video.sh / Split_Video_File.sh${NC})"
+    echo -e "  ${BOLD}${CYAN}41)${NC} Launch Video Playlists (NFT Videos (VLC))"
+    echo -e "  ${BOLD}${CYAN}42)${NC} Launch Specific Video in Default Video Player (${GREEN}${DEFAULT_VIDEO_PLAYER:-vlc}${NC})"
+    echo -e "  ${BOLD}${CYAN}43)${NC} Launch GIMP Image Editor (${GREEN}gimp / org.gimp.GIMP${NC})"
+    echo -e "  ${BOLD}${CYAN}44)${NC} Convert Cover Art & Resize / Byte Target (${GREEN}1MB Podcast, WebP/JPG/PNG, Sizes${NC})"
+    echo -e "  ${BOLD}${CYAN}45)${NC} View Cover Art by Mix Number (External Viewer)"
+    echo -e "  ${BOLD}${CYAN}46)${NC} Procedural Gradient .PPM Cover Art Generator (${GREEN}Netpbm P6 Binary, Palettes, Typography Overlays${NC})"
+    echo -e "  ${BOLD}${CYAN}47)${NC} Launch Electric Sheep Generative Screensaver (${GREEN}electricsheep / infinidream${NC})"
+    echo -e "  ${BOLD}${CYAN}48)${NC} Synchronized Mix-Video Companion Player Daemon (${GREEN}Auto-play Video on Mix Start, Close on Stop${NC})"
     
     echo -e "\n  ${BOLD}${BLUE}─── [ SECTION 5: LIVE MONITORS & SYSTEM DIAGNOSTICS ] ───────${NC}"
-    echo -e "  ${BOLD}${CYAN}48)${NC} Launch Live Tracklist Monitor (${GREEN}SOF_Live_Tracker.sh${NC})"
-    echo -e "  ${BOLD}${CYAN}49)${NC} Launch Traktor Live Monitor & Audio Recorder (${GREEN}New Window - CPU, Tracks, Recording, Audio I/O${NC})"
-    echo -e "  ${BOLD}${CYAN}50)${NC} Launch Live File Transfer Monitor (${GREEN}transfer-monitor${NC})"
-    echo -e "  ${BOLD}${CYAN}51)${NC} Launch Chrome Upload Monitor (${GREEN}Podcast Connect / Web Uploads${NC})"
-    echo -e "  ${BOLD}${CYAN}52)${NC} View Advanced Archive Statistics (${GREEN}SOF_Archive_Stats.sh${NC})"
-    echo -e "  ${BOLD}${CYAN}53)${NC} View Running Background Tasks"
-    echo -e "  ${BOLD}${CYAN}54)${NC} Launch Resource Monitor (${GREEN}btop${NC})"
-    echo -e "  ${BOLD}${CYAN}55)${NC} Launch GPU Process Monitor (${GREEN}nvtop${NC})"
-    echo -e "  ${BOLD}${CYAN}56)${NC} Launch System Process Monitor (${GREEN}top${NC})"
+    echo -e "  ${BOLD}${CYAN}49)${NC} Launch Live Tracklist Monitor (${GREEN}SOF_Live_Tracker.sh${NC})"
+    echo -e "  ${BOLD}${CYAN}50)${NC} Launch Traktor Live Monitor & Audio Recorder (${GREEN}New Window - CPU, Tracks, Recording, Audio I/O${NC})"
+    echo -e "  ${BOLD}${CYAN}51)${NC} Launch Live File Transfer Monitor (${GREEN}transfer-monitor${NC})"
+    echo -e "  ${BOLD}${CYAN}52)${NC} Launch Chrome Upload Monitor (${GREEN}Podcast Connect / Web Uploads${NC})"
+    echo -e "  ${BOLD}${CYAN}53)${NC} View Advanced Archive Statistics (${GREEN}SOF_Archive_Stats.sh${NC})"
+    echo -e "  ${BOLD}${CYAN}54)${NC} View Running Background Tasks"
+    echo -e "  ${BOLD}${CYAN}55)${NC} Launch Resource Monitor (${GREEN}btop${NC})"
+    echo -e "  ${BOLD}${CYAN}56)${NC} Launch GPU Process Monitor (${GREEN}nvtop${NC})"
+    echo -e "  ${BOLD}${CYAN}57)${NC} Launch System Process Monitor (${GREEN}top${NC})"
     
     echo -e "\n  ${BOLD}${BLUE}─── [ SECTION 6: SYSTEM, NETWORK & HARDWARE MANAGEMENT ] ────${NC}"
-    echo -e "  ${BOLD}${CYAN}57)${NC} Manage WAN2GP Server (Start, Stop, Restart in Profile 2 or 4.5)"
-    echo -e "  ${BOLD}${CYAN}58)${NC} Manage Beszel Server & Monitoring Agent (${GREEN}Start Hub & Agent, Status, Dashboard :8090${NC})"
-    echo -e "  ${BOLD}${CYAN}59)${NC} Manage Ollama Server (${GREEN}ollama serve in distrobox, Chat, Models, Logs :11434${NC})"
-    echo -e "  ${BOLD}${CYAN}60)${NC} Manage DeepSeek Harness Server (${GREEN}dsh-mobile - Start, Stop, Mobile Web UI :3080${NC})"
-    echo -e "  ${BOLD}${CYAN}61)${NC} Manage Network Services (SSH, Samba, FTP - Start, Stop, Restart All)"
-    echo -e "  ${BOLD}${CYAN}62)${NC} Block Internet Access (LAN Only) (${GREEN}block-internet${NC})"
-    echo -e "  ${BOLD}${CYAN}63)${NC} Restore / Unblock Internet Access (${GREEN}unblock-internet${NC})"
+    echo -e "  ${BOLD}${CYAN}58)${NC} Manage WAN2GP Server (Start, Stop, Restart in Profile 2 or 4.5)"
+    echo -e "  ${BOLD}${CYAN}59)${NC} Manage Beszel Server & Monitoring Agent (${GREEN}Start Hub & Agent, Status, Dashboard :8090${NC})"
+    echo -e "  ${BOLD}${CYAN}60)${NC} Manage Ollama Server (${GREEN}ollama serve in distrobox, Chat, Models, Logs :11434${NC})"
+    echo -e "  ${BOLD}${CYAN}61)${NC} Manage DeepSeek Harness Server (${GREEN}dsh-mobile - Start, Stop, Mobile Web UI :3080${NC})"
+    echo -e "  ${BOLD}${CYAN}62)${NC} Manage Network Services (SSH, Samba, FTP - Start, Stop, Restart All)"
+    echo -e "  ${BOLD}${CYAN}63)${NC} Block Internet Access (LAN Only) (${GREEN}block-internet${NC})"
+    echo -e "  ${BOLD}${CYAN}64)${NC} Restore / Unblock Internet Access (${GREEN}unblock-internet${NC})"
     if [ "$OS_TYPE" = "macos" ]; then
-        echo -e "  ${BOLD}${CYAN}64)${NC} Open macOS Display Settings (${GREEN}Displays, Arrangement & HDR${NC})"
-        echo -e "  ${BOLD}${CYAN}65)${NC} Open macOS Audio MIDI Setup (${GREEN}Sample Rates & Output Devices${NC})"
+        echo -e "  ${BOLD}${CYAN}65)${NC} Open macOS Display Settings (${GREEN}Displays, Arrangement & HDR${NC})"
+        echo -e "  ${BOLD}${CYAN}66)${NC} Open macOS Audio MIDI Setup (${GREEN}Sample Rates & Output Devices${NC})"
     elif [ "$OS_TYPE" = "windows" ] || [ "$OS_TYPE" = "wsl" ]; then
-        echo -e "  ${BOLD}${CYAN}64)${NC} Open Windows Display Settings (${GREEN}ms-settings:display - HDR & Scale${NC})"
-        echo -e "  ${BOLD}${CYAN}65)${NC} Open Windows Sound Settings (${GREEN}control.exe mmsys.cpl${NC})"
+        echo -e "  ${BOLD}${CYAN}65)${NC} Open Windows Display Settings (${GREEN}ms-settings:display - HDR & Scale${NC})"
+        echo -e "  ${BOLD}${CYAN}66)${NC} Open Windows Sound Settings (${GREEN}control.exe mmsys.cpl${NC})"
     else
-        echo -e "  ${BOLD}${CYAN}64)${NC} Switch Desktop to Plasma Wayland (HDR Gaming on Hisense & Steam BPM)"
-        echo -e "  ${BOLD}${CYAN}65)${NC} Switch Desktop to Plasma X11 (Workstation 4-Screen Defasten)"
+        echo -e "  ${BOLD}${CYAN}65)${NC} Switch Desktop to Plasma Wayland (HDR Gaming on Hisense & Steam BPM)"
+        echo -e "  ${BOLD}${CYAN}66)${NC} Switch Desktop to Plasma X11 (Workstation 4-Screen Defasten)"
     fi
-    echo -e "  ${BOLD}${CYAN}66)${NC} Close All Desktop Applications (Keep Manager Open)"
+    echo -e "  ${BOLD}${CYAN}67)${NC} Close All Desktop Applications (Keep Manager Open)"
     if [ "$OS_TYPE" = "macos" ]; then
-        echo -e "  ${BOLD}${CYAN}67)${NC} macOS System Maintenance & Cleanup (${GREEN}drive space, brew cleanup, purge RAM, caches${NC})"
+        echo -e "  ${BOLD}${CYAN}68)${NC} macOS System Maintenance & Cleanup (${GREEN}drive space, brew cleanup, purge RAM, caches${NC})"
     elif [ "$OS_TYPE" = "windows" ] || [ "$OS_TYPE" = "wsl" ]; then
-        echo -e "  ${BOLD}${CYAN}67)${NC} Windows System Maintenance & Cleanup (${GREEN}drive space, winget upgrade, clean temp, TRIM${NC})"
+        echo -e "  ${BOLD}${CYAN}68)${NC} Windows System Maintenance & Cleanup (${GREEN}drive space, winget upgrade, clean temp, TRIM${NC})"
     elif [ "$OS_TYPE" = "freebsd" ]; then
-        echo -e "  ${BOLD}${CYAN}67)${NC} FreeBSD System Maintenance & Cleanup (${GREEN}drive space, pkg upgrade, clean, autoremove${NC})"
+        echo -e "  ${BOLD}${CYAN}68)${NC} FreeBSD System Maintenance & Cleanup (${GREEN}drive space, pkg upgrade, clean, autoremove${NC})"
     else
-        echo -e "  ${BOLD}${CYAN}67)${NC} Bazzite System Maintenance & Cleanup (${GREEN}drive space, ujust clean-system, update, trim, logs${NC})"
+        echo -e "  ${BOLD}${CYAN}68)${NC} Bazzite System Maintenance & Cleanup (${GREEN}drive space, ujust clean-system, update, trim, logs${NC})"
     fi
-    echo -e "  ${BOLD}${CYAN}68)${NC} Launch GeeXLab Demo Launcher (${GREEN}FurMark_linux64/demo_launcher.sh${NC})"
-    echo -e "  ${BOLD}${CYAN}69)${NC} Burn ISO Image to USB Drive (${GREEN}dd / diskutil with safety checks${NC})"
-    echo -e "  ${BOLD}${CYAN}70)${NC} Dynamic System MOTD Banner Manager (${GREEN}Last 3 Mixes, Date/Time, Size, Format & Specs${NC})"
+    echo -e "  ${BOLD}${CYAN}69)${NC} Launch GeeXLab Demo Launcher (${GREEN}FurMark_linux64/demo_launcher.sh${NC})"
+    echo -e "  ${BOLD}${CYAN}70)${NC} Burn ISO Image to USB Drive (${GREEN}dd / diskutil with safety checks${NC})"
+    echo -e "  ${BOLD}${CYAN}71)${NC} Dynamic System MOTD Banner Manager (${GREEN}Last 3 Mixes, Date/Time, Size, Format & Specs${NC})"
     
     echo -e "\n  ${BOLD}${BLUE}─── [ SECTION 7: AI, SHELL CLI & SETTINGS ] ──────────────────${NC}"
-    echo -e "  ${BOLD}${CYAN}71)${NC} Launch AI Assistant / Models (${GREEN}Claude Opus, Claude Sonnet, GPT-OSS, Gemini, Ollama, DeepSeek${NC})"
-    echo -e "  ${BOLD}${CYAN}72)${NC} Run Bash CLI Commands (${GREEN}Interactive Shell & Direct Runner${NC})"
-    echo -e "  ${BOLD}${CYAN}73)${NC} Manager Themes & Color Palette Switcher (${GREEN}8 Themes + Classic${NC})"
-    echo -e "  ${BOLD}${CYAN}74)${NC} Manage Installation & Configuration (${GREEN}Migrate Path, Backup, Export & Import Config${NC})"
+    echo -e "  ${BOLD}${CYAN}72)${NC} Launch AI Assistant / Models (${GREEN}Claude Opus, Claude Sonnet, GPT-OSS, Gemini, Ollama, DeepSeek${NC})"
+    echo -e "  ${BOLD}${CYAN}73)${NC} Run Bash CLI Commands (${GREEN}Interactive Shell & Direct Runner${NC})"
+    echo -e "  ${BOLD}${CYAN}74)${NC} Manager Themes & Color Palette Switcher (${GREEN}8 Themes + Classic${NC})"
+    echo -e "  ${BOLD}${CYAN}75)${NC} Manage Installation & Configuration (${GREEN}Migrate Path, Backup, Export & Import Config${NC})"
     if [ "$OS_TYPE" = "macos" ]; then
-        echo -e "  ${BOLD}${CYAN}75)${NC} Reboot System (${RED}macOS restart with confirmation${NC})"
+        echo -e "  ${BOLD}${CYAN}76)${NC} Reboot System (${RED}macOS restart with confirmation${NC})"
     elif [ "$OS_TYPE" = "windows" ] || [ "$OS_TYPE" = "wsl" ]; then
-        echo -e "  ${BOLD}${CYAN}75)${NC} Reboot System (${RED}Windows restart with confirmation${NC})"
+        echo -e "  ${BOLD}${CYAN}76)${NC} Reboot System (${RED}Windows restart with confirmation${NC})"
     elif [ "$OS_TYPE" = "freebsd" ]; then
-        echo -e "  ${BOLD}${CYAN}75)${NC} Reboot System (${RED}FreeBSD restart with confirmation${NC})"
+        echo -e "  ${BOLD}${CYAN}76)${NC} Reboot System (${RED}FreeBSD restart with confirmation${NC})"
     else
-        echo -e "  ${BOLD}${CYAN}75)${NC} Reboot System (${RED}systemctl reboot with confirmation${NC})"
+        echo -e "  ${BOLD}${CYAN}76)${NC} Reboot System (${RED}systemctl reboot with confirmation${NC})"
     fi
     
     echo -e "\n  ${BOLD}${BLUE}──────────────────────────────────────────────────────────────${NC}"
     get_manager_uptime
-    echo -e "  ${BOLD}${CYAN}76)${NC} Exit Manager ${DIM}(or 0 / q)${NC}"
+    echo -e "  ${BOLD}${CYAN}77)${NC} Exit Manager ${DIM}(or 0 / q)${NC}"
     echo ""
-    read -r -p "Enter choice [1-76, or q to exit]: " choice
+    read -r -p "Enter choice [1-77, or q to exit]: " choice
     
     case $choice in
         1)
@@ -8032,121 +8202,124 @@ while true; do
             _LAST_OS_UPDATE_CHECK=0
             # Naturally clears screen and refreshes stats
             ;;
-        13)
-            manage_tracklists
+        13|config-archive|archive-dir|archive-folder)
+            configure_mix_archive_folder
             ;;
         14)
-            search_and_play_mix
+            manage_tracklists
             ;;
         15)
+            search_and_play_mix
+            ;;
+        16)
             echo -e "\n${BOLD}${YELLOW}Scanning & Generating Missing Tracklists...${NC}\n"
             run_sub_script "Check_Find_Tracklists.sh"
             press_enter
             ;;
-        16)
+        17)
             echo -e "\n${BOLD}${YELLOW}Starting Master Tracklist HTML Generation...${NC}\n"
             run_sub_script "Generate_Master_Tracklist.sh"
             press_enter
             ;;
-        17)
+        18)
             launch_or_install_picard
             ;;
-        18)
+        19)
             manage_promo_outreach
             ;;
-        19)
+        20)
             manage_publishing_schedule
             ;;
-        20)
+        21)
             shop_for_new_music_menu
             ;;
-        21)
+        22)
             manage_daws
             ;;
-        22)
+        23)
             open_mix_in_daw
             ;;
-        23)
+        24)
             manage_spek_generation
             ;;
-        24)
+        25)
             launch_audacity
             ;;
-        25)
+        26)
             manage_audio_players
             ;;
-        26)
+        27)
             configure_audio_player_and_startup
             ;;
-        27)
+        28)
             manage_cliamp
             ;;
-        28)
+        29)
             inspect_playing_audio_file
             ;;
-        29)
+        30)
             manage_playlists_menu
             ;;
-        30)
+        31)
             launch_strawberry
             ;;
-        31)
+        32)
             launch_vlc
             ;;
-        32)
+        33)
             if [ "$OS_TYPE" = "macos" ]; then
                 generate_traktor_playlist_from_history
             else
                 launch_haruna
             fi
             ;;
-        33)
+        34)
             launch_kodi
             ;;
-        34)
+        35)
             list_usb_midi_devices
             ;;
-        35)
+        36)
             inspect_audio_studio_menu
             ;;
-        36)
+        37)
             toggle_audio_mute
             ;;
-        37)
+        38)
             manage_mix_scheduler
             ;;
-        38)
+        39)
             generate_youtube_video
             ;;
-        39)
+        40)
             manage_video_cut_and_split
             ;;
-        40)
+        41)
             launch_video_playlists
             ;;
-        41)
+        42)
             manage_video_dispatcher
             ;;
-        42)
+        43)
             launch_gimp
             ;;
-        43)
+        44)
             manage_cover_converter
             ;;
-        44)
+        45)
             view_cover
             press_enter
             ;;
-        45)
+        46)
             generate_ppm_cover_menu
             ;;
-        46)
+        47)
             launch_electricsheep
             ;;
-        47)
+        48)
             manage_sync_video_companion_menu
             ;;
-        48)
+        49)
             echo -e "\n${BOLD}${YELLOW}Launching Live Tracklist Monitor (Press Ctrl+C to return to menu)...${NC}\n"
             sleep 1
             trap ':' INT
@@ -8154,10 +8327,10 @@ while true; do
             trap - INT
             press_enter
             ;;
-        49)
+        50)
             launch_traktor_monitor_window
             ;;
-        50)
+        51)
             echo -e "\n${BOLD}${YELLOW}Launching Live File Transfer Monitor (Press Ctrl+C to return to menu)...${NC}\n"
             sleep 1
             trap ':' INT
@@ -8171,7 +8344,7 @@ while true; do
             trap - INT
             press_enter
             ;;
-        51)
+        52)
             echo -e "\n${BOLD}${YELLOW}Launching Chrome Upload Monitor (Press Ctrl+C to return to menu)...${NC}\n"
             sleep 1
             trap ':' INT
@@ -8193,17 +8366,17 @@ while true; do
             trap - INT
             press_enter
             ;;
-        52)
+        53)
             echo -e "\n${BOLD}${YELLOW}Loading Advanced Archive Statistics...${NC}\n"
             sleep 0.5
             run_sub_script "SOF_Archive_Stats.sh"
             press_enter
             ;;
-        53)
+        54)
             view_tasks
             press_enter
             ;;
-        54)
+        55)
             echo -e "\n${BOLD}${YELLOW}Launching btop Resource Monitor (Press 'q' to exit)...${NC}\n"
             sleep 0.5
             trap ':' INT
@@ -8215,7 +8388,7 @@ while true; do
             fi
             trap - INT
             ;;
-        55)
+        56)
             echo -e "\n${BOLD}${YELLOW}Launching nvtop GPU Monitor (Press 'q' to exit)...${NC}\n"
             sleep 0.5
             trap ':' INT
@@ -8227,7 +8400,7 @@ while true; do
             fi
             trap - INT
             ;;
-        56)
+        57)
             echo -e "\n${BOLD}${YELLOW}Launching top Process Monitor (Press 'q' to exit)...${NC}\n"
             sleep 0.5
             trap ':' INT
@@ -8239,61 +8412,61 @@ while true; do
             fi
             trap - INT
             ;;
-        57)
+        58)
             manage_wan2gp
             ;;
-        58)
+        59)
             manage_beszel
             ;;
-        59)
+        60)
             manage_ollama
             ;;
-        60)
+        61)
             manage_dsh_mobile
             ;;
-        61)
+        62)
             manage_network_services
             ;;
-        62)
+        63)
             block_internet
             ;;
-        63)
+        64)
             unblock_internet
             ;;
-        64)
+        65)
             switch_to_wayland
             ;;
-        65)
+        66)
             switch_to_x11
             ;;
-        66)
+        67)
             close_all_desktop_apps
             ;;
-        67)
+        68)
             manage_system_maintenance
             ;;
-        68)
+        69)
             launch_geexlab_demos
             ;;
-        69)
+        70)
             burn_iso_to_usb
             ;;
-        70)
+        71)
             manage_system_motd_menu
             ;;
-        71)
+        72)
             manage_ai_models
             ;;
-        72)
+        73)
             run_bash_cli
             ;;
-        73)
+        74)
             manage_themes
             ;;
-        74)
+        75)
             manage_installation_and_config
             ;;
-        75)
+        76)
             reboot_system
             ;;
         split-flac|split_flac)
@@ -8320,12 +8493,12 @@ while true; do
             manage_dsh_mobile
             press_enter
             ;;
-        76|0|[qQ]|[eE][xX][iI][tT])
+        77|0|[qQ]|[eE][xX][iI][tT])
             echo -e "\n${BOLD}${GREEN}Exiting Mix Archive Manager. Goodbye!${NC}\n"
             exit 0
             ;;
         *)
-            echo -e "\n${RED}Invalid option! Please enter a number between 1 and 76 (or 'q' to exit).${NC}"
+            echo -e "\n${RED}Invalid option! Please enter a number between 1 and 77 (or 'q' to exit).${NC}"
             sleep 2
             ;;
     esac

@@ -42,18 +42,19 @@ def get_base_dir():
 def find_recent_mixes(limit=3):
     """Discover the last N created/converted mixes across archive directories."""
     base_dir = get_base_dir()
-    scan_paths = [
-        base_dir / "FLAC_CONVERTED_OUTPUTS",
-        Path("/run/media/mplanetarian/WD BLACK B/MIX_ARCHIVE/FLAC_CONVERTED_OUTPUTS"),
-        base_dir / "CONVERTED_WAV_FILES",
-        Path("/run/media/mplanetarian/WD BLACK B/MIX_ARCHIVE/CONVERTED_WAV_FILES"),
-        base_dir
-    ]
+    scan_paths = []
     mix_archive_env = os.environ.get("MIX_ARCHIVE_DIR")
     if mix_archive_env:
         p = Path(mix_archive_env)
-        scan_paths.insert(0, p / "FLAC_CONVERTED_OUTPUTS")
-        scan_paths.insert(2, p / "CONVERTED_WAV_FILES")
+        scan_paths.extend([p / "FLAC_CONVERTED_OUTPUTS", p / "CONVERTED_WAV_FILES", p])
+    scan_paths.extend([
+        base_dir / "FLAC_CONVERTED_OUTPUTS",
+        base_dir / "CONVERTED_WAV_FILES",
+        base_dir / "MIX_ARCHIVE" / "FLAC_CONVERTED_OUTPUTS",
+        base_dir / "MIX_ARCHIVE" / "CONVERTED_WAV_FILES",
+        base_dir / "MIX_ARCHIVE",
+        base_dir
+    ])
     
     seen_bases = set()
     mix_candidates = []

@@ -83,15 +83,41 @@ def get_default_player():
     return "strawberry"
 
 
+def get_archive_dir():
+    env_dir = os.environ.get("MIX_ARCHIVE_DIR")
+    if env_dir and Path(env_dir).is_dir():
+        return Path(env_dir)
+    cfg_candidates = [
+        get_base_dir() / "config.env",
+        CONFIG_DIR / "config.env",
+        Path.home() / ".config" / "mix-manager" / "config.env"
+    ]
+    for cfg in cfg_candidates:
+        if cfg.is_file():
+            try:
+                with open(cfg, "r", encoding="utf-8", errors="ignore") as f:
+                    for line in f:
+                        line = line.strip()
+                        if line.startswith("MIX_ARCHIVE_DIR="):
+                            val = line.split("=", 1)[1].strip().strip('"').strip("'")
+                            if val and Path(val).is_dir():
+                                return Path(val)
+            except Exception:
+                pass
+    return get_base_dir() / "MIX_ARCHIVE"
+
+
 def list_recent_mixes(limit=10):
     """Scan mix archive directories and return the last 10 mixes recorded by modification time."""
     base_dir = get_base_dir()
+    arch_dir = get_archive_dir()
     scan_paths = [
+        arch_dir / "FLAC_CONVERTED_OUTPUTS",
+        arch_dir,
+        arch_dir / "CONVERTED_WAV_FILES",
+        base_dir / "MIX_ARCHIVE" / "FLAC_CONVERTED_OUTPUTS",
+        base_dir / "MIX_ARCHIVE",
         base_dir / "FLAC_CONVERTED_OUTPUTS",
-        Path("/run/media/mplanetarian/WD BLACK B/MIX_ARCHIVE/FLAC_CONVERTED_OUTPUTS"),
-        Path("/run/media/mplanetarian/WD BLACK B/MIX_ARCHIVE"),
-        Path("/Volumes/WD BLACK B/MIX_ARCHIVE/FLAC_CONVERTED_OUTPUTS"),
-        Path("/Volumes/WD BLACK B/MIX_ARCHIVE"),
         base_dir / "CONVERTED_WAV_FILES",
         Path.home() / "Documents" / "BASH_SCRIPTS" / "FLAC_CONVERTED_OUTPUTS",
         Path.home() / "Documents" / "mplanetarian" / "M_PRODUCTION" / "RELEASS",

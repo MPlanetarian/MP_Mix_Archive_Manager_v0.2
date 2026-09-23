@@ -68,6 +68,9 @@ RECORDING_DIRS = [
     Path("/run/media/mplanetarian/WD BLACK B/MIX_ARCHIVE/CONVERTED_WAV_FILES"),
     Path("/run/media/mplanetarian/WD BLACK B/MIX_ARCHIVE"),
 ]
+if os.environ.get("MIX_ARCHIVE_DIR"):
+    _env_arch = Path(os.environ["MIX_ARCHIVE_DIR"])
+    RECORDING_DIRS.extend([_env_arch / "CONVERTED_WAV_FILES", _env_arch])
 
 AUDIO_EXTS = (".mp3", ".flac", ".aiff", ".aif", ".wav", ".m4a", ".stem.mp4", ".ogg", ".aac")
 

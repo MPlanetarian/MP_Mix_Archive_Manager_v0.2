@@ -9,6 +9,7 @@ ARCHIVE_DIR="CONVERTED_WAV_FILES"
 LOCAL_HISTORY_DIR="${TRAKTOR_HISTORY_DIR:-}"
 if [ -z "$LOCAL_HISTORY_DIR" ] || [ ! -d "$LOCAL_HISTORY_DIR" ]; then
     for cand in \
+        "${MIX_ARCHIVE_DIR:-$PWD}/Traktor 3.11.1/History" \
         "./Traktor 3.11.1/History" \
         "/run/media/$USER/WD BLACK B/MIX_ARCHIVE/Traktor 3.11.1/History" \
         "/run/media/mplanetarian/WD BLACK B/MIX_ARCHIVE/Traktor 3.11.1/History" \
