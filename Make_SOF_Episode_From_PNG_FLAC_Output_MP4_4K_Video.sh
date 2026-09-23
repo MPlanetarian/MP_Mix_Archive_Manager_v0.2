@@ -70,7 +70,7 @@ FPS=30
 WIDTH=3840
 HEIGHT=2160
 
-clear
+clear 2>/dev/null || true
 echo -e "${BOLD}${BLUE}============================================================${NC}"
 echo -e "${BOLD}${CYAN}          YOUTUBE 4K UHD VIDEO GENERATION (2160p)           ${NC}"
 echo -e "${BOLD}${BLUE}============================================================${NC}"

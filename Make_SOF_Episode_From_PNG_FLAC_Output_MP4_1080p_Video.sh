@@ -76,7 +76,7 @@ FPS=30
 WIDTH=1920
 HEIGHT=1080
 
-clear
+clear 2>/dev/null || true
 echo -e "${BOLD}${BLUE}============================================================${NC}"
 echo -e "${BOLD}${CYAN}          YOUTUBE 1080p FULL HD VIDEO GENERATION            ${NC}"
 echo -e "${BOLD}${BLUE}============================================================${NC}"

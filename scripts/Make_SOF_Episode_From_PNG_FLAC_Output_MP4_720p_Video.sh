@@ -70,7 +70,7 @@ FPS=30
 WIDTH=1280
 HEIGHT=720
 
-clear
+clear 2>/dev/null || true
 echo -e "${BOLD}${BLUE}============================================================${NC}"
 echo -e "${BOLD}${CYAN}          YOUTUBE 720p HD VIDEO GENERATION (FAST)           ${NC}"
 echo -e "${BOLD}${BLUE}============================================================${NC}"
