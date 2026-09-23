@@ -75,6 +75,77 @@ AVAILABLE_MODELS = {
         "description": "Full 30-step development model (Profile 4.5)",
         "steps": 30,
     },
+    "25_22b": {
+        "id": "ltx2_25_22B_distilled",
+        "name": "LTX-2 2.5 Distilled 22B",
+        "label": "22B Distilled (LTX-2.5)",
+        "description": "Latest Generation 22B video + audio model (Profile 4.5)",
+        "steps": 8,
+    },
+    "25_22b_dev": {
+        "id": "ltx2_25_22B",
+        "name": "LTX-2 2.5 Dev 22B",
+        "label": "22B Dev (LTX-2.5)",
+        "description": "Latest Generation 22B video + audio Dev model (Profile 4.5)",
+        "steps": 8,
+    },
+}
+
+AVAILABLE_LORAS = {
+    "none": {
+        "id": "none",
+        "name": "None (Clean Base)",
+        "files": [],
+        "multipliers": "",
+    },
+    "editanything_v2": {
+        "id": "editanything_v2",
+        "name": "EditAnything v2 (LTX-2.5)",
+        "files": ["edit_anything_v2_ltx2.5.safetensors"],
+        "multipliers": "1.0",
+    },
+    "editanything_v1": {
+        "id": "editanything_v1",
+        "name": "EditAnything v1.1",
+        "files": ["edit_anything_v1.1_r256.safetensors"],
+        "multipliers": "1.0",
+    },
+    "motion_transfer": {
+        "id": "motion_transfer",
+        "name": "EditAnything 30k Motion Transfer",
+        "files": ["edit_anything_30k_v0.1_motion_transfer_r256.safetensors"],
+        "multipliers": "1.0",
+    },
+    "bfs_head_swap": {
+        "id": "bfs_head_swap",
+        "name": "BFS Head Swap (LTX-2 Video)",
+        "files": ["bfs_head_swap_v1_ltx2_ic_lora_12000_train_3.safetensors"],
+        "multipliers": "1.0",
+    },
+    "msr": {
+        "id": "msr",
+        "name": "LTX-2.5 MSR (Multi-Subject Reference)",
+        "files": ["LTX-2.5-Licon-MSR-V1_bf16.safetensors"],
+        "multipliers": "1.0",
+    },
+    "deblur": {
+        "id": "deblur",
+        "name": "LTX-2.5 Deblur / Refocus",
+        "files": ["ltx-2.5-22b-ic-lora-deblur-0.9.safetensors"],
+        "multipliers": "1.0",
+    },
+    "decompression": {
+        "id": "decompression",
+        "name": "LTX-2.5 Decompression Cleanup",
+        "files": ["ltx-2.5-22b-ic-lora-decompression-0.9.safetensors"],
+        "multipliers": "1.0",
+    },
+    "ingredients": {
+        "id": "ingredients",
+        "name": "LTX-2.5 Ingredients Reference",
+        "files": ["ltx-2.5-22b-ic-lora-ingredients-0.9.safetensors"],
+        "multipliers": "1.0",
+    },
 }
 
 SUPPORTED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".bmp", ".tif", ".tiff"}
@@ -526,8 +597,9 @@ def main():
     script_basename = Path(sys.argv[0]).name.lower()
     default_model_key = "13b" if "13b" in script_basename else "2b"
 
-    parser = argparse.ArgumentParser(description="WAN2GP LTX Video Batch Image-to-Video Processor (2B & 13B)")
-    parser.add_argument("--model", "-m", type=str, default=default_model_key, choices=["2b", "13b", "13b_dev"], help=f"LTX Video model variant to use (2b, 13b, 13b_dev; default: {default_model_key})")
+    parser = argparse.ArgumentParser(description="WAN2GP LTX Video Batch Image-to-Video Processor (2B, 13B & 22B)")
+    parser.add_argument("--model", "-m", type=str, default=default_model_key, choices=list(AVAILABLE_MODELS.keys()), help=f"LTX Video model variant to use ({', '.join(AVAILABLE_MODELS.keys())}; default: {default_model_key})")
+    parser.add_argument("--lora", type=str, default="none", choices=list(AVAILABLE_LORAS.keys()), help=f"LoRA enhancement to apply ({', '.join(AVAILABLE_LORAS.keys())}; default: none)")
     parser.add_argument("--prompt", "-p", type=str, default=None, help="Generation prompt")
     parser.add_argument("--length", "-l", type=str, default=None, choices=["short", "medium", "long"], help="Video duration preset (short, medium, long)")
     parser.add_argument("--control-video", "-c", type=str, default=None, help="Path to single control video (or filename in CTRL_VIDEO)")
@@ -540,6 +612,9 @@ def main():
     model_info = AVAILABLE_MODELS.get(model_key, AVAILABLE_MODELS["2b"])
     model_type = model_info["id"]
     model_name = model_info["name"]
+
+    lora_key = (args.lora or "none").lower()
+    lora_info = AVAILABLE_LORAS.get(lora_key, AVAILABLE_LORAS["none"])
 
     # 1. Verify DATA directory
     if not DATA_DIR.exists():
@@ -562,7 +637,7 @@ def main():
     print(f"{BOLD}{CYAN}======================================================{RESET}")
     print(f"  Model:            {GREEN}{model_name}{RESET}")
     print(f"  Mode:             {GREEN}{mode_display}{RESET}")
-    print(f"  LoRAs:            {GREEN}None (Clean Distilled Base){RESET}")
+    print(f"  LoRAs:            {GREEN}{lora_info['name']}{RESET}")
     print(f"  Control Video:    {YELLOW if active_ctrl_video else GREEN}{ctrl_display}{RESET}")
     print(f"  Control Dir:      {YELLOW}{CTRL_VIDEO_DIR}{RESET}")
     print(f"  Quality:          {GREEN}720p Output Resolution{RESET}")
@@ -650,8 +725,8 @@ def main():
             "image_prompt_type": "S",
             "image_start": [str(image_path.resolve())],
             "video_length": video_frames,
-            "activated_loras": [],
-            "loras_multipliers": "",
+            "activated_loras": lora_info["files"],
+            "loras_multipliers": lora_info["multipliers"],
             "image_refs": None,
             "video_guide": str(active_ctrl_video.resolve()) if active_ctrl_video else None,
             "video_prompt_type": "V" if active_ctrl_video else "",

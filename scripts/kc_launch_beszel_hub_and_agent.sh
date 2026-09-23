@@ -31,8 +31,12 @@ notify-send -a "KDE Connect" -i "utilities-system-monitor" "Beszel Monitoring" "
 if [ "$hub_running" = "false" ]; then
     if podman ps -a --filter "name=beszel" --format "{{.Names}}" 2>/dev/null | grep -q "^beszel$"; then
         podman start beszel >/dev/null 2>&1 || true
-    elif [ -f "$BESZEL_DIR/launch_beszel_hub_replace.sh" ]; then
-        (cd "$BESZEL_DIR" && bash ./launch_beszel_hub_replace.sh >/dev/null 2>&1 || true)
+        sleep 1
+    fi
+    if ! podman ps --filter "name=beszel" --format "{{.Names}}" 2>/dev/null | grep -q "^beszel$"; then
+        if [ -f "$BESZEL_DIR/launch_beszel_hub_replace.sh" ]; then
+            (cd "$BESZEL_DIR" && bash ./launch_beszel_hub_replace.sh >/dev/null 2>&1 || true)
+        fi
     fi
 fi
 
@@ -40,8 +44,12 @@ fi
 if [ "$agent_running" = "false" ]; then
     if podman ps -a --filter "name=beszel-agent" --format "{{.Names}}" 2>/dev/null | grep -q "^beszel-agent$"; then
         podman start beszel-agent >/dev/null 2>&1 || true
-    elif [ -f "$BESZEL_DIR/launch_beszel_agent_replace.sh" ]; then
-        (cd "$BESZEL_DIR" && bash ./launch_beszel_agent_replace.sh >/dev/null 2>&1 || true)
+        sleep 1
+    fi
+    if ! podman ps --filter "name=beszel-agent" --format "{{.Names}}" 2>/dev/null | grep -q "^beszel-agent$"; then
+        if [ -f "$BESZEL_DIR/launch_beszel_agent_replace.sh" ]; then
+            (cd "$BESZEL_DIR" && bash ./launch_beszel_agent_replace.sh >/dev/null 2>&1 || true)
+        fi
     fi
 fi
 

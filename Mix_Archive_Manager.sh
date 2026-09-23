@@ -1718,7 +1718,7 @@ ${BOLD}${CYAN}Available Mixes in Archive:${NC}"
             run_sub_script "Make_SOF_Episode_From_PNG_FLAC_Output_MP4_720p_Video.sh" "$flac_input" "$cover_input" "$OUTPUT_DIR"
             ;;
         *)
-            run_sub_script "Make_SOF_Episode_From_PNG_FLAC_Output_MP4_1080p_Video.sh" "$flac_input" "$cover_input"
+            run_sub_script "Make_SOF_Episode_From_PNG_FLAC_Output_MP4_1080p_Video.sh" "$flac_input" "$cover_input" "$OUTPUT_DIR"
             ;;
     esac
 }
@@ -2913,37 +2913,50 @@ manage_system_maintenance() {
             echo -e "  macOS Version:               ${GREEN}$(sw_vers -productVersion 2>/dev/null || uname -r)${NC}"
             echo ""
             echo -e "${BOLD}Select a maintenance operation:${NC}"
-            echo -e "  ${BOLD}${CYAN}1)${NC} Clean Homebrew Caches & Old Packages (${GREEN}brew cleanup -s && brew autoremove${NC})"
-            echo -e "  ${BOLD}${CYAN}2)${NC} Full System & Homebrew Update (${GREEN}brew update && brew upgrade${NC})"
-            echo -e "  ${BOLD}${CYAN}3)${NC} Purge Inactive System RAM Memory (${GREEN}sudo purge${NC})"
-            echo -e "  ${BOLD}${CYAN}4)${NC} Clear User Caches & Temporary Files (${GREEN}rm -rf ~/Library/Caches/*${NC})"
-            echo -e "  ${BOLD}${CYAN}5)${NC} ${BOLD}${YELLOW}Run Complete macOS Maintenance Suite${NC}"
-            echo -e "  ${BOLD}${CYAN}6)${NC} Return to Main Menu"
+            echo -e "  ${BOLD}${CYAN}1)${NC} Check Drive Space Statistics (${GREEN}Get_All_Drive_Space.sh${NC}) [Mounted & Unmounted]"
+            echo -e "  ${BOLD}${CYAN}2)${NC} Clean Homebrew Caches & Old Packages (${GREEN}brew cleanup -s && brew autoremove${NC})"
+            echo -e "  ${BOLD}${CYAN}3)${NC} Full System & Homebrew Update (${GREEN}brew update && brew upgrade${NC})"
+            echo -e "  ${BOLD}${CYAN}4)${NC} Purge Inactive System RAM Memory (${GREEN}sudo purge${NC})"
+            echo -e "  ${BOLD}${CYAN}5)${NC} Clear User Caches & Temporary Files (${GREEN}rm -rf ~/Library/Caches/*${NC})"
+            echo -e "  ${BOLD}${CYAN}6)${NC} ${BOLD}${YELLOW}Run Complete macOS Maintenance Suite${NC}"
+            echo -e "  ${BOLD}${CYAN}7)${NC} Return to Main Menu"
             echo ""
-            read -r -p "Enter choice [1-6]: " m_choice
+            read -r -p "Enter choice [1-7]: " m_choice
             case "$m_choice" in
                 1)
+                    local drive_sh="$SCRIPT_DIR/Get_All_Drive_Space.sh"
+                    [ ! -f "$drive_sh" ] && drive_sh="$SCRIPT_DIR/scripts/Get_All_Drive_Space.sh"
+                    if [ -f "$drive_sh" ]; then
+                        echo ""
+                        bash "$drive_sh"
+                    else
+                        echo -e "\n${RED}Drive space script not found: $drive_sh${NC}"
+                    fi
+                    echo ""
+                    press_enter
+                    ;;
+                2)
                     echo -e "\n${BOLD}${YELLOW}Cleaning Homebrew...${NC}\n"
                     brew cleanup -s && brew autoremove
                     press_enter
                     ;;
-                2)
+                3)
                     echo -e "\n${BOLD}${YELLOW}Updating Homebrew & packages...${NC}\n"
                     brew update && brew upgrade
                     press_enter
                     ;;
-                3)
+                4)
                     echo -e "\n${BOLD}${YELLOW}Purging inactive memory...${NC}\n"
                     sudo purge 2>/dev/null || purge 2>/dev/null || echo "Purge completed."
                     press_enter
                     ;;
-                4)
+                5)
                     echo -e "\n${BOLD}${YELLOW}Clearing user caches...${NC}\n"
                     rm -rf ~/Library/Caches/* 2>/dev/null || true
                     echo -e "${GREEN}✓ User caches cleared.${NC}"
                     press_enter
                     ;;
-                5)
+                6)
                     echo -e "\n${BOLD}${GREEN}=== RUNNING COMPLETE macOS CLEANUP SUITE ===${NC}\n"
                     command -v brew >/dev/null 2>&1 && brew cleanup -s && brew autoremove
                     rm -rf ~/Library/Caches/* 2>/dev/null || true
@@ -2951,7 +2964,7 @@ manage_system_maintenance() {
                     echo -e "${GREEN}✓ Cleanup suite finished!${NC}"
                     press_enter
                     ;;
-                6|0|[qQ])
+                7|0|[qQ])
                     return 0
                     ;;
                 *)
@@ -2963,38 +2976,51 @@ manage_system_maintenance() {
             echo -e "  Windows Edition:             ${GREEN}$(cmd.exe /c "ver" 2>/dev/null | tr -d '\r\n' || echo "Windows 10/11")${NC}"
             echo ""
             echo -e "${BOLD}Select a maintenance operation:${NC}"
-            echo -e "  ${BOLD}${CYAN}1)${NC} Upgrade All Installed Packages (${GREEN}winget upgrade --all${NC})"
-            echo -e "  ${BOLD}${CYAN}2)${NC} Clear Windows Temporary Files (${GREEN}%TEMP% & System Temp${NC})"
-            echo -e "  ${BOLD}${CYAN}3)${NC} Empty Windows Recycle Bin (${GREEN}Clear-RecycleBin${NC})"
-            echo -e "  ${BOLD}${CYAN}4)${NC} Optimize / TRIM Primary Drive C: (${GREEN}Optimize-Volume${NC})"
-            echo -e "  ${BOLD}${CYAN}5)${NC} ${BOLD}${YELLOW}Run Complete Windows Maintenance Suite${NC}"
-            echo -e "  ${BOLD}${CYAN}6)${NC} Return to Main Menu"
+            echo -e "  ${BOLD}${CYAN}1)${NC} Check Drive Space Statistics (${GREEN}Get_All_Drive_Space.sh${NC}) [Mounted & Unmounted]"
+            echo -e "  ${BOLD}${CYAN}2)${NC} Upgrade All Installed Packages (${GREEN}winget upgrade --all${NC})"
+            echo -e "  ${BOLD}${CYAN}3)${NC} Clear Windows Temporary Files (${GREEN}%TEMP% & System Temp${NC})"
+            echo -e "  ${BOLD}${CYAN}4)${NC} Empty Windows Recycle Bin (${GREEN}Clear-RecycleBin${NC})"
+            echo -e "  ${BOLD}${CYAN}5)${NC} Optimize / TRIM Primary Drive C: (${GREEN}Optimize-Volume${NC})"
+            echo -e "  ${BOLD}${CYAN}6)${NC} ${BOLD}${YELLOW}Run Complete Windows Maintenance Suite${NC}"
+            echo -e "  ${BOLD}${CYAN}7)${NC} Return to Main Menu"
             echo ""
-            read -r -p "Enter choice [1-6]: " m_choice
+            read -r -p "Enter choice [1-7]: " m_choice
             case "$m_choice" in
                 1)
+                    local drive_sh="$SCRIPT_DIR/Get_All_Drive_Space.sh"
+                    [ ! -f "$drive_sh" ] && drive_sh="$SCRIPT_DIR/scripts/Get_All_Drive_Space.sh"
+                    if [ -f "$drive_sh" ]; then
+                        echo ""
+                        bash "$drive_sh"
+                    else
+                        echo -e "\n${RED}Drive space script not found: $drive_sh${NC}"
+                    fi
+                    echo ""
+                    press_enter
+                    ;;
+                2)
                     echo -e "\n${BOLD}${YELLOW}Upgrading packages via winget...${NC}\n"
                     cmd.exe /c "winget upgrade --all" 2>/dev/null || echo -e "${RED}winget not found.${NC}"
                     press_enter
                     ;;
-                2)
+                3)
                     echo -e "\n${BOLD}${YELLOW}Clearing Windows temp directory...${NC}\n"
                     powershell.exe -Command "Remove-Item -Path \$env:TEMP\* -Recurse -Force -ErrorAction SilentlyContinue" 2>/dev/null || true
                     echo -e "${GREEN}✓ Temporary files removed.${NC}"
                     press_enter
                     ;;
-                3)
+                4)
                     echo -e "\n${BOLD}${YELLOW}Emptying Recycle Bin...${NC}\n"
                     powershell.exe -Command "Clear-RecycleBin -Force -ErrorAction SilentlyContinue" 2>/dev/null || true
                     echo -e "${GREEN}✓ Recycle bin emptied.${NC}"
                     press_enter
                     ;;
-                4)
+                5)
                     echo -e "\n${BOLD}${YELLOW}Optimizing C: drive...${NC}\n"
                     powershell.exe -Command "Optimize-Volume -DriveLetter C -Verbose" 2>/dev/null || true
                     press_enter
                     ;;
-                5)
+                6)
                     echo -e "\n${BOLD}${GREEN}=== RUNNING COMPLETE WINDOWS CLEANUP SUITE ===${NC}\n"
                     powershell.exe -Command "Remove-Item -Path \$env:TEMP\* -Recurse -Force -ErrorAction SilentlyContinue" 2>/dev/null || true
                     powershell.exe -Command "Clear-RecycleBin -Force -ErrorAction SilentlyContinue" 2>/dev/null || true
@@ -3002,7 +3028,7 @@ manage_system_maintenance() {
                     echo -e "${GREEN}✓ Windows maintenance suite finished!${NC}"
                     press_enter
                     ;;
-                6|0|[qQ])
+                7|0|[qQ])
                     return 0
                     ;;
                 *)
@@ -3019,37 +3045,50 @@ manage_system_maintenance() {
             echo -e "  Packages Installed (pkg):    ${CYAN}${pkg_count}${NC}"
             echo ""
             echo -e "${BOLD}Select a maintenance operation:${NC}"
-            echo -e "  ${BOLD}${CYAN}1)${NC} Clean Package Caches & Old Deps (${GREEN}pkg clean -a && pkg autoremove${NC})"
-            echo -e "  ${BOLD}${CYAN}2)${NC} Full FreeBSD Package Upgrade (${GREEN}pkg upgrade${NC})"
-            echo -e "  ${BOLD}${CYAN}3)${NC} Audit Installed Packages for Vulnerabilities (${GREEN}pkg audit -F${NC})"
-            echo -e "  ${BOLD}${CYAN}4)${NC} Clear User Caches & /tmp (${GREEN}rm -rf ~/.cache/* /tmp/*${NC})"
-            echo -e "  ${BOLD}${CYAN}5)${NC} ${BOLD}${YELLOW}Run Complete FreeBSD Maintenance Suite${NC}"
-            echo -e "  ${BOLD}${CYAN}6)${NC} Return to Main Menu"
+            echo -e "  ${BOLD}${CYAN}1)${NC} Check Drive Space Statistics (${GREEN}Get_All_Drive_Space.sh${NC}) [Mounted & Unmounted]"
+            echo -e "  ${BOLD}${CYAN}2)${NC} Clean Package Caches & Old Deps (${GREEN}pkg clean -a && pkg autoremove${NC})"
+            echo -e "  ${BOLD}${CYAN}3)${NC} Full FreeBSD Package Upgrade (${GREEN}pkg upgrade${NC})"
+            echo -e "  ${BOLD}${CYAN}4)${NC} Audit Installed Packages for Vulnerabilities (${GREEN}pkg audit -F${NC})"
+            echo -e "  ${BOLD}${CYAN}5)${NC} Clear User Caches & /tmp (${GREEN}rm -rf ~/.cache/* /tmp/*${NC})"
+            echo -e "  ${BOLD}${CYAN}6)${NC} ${BOLD}${YELLOW}Run Complete FreeBSD Maintenance Suite${NC}"
+            echo -e "  ${BOLD}${CYAN}7)${NC} Return to Main Menu"
             echo ""
-            read -r -p "Enter choice [1-6]: " m_choice
+            read -r -p "Enter choice [1-7]: " m_choice
             case "$m_choice" in
                 1)
+                    local drive_sh="$SCRIPT_DIR/Get_All_Drive_Space.sh"
+                    [ ! -f "$drive_sh" ] && drive_sh="$SCRIPT_DIR/scripts/Get_All_Drive_Space.sh"
+                    if [ -f "$drive_sh" ]; then
+                        echo ""
+                        bash "$drive_sh"
+                    else
+                        echo -e "\n${RED}Drive space script not found: $drive_sh${NC}"
+                    fi
+                    echo ""
+                    press_enter
+                    ;;
+                2)
                     echo -e "\n${BOLD}${YELLOW}Cleaning pkg caches...${NC}\n"
                     sudo pkg clean -a -y && sudo pkg autoremove -y || pkg clean -a -y
                     press_enter
                     ;;
-                2)
+                3)
                     echo -e "\n${BOLD}${YELLOW}Upgrading FreeBSD packages...${NC}\n"
                     sudo pkg upgrade || pkg upgrade
                     press_enter
                     ;;
-                3)
+                4)
                     echo -e "\n${BOLD}${YELLOW}Auditing FreeBSD packages...${NC}\n"
                     pkg audit -F
                     press_enter
                     ;;
-                4)
+                5)
                     echo -e "\n${BOLD}${YELLOW}Clearing user cache and /tmp...${NC}\n"
                     rm -rf ~/.cache/* 2>/dev/null || true
                     echo -e "${GREEN}✓ User caches cleared.${NC}"
                     press_enter
                     ;;
-                5)
+                6)
                     echo -e "\n${BOLD}${GREEN}=== RUNNING COMPLETE FreeBSD CLEANUP SUITE ===${NC}\n"
                     sudo pkg clean -a -y 2>/dev/null || true
                     sudo pkg autoremove -y 2>/dev/null || true
@@ -3058,7 +3097,7 @@ manage_system_maintenance() {
                     echo -e "${GREEN}✓ FreeBSD maintenance suite finished!${NC}"
                     press_enter
                     ;;
-                6|0|[qQ])
+                7|0|[qQ])
                     return 0
                     ;;
                 *)
@@ -3077,29 +3116,42 @@ manage_system_maintenance() {
             echo -e "  rpm-ostree Deployment:      ${GREEN}Bazzite (State: ${ostree_status})${NC}"
             echo ""
             echo -e "${BOLD}Select a maintenance operation:${NC}"
-            echo -e "  ${BOLD}${CYAN}1)${NC} Clean System (${GREEN}ujust clean-system${NC}) [Podman, Flatpak, ostree, Homebrew]"
-            echo -e "  ${BOLD}${CYAN}2)${NC} Full System & Package Update (${GREEN}ujust update${NC}) [OS, Flatpaks, Brew]"
-            echo -e "  ${BOLD}${CYAN}3)${NC} Vacuum System Logs (${GREEN}sudo journalctl --vacuum-size=200M${NC})"
-            echo -e "  ${BOLD}${CYAN}4)${NC} Optimize & Trim SSD Storage (${GREEN}sudo fstrim -av${NC})"
-            echo -e "  ${BOLD}${CYAN}5)${NC} ${BOLD}${YELLOW}Run Complete Cleanup Suite${NC} (Clean System + Vacuum Logs + SSD Trim)"
-            echo -e "  ${BOLD}${CYAN}6)${NC} Return to Main Menu"
+            echo -e "  ${BOLD}${CYAN}1)${NC} Check Drive Space Statistics (${GREEN}Get_All_Drive_Space.sh${NC}) [Mounted & Unmounted]"
+            echo -e "  ${BOLD}${CYAN}2)${NC} Clean System (${GREEN}ujust clean-system${NC}) [Podman, Flatpak, ostree, Homebrew]"
+            echo -e "  ${BOLD}${CYAN}3)${NC} Full System & Package Update (${GREEN}ujust update${NC}) [OS, Flatpaks, Brew]"
+            echo -e "  ${BOLD}${CYAN}4)${NC} Vacuum System Logs (${GREEN}sudo journalctl --vacuum-size=200M${NC})"
+            echo -e "  ${BOLD}${CYAN}5)${NC} Optimize & Trim SSD Storage (${GREEN}sudo fstrim -av${NC})"
+            echo -e "  ${BOLD}${CYAN}6)${NC} ${BOLD}${YELLOW}Run Complete Cleanup Suite${NC} (Clean System + Vacuum Logs + SSD Trim)"
+            echo -e "  ${BOLD}${CYAN}7)${NC} Return to Main Menu"
             echo ""
-            read -r -p "Enter choice [1-6]: " m_choice
+            read -r -p "Enter choice [1-7]: " m_choice
 
             case $m_choice in
                 1)
+                    local drive_sh="$SCRIPT_DIR/Get_All_Drive_Space.sh"
+                    [ ! -f "$drive_sh" ] && drive_sh="$SCRIPT_DIR/scripts/Get_All_Drive_Space.sh"
+                    if [ -f "$drive_sh" ]; then
+                        echo ""
+                        bash "$drive_sh"
+                    else
+                        echo -e "\n${RED}Drive space script not found: $drive_sh${NC}"
+                    fi
+                    echo ""
+                    press_enter
+                    ;;
+                2)
                     echo -e "\n${BOLD}${YELLOW}Running Bazzite System Cleanup (ujust clean-system)...${NC}\n"
                     ujust clean-system
                     echo ""
                     press_enter
                     ;;
-                2)
+                3)
                     echo -e "\n${BOLD}${YELLOW}Running Full System & Package Update (ujust update)...${NC}\n"
                     ujust update
                     echo ""
                     press_enter
                     ;;
-                3)
+                4)
                     echo -e "\n${BOLD}${YELLOW}Vacuuming system logs down to 200MB...${NC}\n"
                     sudo journalctl --vacuum-size=200M
                     echo ""
@@ -3107,13 +3159,13 @@ manage_system_maintenance() {
                     echo ""
                     press_enter
                     ;;
-                4)
+                5)
                     echo -e "\n${BOLD}${YELLOW}Trimming and optimizing SSD storage (fstrim)...${NC}\n"
                     sudo fstrim -av
                     echo ""
                     press_enter
                     ;;
-                5)
+                6)
                     echo -e "\n${BOLD}${GREEN}=== RUNNING COMPLETE CLEANUP SUITE ===${NC}\n"
                     echo -e "${BOLD}${BLUE}[1/3] Running ujust clean-system...${NC}"
                     ujust clean-system
@@ -3129,7 +3181,7 @@ manage_system_maintenance() {
                     echo ""
                     press_enter
                     ;;
-                6|0|[qQ])
+                7|0|[qQ])
                     return 0
                     ;;
                 *)
@@ -6898,31 +6950,6 @@ get_planets_above_horizon() {
     fi
 }
 
-get_header_ordinal_date() {
-    local day
-    day=$(date "+%-d")
-    local suffix="th"
-    case "$day" in
-        11|12|13) suffix="th" ;;
-        *1) suffix="st" ;;
-        *2) suffix="nd" ;;
-        *3) suffix="rd" ;;
-    esac
-    echo "${day}${suffix} of $(date '+%B, %Y')"
-}
-
-get_manager_version() {
-    local v_file="$SCRIPT_DIR/VERSION"
-    [ ! -f "$v_file" ] && v_file="$PWD/VERSION"
-    if [ -f "$v_file" ]; then
-        head -n 1 "$v_file" | tr -d ' \t\r\n'
-    elif [ -f "$SCRIPT_DIR/CHANGELOG.md" ]; then
-        grep -E '^## \[[0-9]+\.[0-9]+' "$SCRIPT_DIR/CHANGELOG.md" | head -1 | sed -E 's/.*\[([0-9]+\.[0-9]+\.[0-9]+)\].*/\1/'
-    else
-        echo "0.2.1"
-    fi
-}
-
 manage_weather_menu() {
     while true; do
         clear
@@ -7408,14 +7435,8 @@ while true; do
         fi
     fi
     clear
-    local header_date
-    header_date=$(get_header_ordinal_date)
-    local mgr_ver
-    mgr_ver=$(get_manager_version)
-    local current_time
-    current_time=$(date "+%T")
     echo -e "${BOLD}${MAGENTA}===================================================================================${NC}"
-    echo -e "${BOLD}${MAGENTA}  MP Mix Archive Manager (${header_date}) | Version: ${mgr_ver} | Current Time: ${current_time}${NC}"
+    echo -e "${BOLD}${MAGENTA}                     Mix Archive Manager (MP_Mix_Manager_v0.2)                     ${NC}"
     echo -e "${BOLD}${MAGENTA}===================================================================================${NC}"
     os_badge=$(get_os_badge)
     os_updates=$(get_os_update_status)
@@ -7527,13 +7548,13 @@ while true; do
     fi
     echo -e "  ${BOLD}${CYAN}65)${NC} Close All Desktop Applications (Keep Manager Open)"
     if [ "$OS_TYPE" = "macos" ]; then
-        echo -e "  ${BOLD}${CYAN}66)${NC} macOS System Maintenance & Cleanup (${GREEN}brew cleanup, purge RAM, caches${NC})"
+        echo -e "  ${BOLD}${CYAN}66)${NC} macOS System Maintenance & Cleanup (${GREEN}drive space, brew cleanup, purge RAM, caches${NC})"
     elif [ "$OS_TYPE" = "windows" ] || [ "$OS_TYPE" = "wsl" ]; then
-        echo -e "  ${BOLD}${CYAN}66)${NC} Windows System Maintenance & Cleanup (${GREEN}winget upgrade, clean temp, TRIM${NC})"
+        echo -e "  ${BOLD}${CYAN}66)${NC} Windows System Maintenance & Cleanup (${GREEN}drive space, winget upgrade, clean temp, TRIM${NC})"
     elif [ "$OS_TYPE" = "freebsd" ]; then
-        echo -e "  ${BOLD}${CYAN}66)${NC} FreeBSD System Maintenance & Cleanup (${GREEN}pkg upgrade, pkg clean, autoremove, audit${NC})"
+        echo -e "  ${BOLD}${CYAN}66)${NC} FreeBSD System Maintenance & Cleanup (${GREEN}drive space, pkg upgrade, clean, autoremove${NC})"
     else
-        echo -e "  ${BOLD}${CYAN}66)${NC} Bazzite System Maintenance & Cleanup (${GREEN}ujust clean-system, update, trim, logs${NC})"
+        echo -e "  ${BOLD}${CYAN}66)${NC} Bazzite System Maintenance & Cleanup (${GREEN}drive space, ujust clean-system, update, trim, logs${NC})"
     fi
     echo -e "  ${BOLD}${CYAN}67)${NC} Launch GeeXLab Demo Launcher (${GREEN}FurMark_linux64/demo_launcher.sh${NC})"
     echo -e "  ${BOLD}${CYAN}68)${NC} Burn ISO Image to USB Drive (${GREEN}dd / diskutil with safety checks${NC})"

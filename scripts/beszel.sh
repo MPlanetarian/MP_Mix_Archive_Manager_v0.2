@@ -22,7 +22,7 @@ HUB_URL="http://localhost:${HUB_PORT}"
 # Helper: check container running
 is_container_running() {
     local cname="$1"
-    podman ps --format '{{.Names}}' 2>/dev/null | grep -q -E "^${cname}$"
+    podman ps --format '{{.Names}}' 2>/dev/null | grep -q -E "^${cname}$" && podman top "$cname" >/dev/null 2>&1
 }
 
 # Helper: check container exists
@@ -33,10 +33,11 @@ does_container_exist() {
 
 # Helper: ensure user podman socket is active
 ensure_podman_socket() {
+    local sock_path="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/podman/podman.sock"
     if command -v systemctl >/dev/null 2>&1; then
-        if ! systemctl --user is-active podman.socket >/dev/null 2>&1; then
+        if ! systemctl --user is-active podman.socket >/dev/null 2>&1 || [ ! -S "$sock_path" ]; then
             echo -e "  ${YELLOW}Activating user podman.socket...${NC}"
-            systemctl --user start podman.socket 2>/dev/null || true
+            systemctl --user enable --now podman.socket 2>/dev/null || systemctl --user start podman.socket 2>/dev/null || true
             sleep 0.5
         fi
     fi
@@ -72,6 +73,44 @@ open_dashboard_browser() {
     fi
 }
 
+launch_hub_container() {
+    mkdir -p "$BESZEL_DIR/beszel_data"
+    if [ -f "$BESZEL_DIR/launch_beszel_hub_replace.sh" ]; then
+        (cd "$BESZEL_DIR" && bash ./launch_beszel_hub_replace.sh)
+    else
+        podman run --replace -d \
+          --name beszel \
+          --restart unless-stopped \
+          -p "${HUB_PORT}:8090" \
+          -v "$BESZEL_DIR/beszel_data:/beszel_data:Z" \
+          docker.io/henrygd/beszel:latest
+    fi
+}
+
+launch_agent_container() {
+    local sock_path="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/podman/podman.sock"
+    if [ -f "$BESZEL_DIR/launch_beszel_agent_replace.sh" ]; then
+        bash "$BESZEL_DIR/launch_beszel_agent_replace.sh"
+    else
+        podman run --replace -d \
+          --name beszel-agent \
+          --network host \
+          --restart unless-stopped \
+          --security-opt label=disable \
+          --device nvidia.com/gpu=all \
+          --group-add keep-groups \
+          --ipc=host \
+          -v 456fde4c27d9dbaa0859e4d3e635943363fba31d622c6eb9dd5a8bccdcfab358:/var/lib/beszel-agent \
+          -v "$sock_path:/var/run/docker.sock:ro" \
+          -e PORT=45876 \
+          -e KEY="ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAII4j5rQXtgHAf13QwbYjjhl+6QSsdVYADAyJv2ITKNq5" \
+          -e HUB_URL="http://localhost:8090" \
+          -e TOKEN="524e3b29-72f0-4992-82b1-c574262035b3" \
+          -e DOCKER_HOST="unix:///var/run/docker.sock" \
+          docker.io/henrygd/beszel-agent-nvidia:latest
+    fi
+}
+
 start_hub() {
     echo -e "\n${BOLD}${BLUE}=== STARTING BESZEL HUB ===${NC}"
     ensure_tun_device
@@ -80,36 +119,25 @@ start_hub() {
         return 0
     fi
 
-    if does_container_exist "beszel"; then
-        echo -e "Starting existing 'beszel' container..."
-        if podman start beszel >/dev/null 2>&1; then
-            echo -e "${GREEN}✓ Beszel Hub container started.${NC}"
-        else
-            echo -e "${RED}Failed to start existing container. Attempting recreate...${NC}"
-            if [ -f "$BESZEL_DIR/launch_beszel_hub_replace.sh" ]; then
-                (cd "$BESZEL_DIR" && bash ./launch_beszel_hub_replace.sh)
-            else
-                podman run --replace -d --name beszel --restart unless-stopped -p "${HUB_PORT}:8090" -v "$BESZEL_DIR/beszel_data:/beszel_data:Z" docker.io/henrygd/beszel:latest
-            fi
-        fi
-    else
-        echo -e "Creating and starting 'beszel' container..."
-        mkdir -p "$BESZEL_DIR/beszel_data"
-        if [ -f "$BESZEL_DIR/launch_beszel_hub_replace.sh" ]; then
-            (cd "$BESZEL_DIR" && bash ./launch_beszel_hub_replace.sh)
-        else
-            podman run --replace -d --name beszel --restart unless-stopped -p "${HUB_PORT}:8090" -v "$BESZEL_DIR/beszel_data:/beszel_data:Z" docker.io/henrygd/beszel:latest
-        fi
-    fi
+    echo -e "Starting Beszel Hub container..."
+    launch_hub_container
 
-    # Verify HTTP endpoint
-    sleep 1.5
-    if curl -s -o /dev/null -w "%{http_code}" "$HUB_URL/" | grep -q "200"; then
+    # Verify HTTP endpoint with retry loop
+    local hub_ready=false
+    for _i in {1..6}; do
+        sleep 1
+        if curl -s -o /dev/null -w "%{http_code}" "$HUB_URL/" | grep -q "200"; then
+            hub_ready=true
+            break
+        fi
+    done
+
+    if [ "$hub_ready" = "true" ]; then
         echo -e "${GREEN}✓ Beszel Hub web dashboard is live at ${BOLD}${HUB_URL}${NC}"
     elif is_container_running "beszel"; then
         echo -e "${YELLOW}Beszel Hub container is running. Web server initializing on ${HUB_URL}...${NC}"
     else
-        echo -e "${RED}Error: Beszel Hub failed to start. Check podman logs beszel.${NC}"
+        echo -e "${RED}Error: Beszel Hub failed to start. Check: podman logs beszel${NC}"
         return 1
     fi
     return 0
@@ -124,31 +152,23 @@ start_agent() {
         return 0
     fi
 
-    if does_container_exist "beszel-agent"; then
-        echo -e "Starting existing 'beszel-agent' container..."
-        if podman start beszel-agent >/dev/null 2>&1; then
-            echo -e "${GREEN}✓ Beszel Agent container started.${NC}"
-        else
-            echo -e "${RED}Failed to start existing container. Attempting recreate...${NC}"
-            if [ -f "$BESZEL_DIR/launch_beszel_agent_replace.sh" ]; then
-                bash "$BESZEL_DIR/launch_beszel_agent_replace.sh"
-            fi
-        fi
-    else
-        echo -e "Creating and starting 'beszel-agent' container..."
-        if [ -f "$BESZEL_DIR/launch_beszel_agent_replace.sh" ]; then
-            bash "$BESZEL_DIR/launch_beszel_agent_replace.sh"
-        else
-            echo -e "${RED}Error: launch_beszel_agent_replace.sh not found in ${BESZEL_DIR}.${NC}"
-            return 1
-        fi
-    fi
+    echo -e "Starting Beszel Agent container (with GPU & Podman socket)..."
+    launch_agent_container
 
-    sleep 1.5
-    if is_container_running "beszel-agent"; then
+    # Verify agent running with retry loop
+    local agent_started=false
+    for _i in {1..6}; do
+        sleep 1
+        if is_container_running "beszel-agent"; then
+            agent_started=true
+            break
+        fi
+    done
+
+    if [ "$agent_started" = "true" ]; then
         echo -e "${GREEN}✓ Beszel Agent is running and connected to Hub.${NC}"
     else
-        echo -e "${RED}Error: Beszel Agent failed to start. Check podman logs beszel-agent.${NC}"
+        echo -e "${RED}Error: Beszel Agent failed to start. Check: podman logs beszel-agent${NC}"
         return 1
     fi
     return 0
@@ -157,19 +177,23 @@ start_agent() {
 start_both() {
     start_hub
     local hub_ret=$?
-    sleep 1
+    sleep 0.5
     start_agent
     local agent_ret=$?
 
     if [ "$hub_ret" -eq 0 ] && [ "$agent_ret" -eq 0 ]; then
         echo -e "\n${BOLD}${GREEN}✓ Beszel Hub & Agent are both running successfully!${NC}"
+        return 0
+    else
+        echo -e "\n${BOLD}${RED}⚠ Failed to start Beszel suite cleanly.${NC}"
+        return 1
     fi
 }
 
 stop_hub() {
     echo -e "\n${BOLD}${YELLOW}Stopping Beszel Hub...${NC}"
-    if is_container_running "beszel"; then
-        podman stop beszel
+    if does_container_exist "beszel"; then
+        podman stop -t 2 beszel >/dev/null 2>&1 || podman kill beszel >/dev/null 2>&1 || true
         echo -e "${GREEN}✓ Beszel Hub stopped.${NC}"
     else
         echo -e "Beszel Hub is not running."
@@ -178,8 +202,8 @@ stop_hub() {
 
 stop_agent() {
     echo -e "\n${BOLD}${YELLOW}Stopping Beszel Agent...${NC}"
-    if is_container_running "beszel-agent"; then
-        podman stop beszel-agent
+    if does_container_exist "beszel-agent"; then
+        podman stop -t 2 beszel-agent >/dev/null 2>&1 || podman kill beszel-agent >/dev/null 2>&1 || true
         echo -e "${GREEN}✓ Beszel Agent stopped.${NC}"
     else
         echo -e "Beszel Agent is not running."
@@ -193,10 +217,22 @@ stop_both() {
 }
 
 restart_both() {
-    echo -e "\n${BOLD}${MAGENTA}Restarting Beszel Hub & Agent...${NC}"
+    echo -e "\n${BOLD}${MAGENTA}Re-launching & Recreating Beszel Hub & Agent Containers...${NC}"
     stop_both
     sleep 1
-    start_both
+    # Hub recreate
+    ensure_tun_device
+    echo -e "Recreating Beszel Hub container..."
+    launch_hub_container
+    sleep 1
+    # Agent recreate
+    ensure_podman_socket
+    echo -e "Recreating Beszel Agent container..."
+    launch_agent_container
+    sleep 1.5
+    if is_container_running "beszel" && is_container_running "beszel-agent"; then
+        echo -e "\n${BOLD}${GREEN}✓ Beszel Hub & Agent successfully recreated and running!${NC}"
+    fi
 }
 
 show_status() {
@@ -229,7 +265,7 @@ show_status() {
         agent_up=$(podman ps --filter "name=beszel-agent" --format '{{.RunningFor}}' 2>/dev/null | head -n 1)
         echo -e "  Beszel Agent:   ${BOLD}${GREEN}● RUNNING${NC} (Uptime: ${agent_up:-Active})"
         local last_log
-        last_log=$(podman logs beszel-agent --tail 2 2>/dev/null | tr '\n' ' ')
+        last_log=$(podman logs beszel-agent --tail 20 2>&1 | tr '\n' ' ')
         if echo "$last_log" | grep -q "WebSocket connected"; then
             echo -e "  Hub Connection: ${GREEN}WebSocket Connected to ${HUB_URL}${NC}"
         fi
@@ -318,17 +354,19 @@ interactive_menu() {
 
         case "$b_choice" in
             1)
-                start_both
-                echo ""
-                read -r -p "Open web dashboard in browser now? (y/n): " open_now
-                [[ "$open_now" =~ ^[Yy]$ ]] && open_dashboard_browser
+                if start_both; then
+                    echo ""
+                    read -r -p "Open web dashboard in browser now? (y/n): " open_now
+                    [[ "$open_now" =~ ^[Yy]$ ]] && open_dashboard_browser
+                fi
                 read -r -p "Press Enter to continue..."
                 ;;
             2)
-                start_hub
-                echo ""
-                read -r -p "Open web dashboard in browser now? (y/n): " open_now
-                [[ "$open_now" =~ ^[Yy]$ ]] && open_dashboard_browser
+                if start_hub; then
+                    echo ""
+                    read -r -p "Open web dashboard in browser now? (y/n): " open_now
+                    [[ "$open_now" =~ ^[Yy]$ ]] && open_dashboard_browser
+                fi
                 read -r -p "Press Enter to continue..."
                 ;;
             3)
