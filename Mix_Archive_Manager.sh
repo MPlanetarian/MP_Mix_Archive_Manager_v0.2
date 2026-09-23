@@ -2893,13 +2893,14 @@ manage_system_maintenance() {
         elif [ "$OS_TYPE" = "freebsd" ]; then
             echo -e "${BOLD}${MAGENTA}        FreeBSD SYSTEM MAINTENANCE & CLEANUP      ${NC}"
         else
-            echo -e "${BOLD}${MAGENTA}       BAZZITE SYSTEM MAINTENANCE & CLEANUP       ${NC}"
+            echo -e "${BOLD}${MAGENTA}           SYSTEM MAINTENANCE & CLEANUP           ${NC}"
         fi
         echo -e "${BOLD}${MAGENTA}==================================================${NC}"
         echo ""
 
         if [ "$OS_TYPE" = "macos" ]; then
             local brew_count="N/A"
+            local brew_formulae="N/A"
             if command -v brew >/dev/null 2>&1; then
                 brew_count=$(brew list --cask 2>/dev/null | wc -l | tr -d ' ')
                 brew_formulae=$(brew list --formula 2>/dev/null | wc -l | tr -d ' ')
@@ -2909,14 +2910,15 @@ manage_system_maintenance() {
             echo ""
             echo -e "${BOLD}Select a maintenance operation:${NC}"
             echo -e "  ${BOLD}${CYAN}1)${NC} Check Drive Space Statistics (${GREEN}Get_All_Drive_Space.sh${NC}) [Mounted & Unmounted]"
-            echo -e "  ${BOLD}${CYAN}2)${NC} Clean Homebrew Caches & Old Packages (${GREEN}brew cleanup -s && brew autoremove${NC})"
-            echo -e "  ${BOLD}${CYAN}3)${NC} Full System & Homebrew Update (${GREEN}brew update && brew upgrade${NC})"
-            echo -e "  ${BOLD}${CYAN}4)${NC} Purge Inactive System RAM Memory (${GREEN}sudo purge${NC})"
-            echo -e "  ${BOLD}${CYAN}5)${NC} Clear User Caches & Temporary Files (${GREEN}rm -rf ~/Library/Caches/*${NC})"
-            echo -e "  ${BOLD}${CYAN}6)${NC} ${BOLD}${YELLOW}Run Complete macOS Maintenance Suite${NC}"
-            echo -e "  ${BOLD}${CYAN}7)${NC} Return to Main Menu"
+            echo -e "  ${BOLD}${CYAN}2)${NC} Open macOS Software Update Window (${GREEN}System Settings / Software Update${NC})"
+            echo -e "  ${BOLD}${CYAN}3)${NC} Clean Homebrew Caches & Old Packages (${GREEN}brew cleanup -s && brew autoremove${NC})"
+            echo -e "  ${BOLD}${CYAN}4)${NC} Full Homebrew Package Upgrade (${GREEN}brew update && brew upgrade${NC})"
+            echo -e "  ${BOLD}${CYAN}5)${NC} Purge Inactive System RAM Memory (${GREEN}sudo purge${NC})"
+            echo -e "  ${BOLD}${CYAN}6)${NC} Clear User Caches & Temporary Files (${GREEN}rm -rf ~/Library/Caches/*${NC})"
+            echo -e "  ${BOLD}${CYAN}7)${NC} ${BOLD}${YELLOW}Run Complete macOS Maintenance Suite${NC}"
+            echo -e "  ${BOLD}${CYAN}8)${NC} Return to Main Menu"
             echo ""
-            read -r -p "Enter choice [1-7]: " m_choice
+            read -r -p "Enter choice [1-8]: " m_choice
             case "$m_choice" in
                 1)
                     local drive_sh="$SCRIPT_DIR/Get_All_Drive_Space.sh"
@@ -2931,35 +2933,46 @@ manage_system_maintenance() {
                     press_enter
                     ;;
                 2)
+                    echo -e "\n${BOLD}${YELLOW}Opening macOS Software Update Window in System Settings...${NC}\n"
+                    open "x-apple.systempreferences:com.apple.preferences.softwareupdate" 2>/dev/null || open /System/Library/PreferencePanes/SoftwareUpdate.prefPane 2>/dev/null || true
+                    echo -e "${GREEN}✓ macOS Software Update settings opened.${NC}"
+                    press_enter
+                    ;;
+                3)
                     echo -e "\n${BOLD}${YELLOW}Cleaning Homebrew...${NC}\n"
                     brew cleanup -s && brew autoremove
                     press_enter
                     ;;
-                3)
+                4)
                     echo -e "\n${BOLD}${YELLOW}Updating Homebrew & packages...${NC}\n"
                     brew update && brew upgrade
                     press_enter
                     ;;
-                4)
+                5)
                     echo -e "\n${BOLD}${YELLOW}Purging inactive memory...${NC}\n"
                     sudo purge 2>/dev/null || purge 2>/dev/null || echo "Purge completed."
                     press_enter
                     ;;
-                5)
+                6)
                     echo -e "\n${BOLD}${YELLOW}Clearing user caches...${NC}\n"
                     rm -rf ~/Library/Caches/* 2>/dev/null || true
                     echo -e "${GREEN}✓ User caches cleared.${NC}"
                     press_enter
                     ;;
-                6)
+                7)
                     echo -e "\n${BOLD}${GREEN}=== RUNNING COMPLETE macOS CLEANUP SUITE ===${NC}\n"
+                    echo -e "${BOLD}${BLUE}[1/4] Opening Software Update window...${NC}"
+                    open "x-apple.systempreferences:com.apple.preferences.softwareupdate" 2>/dev/null || open /System/Library/PreferencePanes/SoftwareUpdate.prefPane 2>/dev/null || true
+                    echo -e "${BOLD}${BLUE}[2/4] Cleaning Homebrew caches...${NC}"
                     command -v brew >/dev/null 2>&1 && brew cleanup -s && brew autoremove
+                    echo -e "${BOLD}${BLUE}[3/4] Clearing user caches...${NC}"
                     rm -rf ~/Library/Caches/* 2>/dev/null || true
+                    echo -e "${BOLD}${BLUE}[4/4] Purging inactive RAM...${NC}"
                     sudo purge 2>/dev/null || true
                     echo -e "${GREEN}✓ Cleanup suite finished!${NC}"
                     press_enter
                     ;;
-                7|0|[qQ])
+                8|7|0|[qQ])
                     return 0
                     ;;
                 *)
@@ -2972,14 +2985,15 @@ manage_system_maintenance() {
             echo ""
             echo -e "${BOLD}Select a maintenance operation:${NC}"
             echo -e "  ${BOLD}${CYAN}1)${NC} Check Drive Space Statistics (${GREEN}Get_All_Drive_Space.sh${NC}) [Mounted & Unmounted]"
-            echo -e "  ${BOLD}${CYAN}2)${NC} Upgrade All Installed Packages (${GREEN}winget upgrade --all${NC})"
-            echo -e "  ${BOLD}${CYAN}3)${NC} Clear Windows Temporary Files (${GREEN}%TEMP% & System Temp${NC})"
-            echo -e "  ${BOLD}${CYAN}4)${NC} Empty Windows Recycle Bin (${GREEN}Clear-RecycleBin${NC})"
-            echo -e "  ${BOLD}${CYAN}5)${NC} Optimize / TRIM Primary Drive C: (${GREEN}Optimize-Volume${NC})"
-            echo -e "  ${BOLD}${CYAN}6)${NC} ${BOLD}${YELLOW}Run Complete Windows Maintenance Suite${NC}"
-            echo -e "  ${BOLD}${CYAN}7)${NC} Return to Main Menu"
+            echo -e "  ${BOLD}${CYAN}2)${NC} Open Windows Update Window (${GREEN}ms-settings:windowsupdate${NC})"
+            echo -e "  ${BOLD}${CYAN}3)${NC} Upgrade All Installed Packages (${GREEN}winget upgrade --all${NC})"
+            echo -e "  ${BOLD}${CYAN}4)${NC} Clear Windows Temporary Files (${GREEN}%TEMP% & System Temp${NC})"
+            echo -e "  ${BOLD}${CYAN}5)${NC} Empty Windows Recycle Bin (${GREEN}Clear-RecycleBin${NC})"
+            echo -e "  ${BOLD}${CYAN}6)${NC} Optimize / TRIM Primary Drive C: (${GREEN}Optimize-Volume${NC})"
+            echo -e "  ${BOLD}${CYAN}7)${NC} ${BOLD}${YELLOW}Run Complete Windows Maintenance Suite${NC}"
+            echo -e "  ${BOLD}${CYAN}8)${NC} Return to Main Menu"
             echo ""
-            read -r -p "Enter choice [1-7]: " m_choice
+            read -r -p "Enter choice [1-8]: " m_choice
             case "$m_choice" in
                 1)
                     local drive_sh="$SCRIPT_DIR/Get_All_Drive_Space.sh"
@@ -2994,36 +3008,49 @@ manage_system_maintenance() {
                     press_enter
                     ;;
                 2)
+                    echo -e "\n${BOLD}${YELLOW}Opening Windows Update Window in Settings...${NC}\n"
+                    cmd.exe /c "start ms-settings:windowsupdate" 2>/dev/null || powershell.exe -Command "Start-Process 'ms-settings:windowsupdate'" 2>/dev/null || true
+                    echo -e "${GREEN}✓ Windows Update window opened.${NC}"
+                    press_enter
+                    ;;
+                3)
                     echo -e "\n${BOLD}${YELLOW}Upgrading packages via winget...${NC}\n"
                     cmd.exe /c "winget upgrade --all" 2>/dev/null || echo -e "${RED}winget not found.${NC}"
                     press_enter
                     ;;
-                3)
+                4)
                     echo -e "\n${BOLD}${YELLOW}Clearing Windows temp directory...${NC}\n"
                     powershell.exe -Command "Remove-Item -Path \$env:TEMP\* -Recurse -Force -ErrorAction SilentlyContinue" 2>/dev/null || true
                     echo -e "${GREEN}✓ Temporary files removed.${NC}"
                     press_enter
                     ;;
-                4)
+                5)
                     echo -e "\n${BOLD}${YELLOW}Emptying Recycle Bin...${NC}\n"
                     powershell.exe -Command "Clear-RecycleBin -Force -ErrorAction SilentlyContinue" 2>/dev/null || true
                     echo -e "${GREEN}✓ Recycle bin emptied.${NC}"
                     press_enter
                     ;;
-                5)
+                6)
                     echo -e "\n${BOLD}${YELLOW}Optimizing C: drive...${NC}\n"
                     powershell.exe -Command "Optimize-Volume -DriveLetter C -Verbose" 2>/dev/null || true
                     press_enter
                     ;;
-                6)
+                7)
                     echo -e "\n${BOLD}${GREEN}=== RUNNING COMPLETE WINDOWS CLEANUP SUITE ===${NC}\n"
+                    echo -e "${BOLD}${BLUE}[1/5] Opening Windows Update window...${NC}"
+                    cmd.exe /c "start ms-settings:windowsupdate" 2>/dev/null || powershell.exe -Command "Start-Process 'ms-settings:windowsupdate'" 2>/dev/null || true
+                    echo -e "${BOLD}${BLUE}[2/5] Clearing temporary files...${NC}"
                     powershell.exe -Command "Remove-Item -Path \$env:TEMP\* -Recurse -Force -ErrorAction SilentlyContinue" 2>/dev/null || true
+                    echo -e "${BOLD}${BLUE}[3/5] Emptying Recycle Bin...${NC}"
                     powershell.exe -Command "Clear-RecycleBin -Force -ErrorAction SilentlyContinue" 2>/dev/null || true
+                    echo -e "${BOLD}${BLUE}[4/5] Upgrading installed applications via winget...${NC}"
                     cmd.exe /c "winget upgrade --all" 2>/dev/null || true
+                    echo -e "${BOLD}${BLUE}[5/5] Optimizing C: drive...${NC}"
+                    powershell.exe -Command "Optimize-Volume -DriveLetter C -Verbose" 2>/dev/null || true
                     echo -e "${GREEN}✓ Windows maintenance suite finished!${NC}"
                     press_enter
                     ;;
-                7|0|[qQ])
+                8|0|[qQ])
                     return 0
                     ;;
                 *)
@@ -3105,15 +3132,52 @@ manage_system_maintenance() {
             journal_usage=$(journalctl --disk-usage 2>/dev/null | grep -o '[0-9.]*[KMGT]B*' || echo "N/A")
             echo -e "  System Journal Log Usage:   ${CYAN}${journal_usage}${NC}"
 
-            local ostree_status
-            ostree_status=$(rpm-ostree status 2>/dev/null | grep -E '^\*? State:' | head -n 1 | awk '{print $2}' || echo "idle")
-            [ -z "$ostree_status" ] && ostree_status="idle"
-            echo -e "  rpm-ostree Deployment:      ${GREEN}Bazzite (State: ${ostree_status})${NC}"
+            local distro_desc=""
+            if [ -f /etc/os-release ]; then
+                distro_desc=$(grep -E '^PRETTY_NAME=' /etc/os-release 2>/dev/null | cut -d= -f2 | tr -d '"')
+            fi
+            [ -z "$distro_desc" ] && distro_desc="Linux ($(uname -r))"
+
+            if command -v rpm-ostree >/dev/null 2>&1; then
+                local ostree_status
+                ostree_status=$(rpm-ostree status 2>/dev/null | grep -E '^\*? State:' | head -n 1 | awk '{print $2}' || echo "idle")
+                [ -z "$ostree_status" ] && ostree_status="idle"
+                echo -e "  Operating System:           ${GREEN}${distro_desc}${NC} (rpm-ostree: ${ostree_status})"
+            else
+                echo -e "  Operating System:           ${GREEN}${distro_desc}${NC}"
+            fi
             echo ""
+
+            local clean_label="Clean System (Package Caches, Unused Runtimes)"
+            local update_label="Full System & Package Update"
+
+            if command -v ujust >/dev/null 2>&1; then
+                clean_label="Clean System (${GREEN}ujust clean-system${NC}) [Podman, Flatpak, ostree, Brew]"
+                update_label="Full System & Package Update (${GREEN}ujust update${NC}) [OS, Flatpaks, Brew]"
+            elif command -v dnf5 >/dev/null 2>&1; then
+                clean_label="Clean System (${GREEN}sudo dnf5 clean all && autoremove${NC}) [DNF caches, Flatpaks]"
+                update_label="Full System & Package Update (${GREEN}sudo dnf5 upgrade --refresh${NC}) [Fedora packages, Flatpaks]"
+            elif command -v dnf >/dev/null 2>&1; then
+                clean_label="Clean System (${GREEN}sudo dnf clean all && autoremove${NC}) [DNF caches, Flatpaks]"
+                update_label="Full System & Package Update (${GREEN}sudo dnf upgrade --refresh${NC}) [Fedora / RHEL packages, Flatpaks]"
+            elif command -v rpm-ostree >/dev/null 2>&1; then
+                clean_label="Clean System (${GREEN}rpm-ostree cleanup -m${NC}) [ostree, Flatpaks]"
+                update_label="Full System & Package Update (${GREEN}rpm-ostree upgrade${NC}) [Atomic OS, Flatpaks]"
+            elif command -v apt-get >/dev/null 2>&1; then
+                clean_label="Clean System (${GREEN}sudo apt autoremove && clean${NC}) [APT caches, Flatpaks]"
+                update_label="Full System & Package Update (${GREEN}sudo apt update && upgrade${NC}) [Debian/Ubuntu packages, Flatpaks]"
+            elif command -v pacman >/dev/null 2>&1; then
+                clean_label="Clean System (${GREEN}sudo pacman -Sc${NC}) [Pacman caches, Flatpaks]"
+                update_label="Full System & Package Update (${GREEN}sudo pacman -Syu${NC}) [Arch packages, Flatpaks]"
+            elif command -v zypper >/dev/null 2>&1; then
+                clean_label="Clean System (${GREEN}sudo zypper clean -a${NC}) [Zypper caches, Flatpaks]"
+                update_label="Full System & Package Update (${GREEN}sudo zypper refresh && update${NC}) [openSUSE packages]"
+            fi
+
             echo -e "${BOLD}Select a maintenance operation:${NC}"
             echo -e "  ${BOLD}${CYAN}1)${NC} Check Drive Space Statistics (${GREEN}Get_All_Drive_Space.sh${NC}) [Mounted & Unmounted]"
-            echo -e "  ${BOLD}${CYAN}2)${NC} Clean System (${GREEN}ujust clean-system${NC}) [Podman, Flatpak, ostree, Homebrew]"
-            echo -e "  ${BOLD}${CYAN}3)${NC} Full System & Package Update (${GREEN}ujust update${NC}) [OS, Flatpaks, Brew]"
+            echo -e "  ${BOLD}${CYAN}2)${NC} ${clean_label}"
+            echo -e "  ${BOLD}${CYAN}3)${NC} ${update_label}"
             echo -e "  ${BOLD}${CYAN}4)${NC} Vacuum System Logs (${GREEN}sudo journalctl --vacuum-size=200M${NC})"
             echo -e "  ${BOLD}${CYAN}5)${NC} Optimize & Trim SSD Storage (${GREEN}sudo fstrim -av${NC})"
             echo -e "  ${BOLD}${CYAN}6)${NC} ${BOLD}${YELLOW}Run Complete Cleanup Suite${NC} (Clean System + Vacuum Logs + SSD Trim)"
@@ -3135,44 +3199,172 @@ manage_system_maintenance() {
                     press_enter
                     ;;
                 2)
-                    echo -e "\n${BOLD}${YELLOW}Running Bazzite System Cleanup (ujust clean-system)...${NC}\n"
-                    ujust clean-system
+                    echo -e "\n${BOLD}${YELLOW}=== RUNNING SYSTEM CLEANUP ===${NC}\n"
+                    if command -v ujust >/dev/null 2>&1; then
+                        echo -e "${BOLD}${CYAN}» Running ujust clean-system...${NC}"
+                        ujust clean-system
+                    else
+                        if command -v dnf5 >/dev/null 2>&1; then
+                            echo -e "${BOLD}${CYAN}» Cleaning dnf5 caches & unused packages...${NC}"
+                            sudo dnf5 clean all && sudo dnf5 autoremove -y || true
+                        elif command -v dnf >/dev/null 2>&1; then
+                            echo -e "${BOLD}${CYAN}» Cleaning dnf caches & unused packages...${NC}"
+                            sudo dnf clean all && sudo dnf autoremove -y || true
+                        elif command -v apt-get >/dev/null 2>&1; then
+                            echo -e "${BOLD}${CYAN}» Cleaning APT caches & unused packages...${NC}"
+                            sudo apt-get autoremove -y && sudo apt-get clean || true
+                        elif command -v pacman >/dev/null 2>&1; then
+                            echo -e "${BOLD}${CYAN}» Cleaning Pacman caches...${NC}"
+                            sudo pacman -Sc --noconfirm || true
+                        elif command -v zypper >/dev/null 2>&1; then
+                            echo -e "${BOLD}${CYAN}» Cleaning Zypper caches...${NC}"
+                            sudo zypper clean -a || true
+                        fi
+
+                        if command -v rpm-ostree >/dev/null 2>&1; then
+                            echo -e "${BOLD}${CYAN}» Cleaning ostree metadata...${NC}"
+                            rpm-ostree cleanup -m 2>/dev/null || true
+                        fi
+
+                        if command -v flatpak >/dev/null 2>&1; then
+                            echo -e "${BOLD}${CYAN}» Uninstalling unused Flatpak runtimes...${NC}"
+                            flatpak uninstall --unused -y 2>/dev/null || true
+                        fi
+
+                        if command -v podman >/dev/null 2>&1; then
+                            echo -e "${BOLD}${CYAN}» Pruning unused podman images & containers...${NC}"
+                            podman system prune -f 2>/dev/null || true
+                        elif command -v docker >/dev/null 2>&1; then
+                            echo -e "${BOLD}${CYAN}» Pruning unused docker images & containers...${NC}"
+                            docker system prune -f 2>/dev/null || true
+                        fi
+
+                        if command -v brew >/dev/null 2>&1; then
+                            echo -e "${BOLD}${CYAN}» Cleaning Homebrew packages...${NC}"
+                            brew cleanup -s 2>/dev/null && brew autoremove 2>/dev/null || true
+                        fi
+                    fi
+
+                    echo -e "${BOLD}${CYAN}» Clearing user thumbnails & cache...${NC}"
+                    rm -rf "$HOME/.cache/thumbnails"/* 2>/dev/null || true
+                    echo -e "\n${GREEN}[✓] System cleanup completed successfully.${NC}"
                     echo ""
                     press_enter
                     ;;
                 3)
-                    echo -e "\n${BOLD}${YELLOW}Running Full System & Package Update (ujust update)...${NC}\n"
-                    ujust update
+                    echo -e "\n${BOLD}${YELLOW}=== DOWNLOADING & APPLYING SYSTEM UPDATES ===${NC}\n"
+                    local updated=0
+
+                    # 1. Bazzite / Universal Blue with ujust
+                    if command -v ujust >/dev/null 2>&1; then
+                        echo -e "${BOLD}${CYAN}» Running ujust update (Bazzite / Universal Blue)...${NC}"
+                        ujust update && updated=1
+                    # 2. rpm-ostree systems (Fedora Silverblue / Kinoite / Atomic without ujust)
+                    elif command -v rpm-ostree >/dev/null 2>&1; then
+                        echo -e "${BOLD}${CYAN}» Upgrading ostree deployment (rpm-ostree upgrade)...${NC}"
+                        rpm-ostree upgrade && updated=1
+                    # 3. Fedora / RHEL (dnf5 or dnf)
+                    elif command -v dnf5 >/dev/null 2>&1; then
+                        echo -e "${BOLD}${CYAN}» Updating Fedora packages (dnf5 upgrade)...${NC}"
+                        sudo dnf5 upgrade --refresh -y && updated=1
+                    elif command -v dnf >/dev/null 2>&1; then
+                        echo -e "${BOLD}${CYAN}» Updating Fedora / RHEL packages (dnf upgrade)...${NC}"
+                        sudo dnf upgrade --refresh -y && updated=1
+                    # 4. Debian / Ubuntu / Mint / Pop!_OS (apt)
+                    elif command -v apt-get >/dev/null 2>&1; then
+                        echo -e "${BOLD}${CYAN}» Updating APT packages (apt update && apt upgrade)...${NC}"
+                        sudo apt-get update && sudo apt-get upgrade -y && updated=1
+                    # 5. Arch Linux / Manjaro (pacman)
+                    elif command -v pacman >/dev/null 2>&1; then
+                        echo -e "${BOLD}${CYAN}» Updating Pacman packages (pacman -Syu)...${NC}"
+                        sudo pacman -Syu --noconfirm && updated=1
+                    # 6. openSUSE (zypper)
+                    elif command -v zypper >/dev/null 2>&1; then
+                        echo -e "${BOLD}${CYAN}» Updating Zypper packages...${NC}"
+                        sudo zypper refresh && sudo zypper update -y && updated=1
+                    # 7. Alpine Linux (apk)
+                    elif command -v apk >/dev/null 2>&1; then
+                        echo -e "${BOLD}${CYAN}» Updating Alpine packages (apk upgrade)...${NC}"
+                        sudo apk update && sudo apk upgrade && updated=1
+                    fi
+
+                    # Update Flatpaks if installed (common across Fedora, Silverblue, Ubuntu, Arch, etc.)
+                    if command -v flatpak >/dev/null 2>&1; then
+                        echo -e "\n${BOLD}${CYAN}» Updating Flatpak applications and runtimes...${NC}"
+                        flatpak update -y && updated=1
+                    fi
+
+                    # Update Snap if installed (Ubuntu)
+                    if command -v snap >/dev/null 2>&1; then
+                        echo -e "\n${BOLD}${CYAN}» Refreshing Snap packages...${NC}"
+                        sudo snap refresh 2>/dev/null && updated=1
+                    fi
+
+                    # Update Homebrew on Linux if installed
+                    if command -v brew >/dev/null 2>&1; then
+                        echo -e "\n${BOLD}${CYAN}» Updating Homebrew on Linux...${NC}"
+                        brew update && brew upgrade && updated=1
+                    fi
+
+                    if [ "$updated" -eq 1 ]; then
+                        echo -e "\n${GREEN}[✓] System update completed successfully.${NC}"
+                    else
+                        echo -e "\n${RED}No supported package manager found to update.${NC}"
+                    fi
                     echo ""
                     press_enter
                     ;;
                 4)
                     echo -e "\n${BOLD}${YELLOW}Vacuuming system logs down to 200MB...${NC}\n"
-                    sudo journalctl --vacuum-size=200M
+                    sudo journalctl --vacuum-size=200M 2>/dev/null || true
                     echo ""
-                    journalctl --disk-usage
+                    journalctl --disk-usage 2>/dev/null || true
                     echo ""
                     press_enter
                     ;;
                 5)
                     echo -e "\n${BOLD}${YELLOW}Trimming and optimizing SSD storage (fstrim)...${NC}\n"
-                    sudo fstrim -av
+                    sudo fstrim -av 2>/dev/null || true
                     echo ""
                     press_enter
                     ;;
                 6)
                     echo -e "\n${BOLD}${GREEN}=== RUNNING COMPLETE CLEANUP SUITE ===${NC}\n"
-                    echo -e "${BOLD}${BLUE}[1/3] Running ujust clean-system...${NC}"
-                    ujust clean-system
+                    echo -e "${BOLD}${BLUE}[1/3] Running System Cleanup...${NC}"
+                    if command -v ujust >/dev/null 2>&1; then
+                        ujust clean-system
+                    else
+                        if command -v dnf5 >/dev/null 2>&1; then
+                            sudo dnf5 clean all && sudo dnf5 autoremove -y || true
+                        elif command -v dnf >/dev/null 2>&1; then
+                            sudo dnf clean all && sudo dnf autoremove -y || true
+                        elif command -v apt-get >/dev/null 2>&1; then
+                            sudo apt-get autoremove -y && sudo apt-get clean || true
+                        elif command -v pacman >/dev/null 2>&1; then
+                            sudo pacman -Sc --noconfirm || true
+                        elif command -v zypper >/dev/null 2>&1; then
+                            sudo zypper clean -a || true
+                        fi
+                        if command -v rpm-ostree >/dev/null 2>&1; then
+                            rpm-ostree cleanup -m 2>/dev/null || true
+                        fi
+                        if command -v flatpak >/dev/null 2>&1; then
+                            flatpak uninstall --unused -y 2>/dev/null || true
+                        fi
+                        if command -v podman >/dev/null 2>&1; then
+                            podman system prune -f 2>/dev/null || true
+                        fi
+                        rm -rf "$HOME/.cache/thumbnails"/* 2>/dev/null || true
+                    fi
                     echo ""
                     echo -e "${BOLD}${BLUE}[2/3] Vacuuming system logs to 200MB...${NC}"
-                    sudo journalctl --vacuum-size=200M
+                    sudo journalctl --vacuum-size=200M 2>/dev/null || true
                     echo ""
                     echo -e "${BOLD}${BLUE}[3/3] Trimming SSD filesystems (fstrim)...${NC}"
-                    sudo fstrim -av
+                    sudo fstrim -av 2>/dev/null || true
                     echo ""
                     echo -e "${BOLD}${GREEN}[✓] Complete cleanup finished!${NC}"
-                    journalctl --disk-usage
+                    journalctl --disk-usage 2>/dev/null || true
                     echo ""
                     press_enter
                     ;;
@@ -8064,13 +8256,13 @@ while true; do
     fi
     echo -e "  ${BOLD}${CYAN}67)${NC} Close All Desktop Applications (Keep Manager Open)"
     if [ "$OS_TYPE" = "macos" ]; then
-        echo -e "  ${BOLD}${CYAN}68)${NC} macOS System Maintenance & Cleanup (${GREEN}drive space, brew cleanup, purge RAM, caches${NC})"
+        echo -e "  ${BOLD}${CYAN}68)${NC}  macOS System Maintenance & Cleanup (${GREEN}drive space, Software Update window, brew, purge RAM${NC})"
     elif [ "$OS_TYPE" = "windows" ] || [ "$OS_TYPE" = "wsl" ]; then
-        echo -e "  ${BOLD}${CYAN}68)${NC} Windows System Maintenance & Cleanup (${GREEN}drive space, winget upgrade, clean temp, TRIM${NC})"
+        echo -e "  ${BOLD}${CYAN}68)${NC}  Windows System Maintenance & Cleanup (${GREEN}drive space, Windows Update window, winget, TRIM${NC})"
     elif [ "$OS_TYPE" = "freebsd" ]; then
-        echo -e "  ${BOLD}${CYAN}68)${NC} FreeBSD System Maintenance & Cleanup (${GREEN}drive space, pkg upgrade, clean, autoremove${NC})"
+        echo -e "  ${BOLD}${CYAN}68)${NC}  FreeBSD System Maintenance & Cleanup (${GREEN}drive space, pkg upgrade, clean, autoremove${NC})"
     else
-        echo -e "  ${BOLD}${CYAN}68)${NC} Bazzite System Maintenance & Cleanup (${GREEN}drive space, ujust clean-system, update, trim, logs${NC})"
+        echo -e "  ${BOLD}${CYAN}68)${NC}  System Maintenance & Cleanup (${GREEN}drive space, ujust clean-system, update, trim, logs${NC})"
     fi
     echo -e "  ${BOLD}${CYAN}69)${NC} Launch GeeXLab Demo Launcher (${GREEN}FurMark_linux64/demo_launcher.sh${NC})"
     echo -e "  ${BOLD}${CYAN}70)${NC} Burn ISO Image to USB Drive (${GREEN}dd / diskutil with safety checks${NC})"
