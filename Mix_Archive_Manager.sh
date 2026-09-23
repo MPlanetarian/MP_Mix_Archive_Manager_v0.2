@@ -3910,6 +3910,56 @@ launch_traktor() {
     fi
 }
 
+get_traktor_version_mac() {
+    if [ "$OS_TYPE" != "macos" ]; then
+        echo ""
+        return 1
+    fi
+    local ver=""
+    if [ -x "/usr/libexec/PlistBuddy" ] && [ -f "/Applications/Native Instruments/Traktor Pro 3/Traktor.app/Contents/Info.plist" ]; then
+        ver="$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "/Applications/Native Instruments/Traktor Pro 3/Traktor.app/Contents/Info.plist" 2>/dev/null | awk '{print $1}')"
+    elif [ -x "/usr/libexec/PlistBuddy" ] && [ -f "/Applications/Traktor Pro 3.app/Contents/Info.plist" ]; then
+        ver="$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "/Applications/Traktor Pro 3.app/Contents/Info.plist" 2>/dev/null | awk '{print $1}')"
+    elif [ -x "/usr/libexec/PlistBuddy" ] && [ -f "/Applications/Traktor.app/Contents/Info.plist" ]; then
+        ver="$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "/Applications/Traktor.app/Contents/Info.plist" 2>/dev/null | awk '{print $1}')"
+    fi
+    if [ -z "$ver" ] && [ -d "$HOME/Documents/Native Instruments" ]; then
+        ver="$(find "$HOME/Documents/Native Instruments" -maxdepth 1 -type d -name "Traktor 3*" 2>/dev/null | sort -V | tail -n 1 | sed 's/.*Traktor //')"
+    fi
+    echo "${ver:-3}"
+}
+
+generate_traktor_playlist_from_history() {
+    if [ "$OS_TYPE" != "macos" ]; then
+        echo -e "\n${BOLD}${RED}═══════════════════════════════════════════════════════════════════════════════${NC}"
+        echo -e "${BOLD}${RED}            ⚠️  PLATFORM NOT SUPPORTED FOR TRAKTOR PLAYLISTS ⚠️                 ${NC}"
+        echo -e "${BOLD}${RED}═══════════════════════════════════════════════════════════════════════════════${NC}"
+        echo -e "  • ${BOLD}Platform:${NC}           $(uname -s)"
+        echo -e "  • ${BOLD}Notice:${NC}             Traktor Pro does not run on Linux natively."
+        echo -e "                          This feature is exclusively supported on ${BOLD}${GREEN}macOS${NC}."
+        echo -e "  • ${BOLD}Remote Access:${NC}      To generate Traktor playlists, execute Mix Archive Manager"
+        echo -e "                          directly on your macOS workstation."
+        echo -e "${BOLD}${RED}═══════════════════════════════════════════════════════════════════════════════${NC}\n"
+        press_enter
+        return 1
+    fi
+
+    local gen_py="$SCRIPT_DIR/scripts/generate_traktor_playlist_from_history.py"
+    local gen_sh="$SCRIPT_DIR/scripts/generate_traktor_playlist_from_history.sh"
+    
+    if [ -x "$gen_sh" ]; then
+        "$gen_sh" "$@"
+    elif [ -f "$gen_py" ]; then
+        python3 "$gen_py" "$@"
+    elif [ -f "./scripts/generate_traktor_playlist_from_history.py" ]; then
+        python3 "./scripts/generate_traktor_playlist_from_history.py" "$@"
+    else
+        echo -e "\n${RED}Error: generate_traktor_playlist_from_history.py was not found in scripts/!${NC}\n"
+        press_enter
+        return 1
+    fi
+}
+
 launch_fl_studio() {
     local file="${1:-}"
     echo -e "\n${BOLD}${YELLOW}Launching Image-Line FL Studio (Fruity Loops)...${NC}\n"
@@ -4497,11 +4547,26 @@ manage_daws() {
         echo -e "  ${BOLD}${CYAN} 9)${NC} Launch Image-Line FL Studio / Fruity Loops (${fl_badge}${NC})"
         echo -e "  ${BOLD}${CYAN}10)${NC} Launch Native Instruments Traktor Pro (${traktor_badge}${NC})"
         echo -e "  ${BOLD}${CYAN}11)${NC} Launch Traktor Live Monitor & Audio Recorder (${GREEN}New Window - CPU, Decks, Recording, Audio I/O${NC})"
-        echo -e "  ${BOLD}${BLUE}────────────────────────────────────────────────────${NC}"
-        echo -e "  ${BOLD}${CYAN}12)${NC} ${BOLD}${GREEN}Open Mix WAV/FLAC Audio File in DAW...${NC} (Reaper, Logic Pro, FL Studio)"
-        echo -e "  ${BOLD}${CYAN} 0)${NC} Return to Main Menu"
-        echo ""
-        read -r -p "Enter choice [0-12]: " d_choice
+        if [ "$OS_TYPE" = "macos" ]; then
+            local t_ver
+            t_ver="$(get_traktor_version_mac 2>/dev/null || echo "3")"
+            if [ -n "$t_ver" ] && [ "$t_ver" != "3" ]; then
+                echo -e "  ${BOLD}${CYAN}12)${NC} Generate Playlist from History Files on Traktor 3 (${GREEN}v${t_ver} Key Sorted / Decks Ready${NC})"
+            else
+                echo -e "  ${BOLD}${CYAN}12)${NC} Generate Playlist from History Files on Traktor 3 (${GREEN}Key Sorted / Decks Ready${NC})"
+            fi
+            echo -e "  ${BOLD}${BLUE}────────────────────────────────────────────────────${NC}"
+            echo -e "  ${BOLD}${CYAN}13)${NC} ${BOLD}${GREEN}Open Mix WAV/FLAC Audio File in DAW...${NC} (Reaper, Logic Pro, FL Studio)"
+            echo -e "  ${BOLD}${CYAN} 0)${NC} Return to Main Menu"
+            echo ""
+            read -r -p "Enter choice [0-13]: " d_choice
+        else
+            echo -e "  ${BOLD}${BLUE}────────────────────────────────────────────────────${NC}"
+            echo -e "  ${BOLD}${CYAN}12)${NC} ${BOLD}${GREEN}Open Mix WAV/FLAC Audio File in DAW...${NC} (Reaper, Logic Pro, FL Studio)"
+            echo -e "  ${BOLD}${CYAN} 0)${NC} Return to Main Menu"
+            echo ""
+            read -r -p "Enter choice [0-12]: " d_choice
+        fi
 
         case "$d_choice" in
             1)
@@ -4538,7 +4603,19 @@ manage_daws() {
                 launch_traktor_monitor_window
                 ;;
             12)
-                open_mix_in_daw
+                if [ "$OS_TYPE" = "macos" ]; then
+                    generate_traktor_playlist_from_history
+                else
+                    open_mix_in_daw
+                fi
+                ;;
+            13)
+                if [ "$OS_TYPE" = "macos" ]; then
+                    open_mix_in_daw
+                else
+                    echo -e "\n${RED}Invalid choice!${NC}"
+                    sleep 1.2
+                fi
                 ;;
             0|[qQ])
                 return 0
@@ -7569,7 +7646,17 @@ while true; do
     echo -e "  ${BOLD}${CYAN}29)${NC} Custom Mix Playlists Suite (.m3u8 / .xspf) (${GREEN}Create, Edit & Launch in cliamp/Strawberry/VLC${NC})"
     echo -e "  ${BOLD}${CYAN}30)${NC} Launch Strawberry Music Player (New Window) (${GREEN}strawberry${NC})"
     echo -e "  ${BOLD}${CYAN}31)${NC} Launch VLC Media Player (${GREEN}vlc / org.videolan.VLC${NC})"
-    echo -e "  ${BOLD}${CYAN}32)${NC} Launch Haruna Media Player (${GREEN}org.kde.haruna${NC})"
+    if [ "$OS_TYPE" = "macos" ]; then
+        local t_ver
+        t_ver="$(get_traktor_version_mac 2>/dev/null || echo "3")"
+        if [ -n "$t_ver" ] && [ "$t_ver" != "3" ]; then
+            echo -e "  ${BOLD}${CYAN}32)${NC} Generate Playlist from History Files on Traktor 3 (${GREEN}v${t_ver} Key Sorted / Decks Ready${NC})"
+        else
+            echo -e "  ${BOLD}${CYAN}32)${NC} Generate Playlist from History Files on Traktor 3 (${GREEN}Key Sorted / Decks Ready${NC})"
+        fi
+    else
+        echo -e "  ${BOLD}${CYAN}32)${NC} Launch Haruna Media Player (${GREEN}org.kde.haruna${NC})"
+    fi
     echo -e "  ${BOLD}${CYAN}33)${NC} Launch Kodi Entertainment Center (${GREEN}tv.kodi.Kodi${NC})"
     echo -e "  ${BOLD}${CYAN}34)${NC} Show Connected USB MIDI Devices (${GREEN}list-midi-devices${NC})"
     echo -e "  ${BOLD}${CYAN}35)${NC} Studio Hardware & Software Inspector (${GREEN}PipeWire, ALSA, DAWs, MIDI Controllers & Surfaces${NC})"
@@ -7760,7 +7847,11 @@ while true; do
             launch_vlc
             ;;
         32)
-            launch_haruna
+            if [ "$OS_TYPE" = "macos" ]; then
+                generate_traktor_playlist_from_history
+            else
+                launch_haruna
+            fi
             ;;
         33)
             launch_kodi

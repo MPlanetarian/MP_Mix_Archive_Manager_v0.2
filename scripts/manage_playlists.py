@@ -156,11 +156,13 @@ def interactive_ui():
             print(f"  {DIM}No playlists created yet.{NC}\n")
             
         print(f"{BOLD}Playlist Operations:{NC}")
-        print(f"  ${BOLD}${CYAN} C)${NC} Create New Custom Playlist (.m3u8)")
-        print(f"  ${BOLD}${CYAN} L)${NC} Launch a Playlist in Audio Player (cliamp, Strawberry, VLC, etc.)")
-        print(f"  ${BOLD}${CYAN} E)${NC} Edit / Re-order Tracks in Existing Playlist")
-        print(f"  ${BOLD}${CYAN} D)${NC} Delete a Playlist")
-        print(f"\n  ${BOLD}${CYAN} 0)${NC} Return to Main Menu ${DIM}(or 'q')${NC}")
+        print(f"  {BOLD}{CYAN} C){NC} Create New Custom Playlist (.m3u8)")
+        print(f"  {BOLD}{CYAN} L){NC} Launch a Playlist in Audio Player (cliamp, Strawberry, VLC, etc.)")
+        print(f"  {BOLD}{CYAN} E){NC} Edit / Re-order Tracks in Existing Playlist")
+        print(f"  {BOLD}{CYAN} D){NC} Delete a Playlist")
+        if sys.platform == "darwin":
+            print(f"  {BOLD}{CYAN} T){NC} Generate Traktor Playlist from History Files (macOS)")
+        print(f"\n  {BOLD}{CYAN} 0){NC} Return to Main Menu {DIM}(or 'q'){NC}")
         print(f"{BOLD}{BLUE}──────────────────────────────────────────────────────────────────────{NC}")
         
         cmd = input(f"{BOLD}Enter choice: {NC}").strip()
@@ -169,6 +171,13 @@ def interactive_ui():
             
         if cmd.lower() == 'c':
             create_playlist_wizard()
+        elif cmd.lower() == 't' and sys.platform == "darwin":
+            traktor_script = get_base_dir() / "generate_traktor_playlist_from_history.py"
+            if traktor_script.is_file():
+                subprocess.run([sys.executable, str(traktor_script)])
+            else:
+                print(f"{RED}Error: generate_traktor_playlist_from_history.py not found!{NC}")
+                time.sleep(1)
         elif cmd.lower() == 'l':
             if not playlists:
                 print(f"{YELLOW}No playlists available.{NC}")
