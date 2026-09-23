@@ -7935,7 +7935,8 @@ while true; do
     os_updates=$(get_os_update_status)
     shell_info="Bash ${BASH_VERSION%%(*}"
     current_datetime=$(date "+%A, %B %d, %Y • %T %Z")
-    echo -e "  ${os_badge}  ${BOLD}${BLUE}│${NC}  ${BOLD}${CYAN}🔄 OS Updates:${NC} ${os_updates}  ${BOLD}${BLUE}│${NC}  ${BOLD}${CYAN}🐚 Shell:${NC} ${shell_info}  ${BOLD}${BLUE}│${NC}  ${BOLD}${CYAN}📅 Date:${NC} ${current_datetime}"
+    echo -e "  ${os_badge}"
+    echo -e "  ${BOLD}${CYAN}🔄 OS Updates:${NC} ${os_updates}  ${BOLD}${BLUE}│${NC}  ${BOLD}${CYAN}🐚 Shell:${NC} ${shell_info}  ${BOLD}${BLUE}│${NC}  ${BOLD}${CYAN}📅 Date:${NC} ${current_datetime}"
     sys_perf=$(get_system_perf_stats)
     echo -e "${sys_perf}"
     audio_interface_disp=$(get_active_audio_interface_display)
