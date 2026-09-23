@@ -308,7 +308,7 @@ align_mix_windows_on_screen() {
     if [ -f "$align_sh" ] && command -v python3 >/dev/null 2>&1; then
         local mgr_pid="$$"
         local parent_pid="$PPID"
-        (python3 "$align_sh" --mgr-pid "$mgr_pid" --parent-pid "$parent_pid" >/dev/null 2>&1 || true) &
+        (python3 "$align_sh" --mgr-pid "$mgr_pid" --parent-pid "$parent_pid" "$@" >/dev/null 2>&1 || true) &
         disown 2>/dev/null || true
     fi
 }
@@ -326,32 +326,32 @@ open_cover_art_window() {
         if command -v flatpak >/dev/null 2>&1 && flatpak list 2>/dev/null | grep -q "org.kde.gwenview"; then
             nohup flatpak run org.kde.gwenview "$target" >/dev/null 2>&1 &
             disown 2>/dev/null || true
-            align_mix_windows_on_screen
+            align_mix_windows_on_screen --expect-cover
             return 0
         elif command -v gwenview >/dev/null 2>&1; then
             nohup gwenview "$target" >/dev/null 2>&1 &
             disown 2>/dev/null || true
-            align_mix_windows_on_screen
+            align_mix_windows_on_screen --expect-cover
             return 0
         elif command -v loupe >/dev/null 2>&1; then
             nohup loupe "$target" >/dev/null 2>&1 &
             disown 2>/dev/null || true
-            align_mix_windows_on_screen
+            align_mix_windows_on_screen --expect-cover
             return 0
         elif command -v eog >/dev/null 2>&1; then
             nohup eog "$target" >/dev/null 2>&1 &
             disown 2>/dev/null || true
-            align_mix_windows_on_screen
+            align_mix_windows_on_screen --expect-cover
             return 0
         elif command -v feh >/dev/null 2>&1; then
             nohup feh --title "$cover_title" --geometry 700x700 "$target" >/dev/null 2>&1 &
             disown 2>/dev/null || true
-            align_mix_windows_on_screen
+            align_mix_windows_on_screen --expect-cover
             return 0
         elif command -v xdg-open >/dev/null 2>&1; then
             nohup xdg-open "$target" >/dev/null 2>&1 &
             disown 2>/dev/null || true
-            align_mix_windows_on_screen
+            align_mix_windows_on_screen --expect-cover
             return 0
         fi
     fi
@@ -359,7 +359,7 @@ open_cover_art_window() {
     # 2. macOS
     if [ "$OS_TYPE" = "macos" ]; then
         open -a Preview "$target" >/dev/null 2>&1 &
-        align_mix_windows_on_screen
+        align_mix_windows_on_screen --expect-cover
         return 0
     fi
 
@@ -908,6 +908,44 @@ run_sub_script() {
         echo -e "${RED}Error: Script '$script_name' not found in $(pwd) or $SCRIPT_DIR!${NC}"
         return 1
     fi
+}
+
+is_mix_in_strawberry_playlist() {
+    local mix_file="$1"
+    [ -z "$mix_file" ] && return 1
+
+    python3 -c "
+import sqlite3, os, sys, urllib.parse
+
+filepath = sys.argv[1]
+fname = os.path.basename(filepath)
+stem = os.path.splitext(fname)[0]
+enc_fname = urllib.parse.quote(fname)
+
+db_candidates = [
+    os.path.expanduser('~/.local/share/strawberry/strawberry/strawberry.db'),
+    os.path.expanduser('~/.var/app/org.strawberrymusicplayer.strawberry/data/strawberry/strawberry/strawberry.db'),
+    os.path.expanduser('~/Library/Application Support/Strawberry/strawberry/strawberry.db'),
+]
+
+found = False
+for db in db_candidates:
+    if os.path.isfile(db):
+        try:
+            conn = sqlite3.connect(f'file:{db}?mode=ro', uri=True)
+            cur = conn.cursor()
+            query = '''SELECT count(*) FROM playlist_items WHERE url LIKE ? OR url LIKE ? OR url LIKE ? OR title = ? OR title LIKE ?'''
+            cur.execute(query, (f'%{fname}%', f'%{enc_fname}%', f'%{filepath}%', stem, f'%{stem}%'))
+            cnt = cur.fetchone()[0]
+            conn.close()
+            if cnt > 0:
+                found = True
+                break
+        except Exception:
+            pass
+
+sys.exit(0 if found else 1)
+" "$mix_file" 2>/dev/null
 }
 
 get_strawberry_track_info() {
@@ -4535,7 +4573,7 @@ play_audio_file() {
         strawberry)
             if get_strawberry_track_info 2>/dev/null && [ "$STRAWBERRY_STATE" = "playing" ]; then
                 if [ "$STRAWBERRY_RESOLVED_PATH" = "$file" ] || [ "$STRAWBERRY_RAW_PATH" = "$file" ]; then
-                    align_mix_windows_on_screen
+                    align_mix_windows_on_screen --expect-strawberry
                     return 0
                 fi
             fi
@@ -4548,7 +4586,7 @@ play_audio_file() {
             elif [ "$OS_TYPE" = "macos" ]; then
                 open -a Strawberry "$file" >/dev/null 2>&1 &
             fi
-            align_mix_windows_on_screen
+            align_mix_windows_on_screen --expect-strawberry
             ;;
         vlc)
             if command -v vlc >/dev/null 2>&1; then
@@ -4745,7 +4783,36 @@ if files:
     # 1. Play in default audio player
     local SKIP_PLAYING_ASSETS=1
     local player="${DEFAULT_AUDIO_PLAYER:-strawberry}"
-    play_audio_file "$player" "$selected_mix"
+    local mix_already_in_playlist=0
+    if [ "$player" = "strawberry" ] && is_mix_in_strawberry_playlist "$selected_mix"; then
+        mix_already_in_playlist=1
+    fi
+
+    if [ "$mix_already_in_playlist" -eq 1 ]; then
+        # The latest mix was already added to Strawberry playlist previously; do NOT add it again!
+        if ! pgrep -i -f strawberry >/dev/null 2>&1; then
+            # Strawberry not running: launch Strawberry to load existing playlist without adding duplicates
+            if command -v strawberry >/dev/null 2>&1; then
+                nohup strawberry -p >/dev/null 2>&1 &
+                disown 2>/dev/null || true
+            elif flatpak list 2>/dev/null | grep -q "org.strawberrymusicplayer.strawberry"; then
+                nohup flatpak run org.strawberrymusicplayer.strawberry -p >/dev/null 2>&1 &
+                disown 2>/dev/null || true
+            elif [ "$OS_TYPE" = "macos" ]; then
+                open -a Strawberry >/dev/null 2>&1 &
+            fi
+        else
+            # Strawberry already running: ensure playlist is playing if paused/stopped
+            if command -v strawberry >/dev/null 2>&1; then
+                strawberry -p >/dev/null 2>&1 || true
+            elif flatpak list 2>/dev/null | grep -q "org.strawberrymusicplayer.strawberry"; then
+                flatpak run org.strawberrymusicplayer.strawberry -p >/dev/null 2>&1 || true
+            fi
+        fi
+    else
+        # Not previously added: add and play in default audio player
+        play_audio_file "$player" "$selected_mix"
+    fi
 
     # 2. Open cover art in dedicated image viewer window if enabled
     local found_cover=""
@@ -4773,7 +4840,10 @@ if files:
     fi
 
     # Align windows across displays: Manager on primary display, Strawberry & Cover on secondary display (>1 displays)
-    align_mix_windows_on_screen
+    local align_args=()
+    [ "$player" = "strawberry" ] && align_args+=(--expect-strawberry)
+    [ -n "$found_cover" ] && align_args+=(--expect-cover)
+    align_mix_windows_on_screen "${align_args[@]}"
 
     # 4. Custom YouTube video URL on startup (only if mix audio is playing!)
     if [ "${AUTO_PLAY_YOUTUBE_ON_STARTUP:-false}" = "true" ] && [ -n "${STARTUP_YOUTUBE_URL:-}" ]; then
