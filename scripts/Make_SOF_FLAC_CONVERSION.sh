@@ -1,5 +1,24 @@
 #!/usr/bin/env bash
 
+# ==============================================================================
+# Make_SOF_FLAC_CONVERSION.sh
+# Universal Multi-Platform FLAC Audio Conversion & Session Grouper
+# Compatible with macOS (Bash 3.2 / 4 / 5), Linux, and Windows
+# ==============================================================================
+
+set -eo pipefail
+
+export PATH="/opt/homebrew/bin:/usr/local/bin:$HOME/.local/bin:$PATH"
+
+# Auto-upgrade to modern Homebrew Bash on macOS if running under ancient Bash 3.2
+if [ "${BASH_VERSINFO[0]:-0}" -lt 4 ] && [ "$(uname -s 2>/dev/null)" = "Darwin" ]; then
+    if [ -x "/opt/homebrew/bin/bash" ]; then
+        exec /opt/homebrew/bin/bash "$0" "$@"
+    elif [ -x "/usr/local/bin/bash" ]; then
+        exec /usr/local/bin/bash "$0" "$@"
+    fi
+fi
+
 # ================================
 # USER CONFIGURATION & SETUP
 # ================================
@@ -8,6 +27,44 @@ ARCHIVE_DIR="CONVERTED_WAV_FILES"
 SPEK_DIR="SPEK_OUTPUTS"
 LOG_FILE="FLAC_CONVERSION_SOF.log"
 COVER_ART="Cover.png"
+
+# Cross-platform helper functions (Bash 3.2+ compatible)
+get_abs_path() {
+    local target="$1"
+    if command -v realpath >/dev/null 2>&1; then
+        realpath "$target" 2>/dev/null || readlink -f "$target" 2>/dev/null
+    elif command -v python3 >/dev/null 2>&1; then
+        python3 -c "import os, sys; print(os.path.abspath(sys.argv[1]))" "$target" 2>/dev/null
+    else
+        echo "$(cd "$(dirname "$target")" 2>/dev/null && pwd)/$(basename "$target")"
+    fi
+}
+
+get_str_hash() {
+    local s="$1"
+    if command -v md5sum >/dev/null 2>&1; then
+        echo -n "$s" | md5sum | awk '{print $1}'
+    elif command -v md5 >/dev/null 2>&1; then
+        md5 -q -s "$s"
+    elif command -v python3 >/dev/null 2>&1; then
+        python3 -c "import hashlib, sys; print(hashlib.md5(sys.argv[1].encode('utf-8')).hexdigest())" "$s"
+    else
+        echo -n "$s" | cksum | awk '{print $1}'
+    fi
+}
+
+safe_mktemp() {
+    local ext="${1:-}"
+    if [ -n "$ext" ]; then
+        mktemp "${TMPDIR:-/tmp}/sof_${ext}_XXXXXX.${ext}" 2>/dev/null || \
+        mktemp -t "sof_${ext}_XXXXXX.${ext}" 2>/dev/null || \
+        mktemp "/tmp/sof_${ext}_XXXXXX.${ext}"
+    else
+        mktemp "${TMPDIR:-/tmp}/sof_XXXXXX" 2>/dev/null || \
+        mktemp -t "sof_XXXXXX" 2>/dev/null || \
+        mktemp "/tmp/sof_XXXXXX"
+    fi
+}
 
 # Direct Local Traktor History Directory (Auto-detected across Linux, macOS, and Windows)
 LOCAL_HISTORY_DIR="${TRAKTOR_HISTORY_DIR:-}"
@@ -19,6 +76,7 @@ if [ -z "$LOCAL_HISTORY_DIR" ] || [ ! -d "$LOCAL_HISTORY_DIR" ]; then
         "/run/media/mplanetarian/WD BLACK B/MIX_ARCHIVE/Traktor 3.11.1/History" \
         "/Volumes/WD BLACK B/MIX_ARCHIVE/Traktor 3.11.1/History" \
         "/Volumes/MIX_ARCHIVE/Traktor 3.11.1/History" \
+        "/Volumes/DATAMAC3/MIX_ARCHIVE/Traktor 3.11.1/History" \
         "/d/MIX_ARCHIVE/Traktor 3.11.1/History" \
         "D:/MIX_ARCHIVE/Traktor 3.11.1/History" \
         "/mnt/d/MIX_ARCHIVE/Traktor 3.11.1/History" \
@@ -63,8 +121,6 @@ if [ ! -f "$COVER_ART" ]; then
 fi
 echo "Cover art found ($COVER_ART)."
 
-# Cover art will be dynamically evaluated and optimized per group inside the loop.
-
 # Enable globstar and nullglob for robust file matching
 shopt -s nullglob nocaseglob
 
@@ -74,20 +130,22 @@ if [ $# -gt 0 ]; then
     for arg in "$@"; do
         clean_arg=$(echo "$arg" | tr -d '\r' | tr -d '\n')
         if [ -f "$clean_arg" ]; then
-            TARGET_FILES+=("$(realpath "$clean_arg")")
+            abs_target=$(get_abs_path "$clean_arg")
+            TARGET_FILES+=("$abs_target")
             echo "Target file added: $(basename "$clean_arg")"
         else
             echo "ERROR: Specified file '$clean_arg' not found!"
-            rm -f "$OPTIMIZED_COVER"
             exit 1
         fi
     done
     echo "Multi-file/Explicit target mode enabled. Total targets: ${#TARGET_FILES[@]}"
 fi
 
-# 1. Discover and group WAV files cleanly
-declare -A file_groups
-declare -A processed_files
+# 1. Discover and group WAV files cleanly (Bash 3.2+ & macOS compatible without associative arrays)
+GROUP_TMP_DIR=$(mktemp -d "${TMPDIR:-/tmp}/sof_groups_XXXXXX" 2>/dev/null || mktemp -d /tmp/sof_groups_XXXXXX)
+trap 'rm -rf "$GROUP_TMP_DIR" "${OPTIMIZED_COVER:-}" 2>/dev/null || true' EXIT
+
+declare -a group_keys=()
 
 if [ ${#TARGET_FILES[@]} -gt 0 ]; then
     search_list=("${TARGET_FILES[@]}")
@@ -97,26 +155,31 @@ fi
 
 for file in "${search_list[@]}"; do
     [ -e "$file" ] || continue
-    abs_file=$(realpath "$file")
-    
-    if [[ -n "${processed_files[$abs_file]}" ]]; then
+    abs_file=$(get_abs_path "$file")
+    [ -f "$abs_file" ] || continue
+
+    file_hash=$(get_str_hash "$abs_file")
+    if [ -f "$GROUP_TMP_DIR/seen_${file_hash}" ]; then
         continue
     fi
-    processed_files["$abs_file"]=1
+    touch "$GROUP_TMP_DIR/seen_${file_hash}"
 
     filename=$(basename "$file")
     # Cleanly strip only the trailing split duration suffix (e.g., _03h02m02 or _0h52m07) if present
     base_name=$(echo "$filename" | sed -E 's/_[0-9]{1,2}h[0-9]{2}m[0-9]{2}\.[Ww][Aa][Vv]$//' | sed -E 's/\.[Ww][Aa][Vv]$//')
-    
-    file_groups["$base_name"]+="$abs_file"$'\n'
+
+    base_hash=$(get_str_hash "$base_name")
+    if [ ! -f "$GROUP_TMP_DIR/group_${base_hash}.base" ]; then
+        echo "$base_name" > "$GROUP_TMP_DIR/group_${base_hash}.base"
+        group_keys+=("$base_hash")
+    fi
+    echo "$abs_file" >> "$GROUP_TMP_DIR/group_${base_hash}.wavs"
 done
 
-group_keys=("${!file_groups[@]}")
 total_groups=${#group_keys[@]}
 
 if [ "$total_groups" -eq 0 ]; then
     echo "Error: No matching .wav files found to process."
-    rm -f "$OPTIMIZED_COVER"
     exit 1
 fi
 
@@ -124,22 +187,29 @@ echo "Found $total_groups unique audio session group(s) to process."
 
 # 2. Calculate Total Source Size & Check Available Disk Space
 total_size_bytes=0
-for base in "${group_keys[@]}"; do
-    while read wav; do
-        [ -z "$wav" ] && continue
-        size=$(wc -c < "$wav" 2>/dev/null || stat -c %s "$wav" 2>/dev/null || stat -f %z "$wav" 2>/dev/null || echo 0)
-        total_size_bytes=$((total_size_bytes + size))
-    done <<< "${file_groups[$base]}"
+for g_hash in "${group_keys[@]}"; do
+    wav_file_list="$GROUP_TMP_DIR/group_${g_hash}.wavs"
+    if [ -f "$wav_file_list" ]; then
+        while IFS= read -r wav || [ -n "$wav" ]; do
+            [ -z "$wav" ] && continue
+            size=$(wc -c < "$wav" 2>/dev/null || stat -c %s "$wav" 2>/dev/null || stat -f %z "$wav" 2>/dev/null || echo 0)
+            total_size_bytes=$((total_size_bytes + size))
+        done < "$wav_file_list"
+    fi
 done
 
-available_space_bytes=$(df -B1 "$OUTPUT_DIR" | awk 'NR==2 {print $4}')
+if command -v python3 >/dev/null 2>&1; then
+    available_space_bytes=$(python3 -c "import shutil, sys; print(shutil.disk_usage(sys.argv[1]).free)" "$OUTPUT_DIR" 2>/dev/null || echo 0)
+else
+    available_space_bytes=$(df -k "$OUTPUT_DIR" 2>/dev/null | awk 'NR==2 {print $4 * 1024}')
+fi
+[ -z "$available_space_bytes" ] && available_space_bytes=0
 
-if [ "$available_space_bytes" -lt "$total_size_bytes" ]; then
+if [ "$available_space_bytes" -gt 0 ] && [ "$available_space_bytes" -lt "$total_size_bytes" ]; then
     echo "--------------------------------------------------"
     echo "ERROR: Insufficient disk space!"
     echo " -> Total WAV source size:  $((total_size_bytes / 1024 / 1024)) MB"
     echo " -> Available disk space:   $((available_space_bytes / 1024 / 1024)) MB"
-    rm -f "$OPTIMIZED_COVER"
     exit 1
 else
     echo "Disk space check passed: $((available_space_bytes / 1024 / 1024)) MB available."
@@ -151,6 +221,8 @@ if [ "$estimated_seconds" -lt 10 ]; then estimated_seconds=10; fi
 
 if date -u -d "@$estimated_seconds" +'%Hh %Mm %Ss' >/dev/null 2>&1; then
     formatted_est=$(date -u -d "@$estimated_seconds" +'%Hh %Mm %Ss')
+elif date -u -r "$estimated_seconds" +'%Hh %Mm %Ss' >/dev/null 2>&1; then
+    formatted_est=$(date -u -r "$estimated_seconds" +'%Hh %Mm %Ss')
 else
     formatted_est="$estimated_seconds seconds"
 fi
@@ -164,11 +236,16 @@ all_groups_successful=true
 
 # 4. Process, Merge, Convert, Tag Groups, Write Tracklist, and Generate Spectrogram
 counter=1
-for base in "${group_keys[@]}"; do
+for g_hash in "${group_keys[@]}"; do
+    base=$(cat "$GROUP_TMP_DIR/group_${g_hash}.base")
+    wav_file_list="$GROUP_TMP_DIR/group_${g_hash}.wavs"
+
     declare -a current_wavs=()
-    while read line; do
-        [[ -n "$line" ]] && current_wavs+=("$line")
-    done < <(printf '%s\n' "${file_groups[$base]}" | grep -v '^$' | sort)
+    if [ -f "$wav_file_list" ]; then
+        while IFS= read -r line || [ -n "$line" ]; do
+            [[ -n "$line" ]] && current_wavs+=("$line")
+        done < <(grep -v '^$' "$wav_file_list" | sort)
+    fi
     
     # Format output filenames cleanly with Artist, Show Name, and Datestamp intact
     clean_base=$(echo "$base" | sed 's/__/_/g')
@@ -257,7 +334,7 @@ for base in "${group_keys[@]}"; do
                 echo "=================================================="
             } > "$tracklist_path"
 
-            temp_py=$(mktemp --suffix=.py)
+            temp_py=$(safe_mktemp py)
             cat << 'PY_PARSER' > "$temp_py"
 import sys
 import xml.etree.ElementTree as ET
@@ -389,7 +466,7 @@ PY_PARSER
     fi
     
     # Prepare a safely resized/optimized temporary cover art to avoid FLAC 16MB metadata limits
-    OPTIMIZED_COVER=$(mktemp --suffix=.png)
+    OPTIMIZED_COVER=$(safe_mktemp png)
     ffmpeg -y -i "$selected_cover" -vf "scale='min(1400,iw)':-1" "$OPTIMIZED_COVER" > /dev/null 2>&1
     if [ $? -ne 0 ]; then
         echo "WARNING: Failed to optimize cover art. Using original '$(basename "$selected_cover")'."
@@ -398,7 +475,7 @@ PY_PARSER
 
     if [ ${#current_wavs[@]} -gt 1 ]; then
         echo " -> Merging ${#current_wavs[@]} split WAV files into single FLAC with cover art..."
-        concat_list=$(mktemp)
+        concat_list=$(safe_mktemp)
         for w in "${current_wavs[@]}"; do
             echo "file '$w'" >> "$concat_list"
         done
@@ -412,7 +489,7 @@ PY_PARSER
           -disposition:v:0 attached_pic \
           "$output_path"
         conversion_status=$?
-        rm "$concat_list"
+        rm -f "$concat_list"
     else
         echo " -> Converting single WAV file to FLAC with cover art..."
         ffmpeg -y -i "${current_wavs[0]}" -i "$OPTIMIZED_COVER" \

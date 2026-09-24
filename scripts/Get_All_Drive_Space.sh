@@ -46,7 +46,9 @@ main_mount=$(df -P "$HOME" 2>/dev/null | awk 'NR==2 {print $6}')
 printf "${C_WHITE}%-38s %-8s %10s %10s %10s %7s${C_RESET}\n" "Mount Point" "FS Type" "Size" "Free" "Used" "%Used"
 echo -e "${C_BORDER}----------------------------------------------------------------------------------------${C_RESET}"
 
-declare -A seen_devices
+if [ "${BASH_VERSINFO[0]:-0}" -ge 4 ]; then
+    declare -A seen_devices 2>/dev/null || true
+fi
 total_size=0
 total_used=0
 total_free=0

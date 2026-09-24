@@ -16,4 +16,10 @@ cd "$SCRIPT_DIR" || exit 1
 # Ensure Homebrew and local tools are available in PATH
 export PATH="/opt/homebrew/bin:/usr/local/bin:$SCRIPT_DIR/bin:$SCRIPT_DIR:$HOME/.local/bin:$PATH"
 
-exec bash "$SCRIPT_DIR/Mix_Archive_Manager.sh" "$@"
+if [ -x "/opt/homebrew/bin/bash" ]; then
+    exec /opt/homebrew/bin/bash "$SCRIPT_DIR/Mix_Archive_Manager.sh" "$@"
+elif [ -x "/usr/local/bin/bash" ]; then
+    exec /usr/local/bin/bash "$SCRIPT_DIR/Mix_Archive_Manager.sh" "$@"
+elif command -v bash >/dev/null 2>&1; then
+    exec bash "$SCRIPT_DIR/Mix_Archive_Manager.sh" "$@"
+fi
