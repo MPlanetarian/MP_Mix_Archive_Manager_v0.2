@@ -8440,13 +8440,13 @@ while true; do
     fi
     echo -e "  ${BOLD}${CYAN}52)${NC} Close All Desktop Applications (Keep Manager Open)"
     if [ "$OS_TYPE" = "macos" ]; then
-        echo -e "  ${BOLD}${CYAN}53)${NC}  macOS System Maintenance & Cleanup (${GREEN}drive space, Software Update window, brew, purge RAM${NC})"
+        echo -e "  ${BOLD}${CYAN}53)${NC} macOS System Maintenance & Cleanup (${GREEN}drive space, Software Update window, brew, purge RAM${NC})"
     elif [ "$OS_TYPE" = "windows" ] || [ "$OS_TYPE" = "wsl" ]; then
-        echo -e "  ${BOLD}${CYAN}53)${NC}  Windows System Maintenance & Cleanup (${GREEN}drive space, Windows Update window, winget, TRIM${NC})"
+        echo -e "  ${BOLD}${CYAN}53)${NC} Windows System Maintenance & Cleanup (${GREEN}drive space, Windows Update window, winget, TRIM${NC})"
     elif [ "$OS_TYPE" = "freebsd" ]; then
-        echo -e "  ${BOLD}${CYAN}53)${NC}  FreeBSD System Maintenance & Cleanup (${GREEN}drive space, pkg upgrade, clean, autoremove${NC})"
+        echo -e "  ${BOLD}${CYAN}53)${NC} FreeBSD System Maintenance & Cleanup (${GREEN}drive space, pkg upgrade, clean, autoremove${NC})"
     else
-        echo -e "  ${BOLD}${CYAN}53)${NC}  System Maintenance & Cleanup (${GREEN}drive space, ujust clean-system, update, trim, logs${NC})"
+        echo -e "  ${BOLD}${CYAN}53)${NC} System Maintenance & Cleanup (${GREEN}drive space, ujust clean-system, update, trim, logs${NC})"
     fi
     echo -e "  ${BOLD}${CYAN}54)${NC} Burn ISO Image to USB Drive (${GREEN}dd / diskutil with safety checks${NC})"
     echo -e "  ${BOLD}${CYAN}55)${NC} Dynamic System MOTD Banner Manager (${GREEN}Last 3 Mixes, Date/Time, Size, Format & Specs${NC})"
