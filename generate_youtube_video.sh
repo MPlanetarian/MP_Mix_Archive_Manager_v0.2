@@ -27,7 +27,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 AUDIO_FILE=""
 VIDEO_FILE=""
 IMAGE_FILE=""
-OUTPUT_DIR="FLAC_CONVERTED_OUTPUTS"
+OUTPUT_DIR="${MP4_OUTPUT_DIR:-MP4_CONVERTED_OUTPUTS}"
 RESOLUTION="1080p"
 MODE=""
 
@@ -39,7 +39,7 @@ usage() {
     echo "  -i, --input, -a FILE   Input FLAC/WAV audio file"
     echo "  -v, --video FILE       Input MP4/MKV video file (enables MP4-to-MP4 looping mode)"
     echo "  -c, --cover, -t FILE   Input Cover Art image / Intro-Outro Thumbnail (default: auto-find or Cover.png)"
-    echo "  -o, --output DIR       Output directory or output file path (default: FLAC_CONVERTED_OUTPUTS)"
+    echo "  -o, --output DIR       Output directory or output file path (default: MP4_CONVERTED_OUTPUTS)"
     echo "  -h, --help             Show this help message"
     echo ""
     echo "Examples:"
@@ -145,7 +145,7 @@ if [ -z "$AUDIO_FILE" ] && [ -z "$VIDEO_FILE" ]; then
         read -r -p "Enter path to Input Video file (.mp4 / .mkv): " VIDEO_FILE
         read -r -p "Enter path to Audio file (.wav / .flac): " AUDIO_FILE
         read -r -p "Enter path to Intro/Outro Thumbnail image (leave blank for none / Cover.png): " IMAGE_FILE
-        read -r -p "Enter output directory or file (default: Documents or FLAC_CONVERTED_OUTPUTS): " user_out
+        read -r -p "Enter output directory or file (default: $OUTPUT_DIR): " user_out
         [ -n "$user_out" ] && OUTPUT_DIR="$user_out"
     else
         # Search for available FLACs/WAVs (newest/latest first)
@@ -240,14 +240,22 @@ fi
 
 # Verify audio file
 if [ ! -f "$AUDIO_FILE" ]; then
-    if [ -f "$OUTPUT_DIR/$AUDIO_FILE" ]; then
-        AUDIO_FILE="$OUTPUT_DIR/$AUDIO_FILE"
+    if [ -f "FLAC_CONVERTED_OUTPUTS/$AUDIO_FILE" ]; then
+        AUDIO_FILE="FLAC_CONVERTED_OUTPUTS/$AUDIO_FILE"
+    elif [ -f "WAV_CONVERTED_OUTPUTS/$AUDIO_FILE" ]; then
+        AUDIO_FILE="WAV_CONVERTED_OUTPUTS/$AUDIO_FILE"
+    elif [ -f "CONVERTED_WAV_FILES/$AUDIO_FILE" ]; then
+        AUDIO_FILE="CONVERTED_WAV_FILES/$AUDIO_FILE"
     elif [ -f "$AUDIO_FILE.flac" ]; then
         AUDIO_FILE="$AUDIO_FILE.flac"
-    elif [ -f "$OUTPUT_DIR/$AUDIO_FILE.flac" ]; then
-        AUDIO_FILE="$OUTPUT_DIR/$AUDIO_FILE.flac"
     elif [ -f "$AUDIO_FILE.wav" ]; then
         AUDIO_FILE="$AUDIO_FILE.wav"
+    elif [ -f "FLAC_CONVERTED_OUTPUTS/$AUDIO_FILE.flac" ]; then
+        AUDIO_FILE="FLAC_CONVERTED_OUTPUTS/$AUDIO_FILE.flac"
+    elif [ -f "WAV_CONVERTED_OUTPUTS/$AUDIO_FILE.wav" ]; then
+        AUDIO_FILE="WAV_CONVERTED_OUTPUTS/$AUDIO_FILE.wav"
+    elif [ -f "$OUTPUT_DIR/$AUDIO_FILE" ]; then
+        AUDIO_FILE="$OUTPUT_DIR/$AUDIO_FILE"
     else
         echo -e "\n${RED}Error: Audio file '$AUDIO_FILE' not found!${NC}"
         exit 1

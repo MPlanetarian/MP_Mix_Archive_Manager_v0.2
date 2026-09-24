@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# MP_Mix_Manager_v0.2 - Advanced Audio File Specification & Stream Inspector
+# MP_Mix_Manager_v0.3 - Advanced Audio File Specification & Stream Inspector
 # Inspects playing or specified mix audio files: WAV, FLAC, Bit Depth, Sample Rate,
 # Codec, Duration, File Size, File Path, Title, and live Audio Interface / Latency.
 # ==============================================================================

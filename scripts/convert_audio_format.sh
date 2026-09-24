@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# MP_Mix_Manager_v0.2 - Universal Audio Format & Bit Depth Converter
+# MP_Mix_Manager_v0.3 - Universal Audio Format & Bit Depth Converter
 # Converts WAV (and other audio) to MP3, Ogg Vorbis, Apple AAC/ALAC, Opus,
 # FLAC, and WAV to WAV with custom bit depths (32-bit, 24-bit, 16-bit).
 # ==============================================================================
@@ -181,7 +181,15 @@ echo -e "  ${BOLD}${CYAN}4)${NC} All FLAC Outputs (FLAC_CONVERTED_OUTPUTS)"
 echo ""
 read -r -p "Enter choice [1-4]: " scope_choice
 
-DEFAULT_OUT_DIR="CONVERTED_AUDIO_OUTPUTS/$SUB_DIR"
+if [ "$EXT" = "mp3" ]; then
+    DEFAULT_OUT_DIR="${MP3_OUTPUT_DIR:-MP3_CONVERTED_OUTPUTS}"
+elif [ "$EXT" = "wav" ]; then
+    DEFAULT_OUT_DIR="${WAV_OUTPUT_DIR:-WAV_CONVERTED_OUTPUTS}"
+elif [ "$EXT" = "flac" ]; then
+    DEFAULT_OUT_DIR="${FLAC_OUTPUT_DIR:-${OUTPUT_DIR:-FLAC_CONVERTED_OUTPUTS}}"
+else
+    DEFAULT_OUT_DIR="CONVERTED_AUDIO_OUTPUTS/$SUB_DIR"
+fi
 
 case "$scope_choice" in
     1)
@@ -194,7 +202,13 @@ case "$scope_choice" in
         else
             # Search for keyword
             shopt -s nullglob nocaseglob
-            candidates=(*"$user_input"*.[wW][aA][vV] *"$user_input"*.[fF][lL][aA][cC] "FLAC_CONVERTED_OUTPUTS"/*"$user_input"*.[fF][lL][aA][cC] "CONVERTED_WAV_FILES"/*"$user_input"*.[wW][aA][vV])
+            candidates=(*"$user_input"*.[wW][aA][vV] *"$user_input"*.[fF][lL][aA][cC] \
+                "${OUTPUT_DIR:-FLAC_CONVERTED_OUTPUTS}"/*"$user_input"*.[fF][lL][aA][cC] \
+                "${ARCHIVE_DIR:-CONVERTED_WAV_FILES}"/*"$user_input"*.[wW][aA][vV] \
+                "${WAV_OUTPUT_DIR:-WAV_CONVERTED_OUTPUTS}"/*"$user_input"*.[wW][aA][vV] \
+                "${MP3_OUTPUT_DIR:-MP3_CONVERTED_OUTPUTS}"/*"$user_input"*.[mM][pP]3 \
+                "${MIX_ARCHIVE_DIR:-}/FLAC_CONVERTED_OUTPUTS"/*"$user_input"*.[fF][lL][aA][cC] \
+                "${MIX_ARCHIVE_DIR:-}/CONVERTED_WAV_FILES"/*"$user_input"*.[wW][aA][vV])
             shopt -u nullglob nocaseglob
             if [ ${#candidates[@]} -eq 0 ]; then
                 echo -e "${RED}No audio files found matching '$user_input'!${NC}"
@@ -240,8 +254,10 @@ case "$scope_choice" in
         echo -e "${BOLD}${GREEN}✓ Batch conversion completed: $success / ${#wav_files[@]} succeeded!${NC}\n"
         ;;
     3)
-        wav_dir="CONVERTED_WAV_FILES"
-        if [ ! -d "$wav_dir" ] && [ -d "/run/media/$USER/WD BLACK B/MIX_ARCHIVE/CONVERTED_WAV_FILES" ]; then
+        wav_dir="${ARCHIVE_DIR:-CONVERTED_WAV_FILES}"
+        if [ ! -d "$wav_dir" ] && [ -n "${MIX_ARCHIVE_DIR:-}" ] && [ -d "$MIX_ARCHIVE_DIR/CONVERTED_WAV_FILES" ]; then
+            wav_dir="$MIX_ARCHIVE_DIR/CONVERTED_WAV_FILES"
+        elif [ ! -d "$wav_dir" ] && [ -d "/run/media/$USER/WD BLACK B/MIX_ARCHIVE/CONVERTED_WAV_FILES" ]; then
             wav_dir="/run/media/$USER/WD BLACK B/MIX_ARCHIVE/CONVERTED_WAV_FILES"
         fi
         shopt -s nullglob nocaseglob
@@ -265,8 +281,10 @@ case "$scope_choice" in
         echo -e "${BOLD}${GREEN}✓ Batch conversion completed: $success / ${#wav_files[@]} succeeded!${NC}\n"
         ;;
     4)
-        flac_dir="FLAC_CONVERTED_OUTPUTS"
-        if [ ! -d "$flac_dir" ] && [ -d "/run/media/$USER/WD BLACK B/MIX_ARCHIVE/FLAC_CONVERTED_OUTPUTS" ]; then
+        flac_dir="${OUTPUT_DIR:-FLAC_CONVERTED_OUTPUTS}"
+        if [ ! -d "$flac_dir" ] && [ -n "${MIX_ARCHIVE_DIR:-}" ] && [ -d "$MIX_ARCHIVE_DIR/FLAC_CONVERTED_OUTPUTS" ]; then
+            flac_dir="$MIX_ARCHIVE_DIR/FLAC_CONVERTED_OUTPUTS"
+        elif [ ! -d "$flac_dir" ] && [ -d "/run/media/$USER/WD BLACK B/MIX_ARCHIVE/FLAC_CONVERTED_OUTPUTS" ]; then
             flac_dir="/run/media/$USER/WD BLACK B/MIX_ARCHIVE/FLAC_CONVERTED_OUTPUTS"
         fi
         shopt -s nullglob nocaseglob

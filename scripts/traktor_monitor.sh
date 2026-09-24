@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# MP_Mix_Manager_v0.2 - Traktor Pro Live Monitor & Audio Recorder Control
+# MP_Mix_Manager_v0.3 - Traktor Pro Live Monitor & Audio Recorder Control
 # Cross-platform: macOS, Windows 10 & 11, and Linux
 # Supports:
 #   • CPU % & RSS RAM memory tracking for Traktor processes

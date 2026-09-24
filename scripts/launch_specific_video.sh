@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# MP_Mix_Manager_v0.2 - Dedicated Video Player Launcher & Video Dispatcher
+# MP_Mix_Manager_v0.3 - Dedicated Video Player Launcher & Video Dispatcher
 # Launches specific video files or streaming URLs in the default video player (VLC).
 # Allows configuring startup custom YouTube video URL autoplay.
 # ==============================================================================

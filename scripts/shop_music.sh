@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# MP_Mix_Manager_v0.2 - Go Shopping for New Music & High-Res Tracks
+# MP_Mix_Manager_v0.3 - Go Shopping for New Music & High-Res Tracks
 # Opens Beatport, Apple Music, and Bandcamp in browser tabs.
 # ==============================================================================
 

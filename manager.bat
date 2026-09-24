@@ -1,6 +1,6 @@
 @echo off
 rem ==============================================================================
-rem MP_Mix_Manager_v0.2 - Windows 10 & 11 Native Launcher
+rem MP_Mix_Manager_v0.3 - Windows 10 & 11 Native Launcher
 rem Launches Mix_Archive_Manager.sh using Git Bash, MSYS2, or WSL
 rem ==============================================================================
 setlocal enabledelayedexpansion

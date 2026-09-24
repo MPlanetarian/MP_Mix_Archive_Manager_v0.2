@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-MP_Mix_Manager_v0.2 - Procedural PPM Gradient Cover Art Generator
+MP_Mix_Manager_v0.3 - Procedural PPM Gradient Cover Art Generator
 Generates high-resolution podcast cover art using pure PPM (Portable Pixmap P6)
 algorithms with procedural gradients, randomized aesthetic palettes, and text overlays.
 """

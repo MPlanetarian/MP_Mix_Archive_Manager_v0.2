@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# MP_Mix_Manager_v0.2 - DJ Mix Scheduler Launcher
+# MP_Mix_Manager_v0.3 - DJ Mix Scheduler Launcher
 # "Schedule DJ Mix or Multiple DJ Mixes to Play Loudly (Uses Default Audio Player)"
 # ==============================================================================
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

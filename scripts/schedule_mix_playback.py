@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-MP_Mix_Manager_v0.2 - DJ Mix Scheduler
+MP_Mix_Manager_v0.3 - DJ Mix Scheduler
 Menu: "Schedule DJ Mix or Multiple DJ Mixes to Play Loudly (Uses Default Audio Player)"
 
 Features:

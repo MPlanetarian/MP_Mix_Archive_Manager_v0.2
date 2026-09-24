@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-MP_Mix_Manager_v0.2 - Audio Studio & Hardware Inspector
+MP_Mix_Manager_v0.3 - Audio Studio & Hardware Inspector
 Comprehensive diagnostics:
   1. Detects all installed music software (DAWs, Editors, Players, DJ Suites, Analyzers, Tag Taggers)
   2. Analyzes audio server & hardware (PipeWire, PulseAudio, ALSA cards, Sinks, Latency & Sample Rates)

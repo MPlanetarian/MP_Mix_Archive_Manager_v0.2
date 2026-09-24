@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-    MP_Mix_Manager_v0.2 - Windows PowerShell Launcher
+    MP_Mix_Manager_v0.3 - Windows PowerShell Launcher
 .DESCRIPTION
     Launches Mix Archive Manager within Git Bash, MSYS2, or WSL2.
 #>

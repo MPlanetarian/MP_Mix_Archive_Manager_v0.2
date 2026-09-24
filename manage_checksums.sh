@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# MP_Mix_Manager_v0.2 - Audio File Checksum Generator & Integrity Verifier
+# MP_Mix_Manager_v0.3 - Audio File Checksum Generator & Integrity Verifier
 # Generates and validates SHA-256 checksum manifests for mixes and WAVs.
 # ==============================================================================
 set -euo pipefail

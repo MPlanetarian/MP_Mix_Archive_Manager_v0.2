@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 send_promo_email.py - Promotional & Publisher Outreach Email System
-Part of Mix Archive Manager (MP_Mix_Manager_v0.2)
+Part of Mix Archive Manager (MP_Mix_Manager_v0.3)
 
 Automates professional outreach to promoters, event organizers, podcast publishers,
 radio syndicators, record labels, and dance music media with rich HTML & Plaintext

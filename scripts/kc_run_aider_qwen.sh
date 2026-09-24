@@ -25,7 +25,7 @@ if ! curl -s --connect-timeout 2 http://127.0.0.1:11434/ >/dev/null 2>&1 && ! pg
 fi
 
 # 2. Determine target workspace
-WORKDIR="${AIDER_DIR:-/var/home/mplanetarian/MP_Mix_Manager_v0.2}"
+WORKDIR="${AIDER_DIR:-/var/home/mplanetarian/MP_Mix_Manager_v0.3}"
 [ ! -d "$WORKDIR" ] && WORKDIR="$HOME"
 
 notify-send -a "KDE Connect" -i "utilities-terminal" "Aider AI" "Opening Aider (Qwen2.5 7B) in Konsole..." 2>/dev/null || true

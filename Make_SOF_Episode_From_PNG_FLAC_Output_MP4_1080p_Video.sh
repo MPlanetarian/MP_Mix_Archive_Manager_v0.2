@@ -20,7 +20,7 @@ BOLD='\033[1m'
 
 AUDIO_FILE="${1:-}"
 IMAGE_FILE="${2:-}"
-OUTPUT_DIR="${3:-FLAC_CONVERTED_OUTPUTS}"
+OUTPUT_DIR="${3:-${MP4_OUTPUT_DIR:-MP4_CONVERTED_OUTPUTS}}"
 
 if [ -z "$AUDIO_FILE" ]; then
     echo -e "${RED}Error: Audio file not specified!${NC}"
@@ -30,16 +30,22 @@ fi
 
 # Locate audio file
 if [ ! -f "$AUDIO_FILE" ]; then
-    if [ -f "$OUTPUT_DIR/$AUDIO_FILE" ]; then
-        AUDIO_FILE="$OUTPUT_DIR/$AUDIO_FILE"
-    elif [ -f "FLAC_CONVERTED_OUTPUTS/$AUDIO_FILE" ]; then
+    if [ -f "FLAC_CONVERTED_OUTPUTS/$AUDIO_FILE" ]; then
         AUDIO_FILE="FLAC_CONVERTED_OUTPUTS/$AUDIO_FILE"
+    elif [ -f "WAV_CONVERTED_OUTPUTS/$AUDIO_FILE" ]; then
+        AUDIO_FILE="WAV_CONVERTED_OUTPUTS/$AUDIO_FILE"
+    elif [ -f "CONVERTED_WAV_FILES/$AUDIO_FILE" ]; then
+        AUDIO_FILE="CONVERTED_WAV_FILES/$AUDIO_FILE"
     elif [ -f "$AUDIO_FILE.flac" ]; then
         AUDIO_FILE="$AUDIO_FILE.flac"
-    elif [ -f "$OUTPUT_DIR/$AUDIO_FILE.flac" ]; then
-        AUDIO_FILE="$OUTPUT_DIR/$AUDIO_FILE.flac"
+    elif [ -f "$AUDIO_FILE.wav" ]; then
+        AUDIO_FILE="$AUDIO_FILE.wav"
     elif [ -f "FLAC_CONVERTED_OUTPUTS/$AUDIO_FILE.flac" ]; then
         AUDIO_FILE="FLAC_CONVERTED_OUTPUTS/$AUDIO_FILE.flac"
+    elif [ -f "WAV_CONVERTED_OUTPUTS/$AUDIO_FILE.wav" ]; then
+        AUDIO_FILE="WAV_CONVERTED_OUTPUTS/$AUDIO_FILE.wav"
+    elif [ -f "$OUTPUT_DIR/$AUDIO_FILE" ]; then
+        AUDIO_FILE="$OUTPUT_DIR/$AUDIO_FILE"
     elif [ -f "FLAC_CORRUPTED_FILES/$AUDIO_FILE" ]; then
         AUDIO_FILE="FLAC_CORRUPTED_FILES/$AUDIO_FILE"
     else

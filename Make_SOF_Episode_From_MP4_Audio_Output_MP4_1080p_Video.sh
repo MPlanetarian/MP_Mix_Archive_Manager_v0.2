@@ -101,7 +101,7 @@ if [ -z "$AUDIO_FILE" ] || [ -z "$VIDEO_FILE" ]; then
     [ -z "$AUDIO_FILE" ] && read -r -p "Enter path to Audio file (.wav / .flac): " AUDIO_FILE
     [ -z "$VIDEO_FILE" ] && read -r -p "Enter path to Input Video file (.mp4 / .mkv): " VIDEO_FILE
     [ -z "$THUMB_FILE" ] && read -r -p "Enter path to Thumbnail/Cover image (optional): " THUMB_FILE
-    [ -z "$OUTPUT_TARGET" ] && read -r -p "Enter output directory or file path (default: Documents or FLAC_CONVERTED_OUTPUTS): " OUTPUT_TARGET
+    [ -z "$OUTPUT_TARGET" ] && read -r -p "Enter output directory or file path (default: ${MP4_OUTPUT_DIR:-MP4_CONVERTED_OUTPUTS}): " OUTPUT_TARGET
 fi
 
 # Clean quotes
@@ -112,7 +112,7 @@ OUTPUT_TARGET=$(echo "$OUTPUT_TARGET" | sed -e 's/^"//' -e 's/"$//' -e "s/^'//" 
 
 # Verify audio file
 if [ ! -f "$AUDIO_FILE" ]; then
-    for candidate in "$AUDIO_FILE" "FLAC_CONVERTED_OUTPUTS/$AUDIO_FILE" "CONVERTED_WAV_FILES/$AUDIO_FILE" "$AUDIO_FILE.wav" "$AUDIO_FILE.flac"; do
+    for candidate in "$AUDIO_FILE" "${MP4_OUTPUT_DIR:-MP4_CONVERTED_OUTPUTS}/$AUDIO_FILE" "FLAC_CONVERTED_OUTPUTS/$AUDIO_FILE" "WAV_CONVERTED_OUTPUTS/$AUDIO_FILE" "CONVERTED_WAV_FILES/$AUDIO_FILE" "$AUDIO_FILE.wav" "$AUDIO_FILE.flac"; do
         if [ -f "$candidate" ]; then AUDIO_FILE="$candidate"; break; fi
     done
 fi
@@ -187,14 +187,9 @@ AUDIO_BASE=$(basename "$AUDIO_FILE")
 OUTPUT_NAME="${AUDIO_BASE%.*}${RES_SUFFIX}.mp4"
 
 if [ -z "$OUTPUT_TARGET" ]; then
-    if [ -d "$HOME/Documents" ]; then
-        OUTPUT_DIR="$HOME/Documents"
-        OUTPUT_FILE="$OUTPUT_DIR/$OUTPUT_NAME"
-    else
-        OUTPUT_DIR="FLAC_CONVERTED_OUTPUTS"
-        mkdir -p "$OUTPUT_DIR"
-        OUTPUT_FILE="$OUTPUT_DIR/$OUTPUT_NAME"
-    fi
+    OUTPUT_DIR="${MP4_OUTPUT_DIR:-MP4_CONVERTED_OUTPUTS}"
+    mkdir -p "$OUTPUT_DIR"
+    OUTPUT_FILE="$OUTPUT_DIR/$OUTPUT_NAME"
 elif [[ "$OUTPUT_TARGET" == *.mp4 ]] || [[ "$OUTPUT_TARGET" == *.mkv ]]; then
     OUTPUT_FILE="$OUTPUT_TARGET"
     OUTPUT_DIR=$(dirname "$OUTPUT_FILE")

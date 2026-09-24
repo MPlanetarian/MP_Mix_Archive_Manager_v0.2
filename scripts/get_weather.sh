@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# MP_Mix_Manager_v0.2 - Live Weather Information Fetcher & Cacher
+# MP_Mix_Manager_v0.3 - Live Weather Information Fetcher & Cacher
 # Displays local meteorological conditions below the manager startup banner.
 # Default Location: Swansea, UK (Configurable via config.env & settings menu)
 # ==============================================================================

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-MP_Mix_Manager_v0.2 - System MOTD (Message Of The Day) Generator & Manager
+MP_Mix_Manager_v0.3 - System MOTD (Message Of The Day) Generator & Manager
 Generates a dynamic terminal MOTD showcasing the last 3 mixes created by the manager,
 including creation date & time, file size, format, and full file name.
 """

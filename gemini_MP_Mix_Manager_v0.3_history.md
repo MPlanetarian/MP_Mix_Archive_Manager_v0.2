@@ -1,8 +1,8 @@
-# Gemini Engineering & Development History: Mix Archive Manager (`MP_Mix_Manager_v0.2`)
+# Gemini Engineering & Development History: Mix Archive Manager (`MP_Mix_Manager_v0.3`)
 
 **Author & AI Pair Programmer**: Antigravity / Gemini 3.8  
 **Client / Lead Architect**: MPlanetarian (`mathewkjohn2026@gmail.com`)  
-**Repository**: `/home/mplanetarian/MP_Mix_Manager_v0.2` (`git@github.com:MPlanetarian/MP_Mix_Manager_v0.2.git`)  
+**Repository**: `/home/mplanetarian/MP_Mix_Manager_v0.3` (`git@github.com:MPlanetarian/MP_Mix_Manager_v0.3.git`)  
 **Mirror Path**: `/var/home/mplanetarian/Documents/BASH_SCRIPTS/`  
 **Latest Revision**: v0.2.1 (September 17, 2026)  
 **Primary Platforms**: Bazzite Linux (Fedora Kinoite / Silverblue ostree), SteamOS, Ubuntu, macOS Sequoia/Sonoma, Windows 10/11, FreeBSD 14+  
@@ -11,7 +11,7 @@
 
 ## 📌 Executive Summary
 
-This document serves as the comprehensive, immutable architectural history and development ledger of all engineering sessions, features, bug fixes, refactorings, and integrations executed by **Gemini (Antigravity CLI)** for the **Stream of Frequency Mix Archive Manager** (`MP_Mix_Manager_v0.2`).
+This document serves as the comprehensive, immutable architectural history and development ledger of all engineering sessions, features, bug fixes, refactorings, and integrations executed by **Gemini (Antigravity CLI)** for the **Stream of Frequency Mix Archive Manager** (`MP_Mix_Manager_v0.3`).
 
 What began on September 13, 2026, as a collection of scattered shell utilities across `/var/home/mplanetarian/Documents/BASH_SCRIPTS/` and archive storage volumes has been transformed into an enterprise-grade, modular, cross-platform media production and workstation orchestration console comprising:
 - **75 Master Operations** categorized across **7 logical operational domains**.
@@ -236,7 +236,7 @@ What began on September 13, 2026, as a collection of scattered shell utilities a
      - Configured, enabled, and started persistent systemd user service [`~/.config/systemd/user/dsh-mobile-bridge.service`](file:///home/mplanetarian/.config/systemd/user/dsh-mobile-bridge.service).
      - Verified that `192.168.1.11:3080` forwards bidirectional HTTP, WebSockets, and chunked SSE streams to `127.0.0.1:3080`.
   3. **Script Synchronization**:
-     - Updated [`scripts/dsh_mobile.sh`](file:///var/home/mplanetarian/MP_Mix_Manager_v0.2/scripts/dsh_mobile.sh) and [`kc_launch_dsh_mobile.sh`](file:///home/mplanetarian/KDE_CONNECT_CMDS/kc_launch_dsh_mobile.sh) with `ensure_lan_bridge` so starting DeepSeek Harness guarantees the bridge is running.
+     - Updated [`scripts/dsh_mobile.sh`](file:///var/home/mplanetarian/MP_Mix_Manager_v0.3/scripts/dsh_mobile.sh) and [`kc_launch_dsh_mobile.sh`](file:///home/mplanetarian/KDE_CONNECT_CMDS/kc_launch_dsh_mobile.sh) with `ensure_lan_bridge` so starting DeepSeek Harness guarantees the bridge is running.
      - Updated process detection in `is_dsh_running` and `get_dsh_pids` to target `127.0.0.1:3080` and Node PIDs, avoiding conflicts with `socat`.
   4. **End-to-End Validation**:
      - Verified with `curl -i "http://192.168.1.11:3080/?token=..."` that the server responds with `HTTP/1.1 303 See Other`, issues cookie `dsh-auth-...`, and delivers `index.html` (HTTP 200 OK) directly to Safari on iOS.
@@ -360,30 +360,30 @@ What began on September 13, 2026, as a collection of scattered shell utilities a
 
 | File Path | Language | Primary Purpose |
 | :--- | :---: | :--- |
-| [`Mix_Archive_Manager.sh`](file:///home/mplanetarian/MP_Mix_Manager_v0.2/Mix_Archive_Manager.sh) | Bash | Master 75-operation orchestration menu and control loop |
-| [`install.sh`](file:///home/mplanetarian/MP_Mix_Manager_v0.2/install.sh) | Bash | Multi-platform installer, KWin rule injector, symlink generator |
-| [`config.env`](file:///home/mplanetarian/MP_Mix_Manager_v0.2/config.env) | Shell | Master runtime environment configuration |
-| [`scripts/dsh_mobile.sh`](file:///home/mplanetarian/MP_Mix_Manager_v0.2/scripts/dsh_mobile.sh) | Bash | DeepSeek Harness (`dsh-mobile`) lifecycle manager & LAN bridge trigger |
-| [`scripts/manage_ollama.sh`](file:///home/mplanetarian/MP_Mix_Manager_v0.2/scripts/manage_ollama.sh) | Bash | Ollama server lifecycle controller inside distrobox container |
-| [`scripts/beszel.sh`](file:///home/mplanetarian/MP_Mix_Manager_v0.2/scripts/beszel.sh) | Bash | Beszel Hub & Beszel Agent container management |
-| [`scripts/Split_FLAC_File.sh`](file:///home/mplanetarian/MP_Mix_Manager_v0.2/scripts/Split_FLAC_File.sh) | Bash | Sample-accurate lossless FLAC audio divider |
-| [`scripts/Split_Video_File.sh`](file:///home/mplanetarian/MP_Mix_Manager_v0.2/scripts/Split_Video_File.sh) | Bash | Lossless stream-copy / re-encode MP4 video divider |
-| [`scripts/traktor_monitor.py`](file:///home/mplanetarian/MP_Mix_Manager_v0.2/scripts/traktor_monitor.py) | Python 3 | Cross-platform Traktor Pro real-time recorder & monitor |
-| [`scripts/inspect_playing_audio.py`](file:///home/mplanetarian/MP_Mix_Manager_v0.2/scripts/inspect_playing_audio.py) | Python 3 | Technical audio specification & stream inspector |
-| [`scripts/get_audio_interface.py`](file:///home/mplanetarian/MP_Mix_Manager_v0.2/scripts/get_audio_interface.py) | Python 3 | Sub-120ms hardware buffer latency and audio card probe |
-| [`scripts/align_mix_windows.py`](file:///home/mplanetarian/MP_Mix_Manager_v0.2/scripts/align_mix_windows.py) | Python 3 | KDE Plasma 6 KWin DBus side-by-side HUD alignment |
-| [`scripts/generate_ppm_cover.py`](file:///home/mplanetarian/MP_Mix_Manager_v0.2/scripts/generate_ppm_cover.py) | Python 3 | Procedural binary Netpbm P6 PPM gradient generator |
-| [`scripts/publish_calendar_scheduler.py`](file:///home/mplanetarian/MP_Mix_Manager_v0.2/scripts/publish_calendar_scheduler.py) | Python 3 | Syndication calendar, RSS feed & iCalendar engine |
-| [`scripts/inspect_audio_studio.py`](file:///home/mplanetarian/MP_Mix_Manager_v0.2/scripts/inspect_audio_studio.py) | Python 3 | Audio hardware, MIDI controller & studio DAW auditor |
-| [`scripts/sync_video_companion.py`](file:///home/mplanetarian/MP_Mix_Manager_v0.2/scripts/sync_video_companion.py) | Python 3 | Synchronized video player playback companion daemon |
-| [`scripts/manage_playlists.py`](file:///home/mplanetarian/MP_Mix_Manager_v0.2/scripts/manage_playlists.py) | Python 3 | Custom `.m3u8` / `.xspf` playlist builder & validator |
-| [`scripts/manage_motd.py`](file:///home/mplanetarian/MP_Mix_Manager_v0.2/scripts/manage_motd.py) | Python 3 | Dynamic Message Of The Day (MOTD) banner generator |
-| [`scripts/send_promo_email.py`](file:///home/mplanetarian/MP_Mix_Manager_v0.2/scripts/send_promo_email.py) | Python 3 | Promotional outreach pitcher for promoters, radio & labels |
-| [`scripts/generate_tracklist_docs.py`](file:///home/mplanetarian/MP_Mix_Manager_v0.2/scripts/generate_tracklist_docs.py) | Python 3 | Master HTML & Vector PDF tracklist document synthesizer |
-| [`scripts/find_duplicate_mixes.py`](file:///home/mplanetarian/MP_Mix_Manager_v0.2/scripts/find_duplicate_mixes.py) | Python 3 | Content-based acoustic hash duplicate detector |
-| [`scripts/generate_spek.sh`](file:///home/mplanetarian/MP_Mix_Manager_v0.2/scripts/generate_spek.sh) | Bash | Acoustic spectrogram generator (Spek, Sonic Visualiser, SoX) |
-| [`scripts/get_weather.sh`](file:///home/mplanetarian/MP_Mix_Manager_v0.2/scripts/get_weather.sh) | Bash | Meteorological weather probe with 20-minute local TTL cache |
-| [`scripts/view_tracklist_console.sh`](file:///home/mplanetarian/MP_Mix_Manager_v0.2/scripts/view_tracklist_console.sh) | Bash | Frameless console tracklist HUD viewer |
+| [`Mix_Archive_Manager.sh`](file:///home/mplanetarian/MP_Mix_Manager_v0.3/Mix_Archive_Manager.sh) | Bash | Master 75-operation orchestration menu and control loop |
+| [`install.sh`](file:///home/mplanetarian/MP_Mix_Manager_v0.3/install.sh) | Bash | Multi-platform installer, KWin rule injector, symlink generator |
+| [`config.env`](file:///home/mplanetarian/MP_Mix_Manager_v0.3/config.env) | Shell | Master runtime environment configuration |
+| [`scripts/dsh_mobile.sh`](file:///home/mplanetarian/MP_Mix_Manager_v0.3/scripts/dsh_mobile.sh) | Bash | DeepSeek Harness (`dsh-mobile`) lifecycle manager & LAN bridge trigger |
+| [`scripts/manage_ollama.sh`](file:///home/mplanetarian/MP_Mix_Manager_v0.3/scripts/manage_ollama.sh) | Bash | Ollama server lifecycle controller inside distrobox container |
+| [`scripts/beszel.sh`](file:///home/mplanetarian/MP_Mix_Manager_v0.3/scripts/beszel.sh) | Bash | Beszel Hub & Beszel Agent container management |
+| [`scripts/Split_FLAC_File.sh`](file:///home/mplanetarian/MP_Mix_Manager_v0.3/scripts/Split_FLAC_File.sh) | Bash | Sample-accurate lossless FLAC audio divider |
+| [`scripts/Split_Video_File.sh`](file:///home/mplanetarian/MP_Mix_Manager_v0.3/scripts/Split_Video_File.sh) | Bash | Lossless stream-copy / re-encode MP4 video divider |
+| [`scripts/traktor_monitor.py`](file:///home/mplanetarian/MP_Mix_Manager_v0.3/scripts/traktor_monitor.py) | Python 3 | Cross-platform Traktor Pro real-time recorder & monitor |
+| [`scripts/inspect_playing_audio.py`](file:///home/mplanetarian/MP_Mix_Manager_v0.3/scripts/inspect_playing_audio.py) | Python 3 | Technical audio specification & stream inspector |
+| [`scripts/get_audio_interface.py`](file:///home/mplanetarian/MP_Mix_Manager_v0.3/scripts/get_audio_interface.py) | Python 3 | Sub-120ms hardware buffer latency and audio card probe |
+| [`scripts/align_mix_windows.py`](file:///home/mplanetarian/MP_Mix_Manager_v0.3/scripts/align_mix_windows.py) | Python 3 | KDE Plasma 6 KWin DBus side-by-side HUD alignment |
+| [`scripts/generate_ppm_cover.py`](file:///home/mplanetarian/MP_Mix_Manager_v0.3/scripts/generate_ppm_cover.py) | Python 3 | Procedural binary Netpbm P6 PPM gradient generator |
+| [`scripts/publish_calendar_scheduler.py`](file:///home/mplanetarian/MP_Mix_Manager_v0.3/scripts/publish_calendar_scheduler.py) | Python 3 | Syndication calendar, RSS feed & iCalendar engine |
+| [`scripts/inspect_audio_studio.py`](file:///home/mplanetarian/MP_Mix_Manager_v0.3/scripts/inspect_audio_studio.py) | Python 3 | Audio hardware, MIDI controller & studio DAW auditor |
+| [`scripts/sync_video_companion.py`](file:///home/mplanetarian/MP_Mix_Manager_v0.3/scripts/sync_video_companion.py) | Python 3 | Synchronized video player playback companion daemon |
+| [`scripts/manage_playlists.py`](file:///home/mplanetarian/MP_Mix_Manager_v0.3/scripts/manage_playlists.py) | Python 3 | Custom `.m3u8` / `.xspf` playlist builder & validator |
+| [`scripts/manage_motd.py`](file:///home/mplanetarian/MP_Mix_Manager_v0.3/scripts/manage_motd.py) | Python 3 | Dynamic Message Of The Day (MOTD) banner generator |
+| [`scripts/send_promo_email.py`](file:///home/mplanetarian/MP_Mix_Manager_v0.3/scripts/send_promo_email.py) | Python 3 | Promotional outreach pitcher for promoters, radio & labels |
+| [`scripts/generate_tracklist_docs.py`](file:///home/mplanetarian/MP_Mix_Manager_v0.3/scripts/generate_tracklist_docs.py) | Python 3 | Master HTML & Vector PDF tracklist document synthesizer |
+| [`scripts/find_duplicate_mixes.py`](file:///home/mplanetarian/MP_Mix_Manager_v0.3/scripts/find_duplicate_mixes.py) | Python 3 | Content-based acoustic hash duplicate detector |
+| [`scripts/generate_spek.sh`](file:///home/mplanetarian/MP_Mix_Manager_v0.3/scripts/generate_spek.sh) | Bash | Acoustic spectrogram generator (Spek, Sonic Visualiser, SoX) |
+| [`scripts/get_weather.sh`](file:///home/mplanetarian/MP_Mix_Manager_v0.3/scripts/get_weather.sh) | Bash | Meteorological weather probe with 20-minute local TTL cache |
+| [`scripts/view_tracklist_console.sh`](file:///home/mplanetarian/MP_Mix_Manager_v0.3/scripts/view_tracklist_console.sh) | Bash | Frameless console tracklist HUD viewer |
 | [`~/.local/bin/dsh-mobile-bridge.sh`](file:///home/mplanetarian/.local/bin/dsh-mobile-bridge.sh) | Bash | `socat` LAN socket forwarder: `192.168.1.11:3080` → `127.0.0.1:3080` |
 | [`~/.config/systemd/user/dsh-mobile-bridge.service`](file:///home/mplanetarian/.config/systemd/user/dsh-mobile-bridge.service) | Systemd | Persistent user service running the DeepSeek Harness bridge |
 
@@ -427,4 +427,4 @@ What began on September 13, 2026, as a collection of scattered shell utilities a
 2. **Dynamic LAN & Socket Binding Isolation**:
    Modern web interfaces like DeepSeek Harness enforce strict loopback security boundaries. Utilizing native Linux socket forwarders (`socat`) managed via user-level systemd units provides a zero-downtime, fully transparent bridge that preserves upstream software integrity while enabling mobile LAN accessibility.
 3. **Decoupled Architecture & Dual Mirroring**:
-   The master repository [`MP_Mix_Manager_v0.2`](file:///home/mplanetarian/MP_Mix_Manager_v0.2/) maintains dual-mirror synchronicity with [`/var/home/mplanetarian/Documents/BASH_SCRIPTS/`](file:///var/home/mplanetarian/Documents/BASH_SCRIPTS/), guaranteeing full redundancy across local user documents and standard Git version control.
+   The master repository [`MP_Mix_Manager_v0.3`](file:///home/mplanetarian/MP_Mix_Manager_v0.3/) maintains dual-mirror synchronicity with [`/var/home/mplanetarian/Documents/BASH_SCRIPTS/`](file:///var/home/mplanetarian/Documents/BASH_SCRIPTS/), guaranteeing full redundancy across local user documents and standard Git version control.

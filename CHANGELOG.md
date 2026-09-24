@@ -7,34 +7,63 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.3.0] - 2026-09-24
+
+- **Project Promotion to Version 0.3.0 (`MP_Mix_Manager_v0.3`)**:
+  - Full project upgrade and version promotion across all launchers, scripts, configurations, and documentation.
+  - Centralized version tracking bumped to `0.3.0` in [`VERSION`](file:///var/home/mplanetarian/MP_Mix_Manager_v0.3/VERSION).
+
+- **Dedicated Converted Output Directories & Media Routing**:
+  - Added dedicated output folders:
+    - `MP3_CONVERTED_OUTPUTS/` for all converted MP3 audio files.
+    - `WAV_CONVERTED_OUTPUTS/` for all converted WAV audio files.
+    - `MP4_CONVERTED_OUTPUTS/` for all synthesized YouTube videos.
+  - Automatically scaffolded across local workspace, user home directory, and external storage (`MIX_ARCHIVE_DIR`).
+  - Added `.gitkeep` markers and updated `.gitignore` rules.
+  - Integrated into [`install.sh`](file:///var/home/mplanetarian/MP_Mix_Manager_v0.3/install.sh) and [`Mix_Archive_Manager.sh`](file:///var/home/mplanetarian/MP_Mix_Manager_v0.3/Mix_Archive_Manager.sh).
+  - Updated archive statistics counter to monitor file counts across all 5 archive directories.
+
+- **Audio Conversion & YouTube Video Routing**:
+  - Re-routed YouTube video synthesis scripts ([`generate_youtube_video.sh`](file:///var/home/mplanetarian/MP_Mix_Manager_v0.3/generate_youtube_video.sh), 4K, 1080p, 720p, and MP4/WAV loop generators) to output into `MP4_CONVERTED_OUTPUTS/`.
+  - Re-routed universal audio converter ([`convert_audio_format.sh`](file:///var/home/mplanetarian/MP_Mix_Manager_v0.3/convert_audio_format.sh)) to automatically route MP3 outputs to `MP3_CONVERTED_OUTPUTS/` and WAV outputs to `WAV_CONVERTED_OUTPUTS/`.
+  - Expanded search paths to automatically discover audio candidates across `FLAC_CONVERTED_OUTPUTS`, `CONVERTED_WAV_FILES`, `MP3_CONVERTED_OUTPUTS`, and `WAV_CONVERTED_OUTPUTS`.
+
+- **Condensed Main Menu**:
+  - Streamlined the primary console interface into 3 clean, uncluttered sections with 10 direct, organized options each (30 options total on the main screen).
+
+- **Cross-Platform Compatibility**:
+  - Fixed macOS Bash 3.2 compatibility issues in FLAC conversion and batch scripts (`declare -A` associative array syntax replaced with POSIX/Bash 3-compatible lookups).
+
+---
+
 ## [0.2.1] - 2026-09-18
 
 - **Header Text Refresh with Dynamic Date, Version & Time**:
-  - Updated the top application banner header in [`Mix_Archive_Manager.sh`](file:///var/home/mplanetarian/MP_Mix_Manager_v0.2/Mix_Archive_Manager.sh):
-    - Replaced static `Mix Archive Manager (MP_Mix_Manager_v0.2)` with `MP Mix Archive Manager (<Date>) | Version: <Version> | Current Time: <Time>`.
+  - Updated the top application banner header in [`Mix_Archive_Manager.sh`](file:///var/home/mplanetarian/MP_Mix_Manager_v0.3/Mix_Archive_Manager.sh):
+    - Replaced static `Mix Archive Manager (MP_Mix_Manager_v0.3)` with `MP Mix Archive Manager (<Date>) | Version: <Version> | Current Time: <Time>`.
     - Added `get_header_ordinal_date()` helper for formatted dates with ordinal day suffixes (e.g. `18th of September, 2026`).
     - Added `get_manager_version()` helper reading centrally from `VERSION`.
     - Real-time timestamp refresh (`date "+%T"`).
 
 - **Planetary Horizon Ephemeris Calculator & Banner Integration**:
-  - Added standalone ephemeris calculator [`scripts/get_planets.py`](file:///var/home/mplanetarian/MP_Mix_Manager_v0.2/scripts/get_planets.py) and [`scripts/get_planets.sh`](file:///var/home/mplanetarian/MP_Mix_Manager_v0.2/scripts/get_planets.sh) (mirrored to root):
+  - Added standalone ephemeris calculator [`scripts/get_planets.py`](file:///var/home/mplanetarian/MP_Mix_Manager_v0.3/scripts/get_planets.py) and [`scripts/get_planets.sh`](file:///var/home/mplanetarian/MP_Mix_Manager_v0.3/scripts/get_planets.sh) (mirrored to root):
     - Computes real-time altitude, azimuth, and visibility for all 7 major planets using NASA JPL Standish Keplerian orbital elements with 100% offline calculation.
     - Integrated live planetary visibility banner below weather in the manager main application loop.
     - Added planetary ephemeris configuration (`PLANETS_ENABLED`) and full celestial viewer in Meteorological & Planetary Settings.
 
 - **Manager Self-Update System (`mix-archive-manager update` / Option 73)**:
-  - Added dedicated system updater [`scripts/update_manager.sh`](file:///var/home/mplanetarian/MP_Mix_Manager_v0.2/scripts/update_manager.sh) (mirrored to `update_manager.sh`):
+  - Added dedicated system updater [`scripts/update_manager.sh`](file:///var/home/mplanetarian/MP_Mix_Manager_v0.3/scripts/update_manager.sh) (mirrored to `update_manager.sh`):
     - Run `mix-archive-manager update` (or `manager update`, `~/manager.sh update`) to automatically check for and install the latest version from remote Git.
     - If already running the latest version, cleanly reports: `Mix Archive Manager is running the latest version: vX.Y.Z` and active commit hash.
     - If updates are available, safely stashes uncommitted local changes, pulls/rebases changes, restores permissions, refreshes symlinks in `~/.local/bin`, and updates the dynamic MOTD banner.
     - Added `--version` / `-v` flag to display currently installed version and commit date.
     - Added `--check` flag to probe for remote updates without installing.
-  - Added fast-path CLI dispatch in [`bin/mix-archive-manager`](file:///var/home/mplanetarian/MP_Mix_Manager_v0.2/bin/mix-archive-manager) and [`Mix_Archive_Manager.sh`](file:///var/home/mplanetarian/MP_Mix_Manager_v0.2/Mix_Archive_Manager.sh) to bypass disk mounting wait during updates or version queries.
-  - Added Option 6 ("Check & Install System Updates") to [`scripts/manage_installation_config.sh`](file:///var/home/mplanetarian/MP_Mix_Manager_v0.2/scripts/manage_installation_config.sh) (Menu Option 73).
-  - Created [`VERSION`](file:///var/home/mplanetarian/MP_Mix_Manager_v0.2/VERSION) file for centralized version tracking.
+  - Added fast-path CLI dispatch in [`bin/mix-archive-manager`](file:///var/home/mplanetarian/MP_Mix_Manager_v0.3/bin/mix-archive-manager) and [`Mix_Archive_Manager.sh`](file:///var/home/mplanetarian/MP_Mix_Manager_v0.3/Mix_Archive_Manager.sh) to bypass disk mounting wait during updates or version queries.
+  - Added Option 6 ("Check & Install System Updates") to [`scripts/manage_installation_config.sh`](file:///var/home/mplanetarian/MP_Mix_Manager_v0.3/scripts/manage_installation_config.sh) (Menu Option 73).
+  - Created [`VERSION`](file:///var/home/mplanetarian/MP_Mix_Manager_v0.3/VERSION) file for centralized version tracking.
 
 - **Full File Name MOTD Display & Recent Releases Count Update**:
-  - Upgraded [`scripts/manage_motd.py`](file:///var/home/mplanetarian/MP_Mix_Manager_v0.2/scripts/manage_motd.py) and [`manage_motd.py`](file:///var/home/mplanetarian/MP_Mix_Manager_v0.2/manage_motd.py):
+  - Upgraded [`scripts/manage_motd.py`](file:///var/home/mplanetarian/MP_Mix_Manager_v0.3/scripts/manage_motd.py) and [`manage_motd.py`](file:///var/home/mplanetarian/MP_Mix_Manager_v0.3/manage_motd.py):
     - Replaced 38-character filename truncation with the full, un-truncated file name.
     - Updated column header to `Full File Name`.
     - Dynamically scales banner borders, headers, and dividers (`banner_width = max(78, 49 + max_name_len)`) to maintain clean alignment with filenames of any length.
@@ -42,7 +71,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - Auto-regenerated active terminal MOTD at [`~/.config/mix-manager/motd`](file:///home/mplanetarian/.config/mix-manager/motd).
 
 - **Multi-Display Window Positioning (Manager on Primary, Strawberry & Cover on Secondary)**:
-  - Upgraded [`scripts/align_mix_windows.py`](file:///var/home/mplanetarian/MP_Mix_Manager_v0.2/scripts/align_mix_windows.py) to automatically detect active monitor configuration:
+  - Upgraded [`scripts/align_mix_windows.py`](file:///var/home/mplanetarian/MP_Mix_Manager_v0.3/scripts/align_mix_windows.py) to automatically detect active monitor configuration:
     - **Multi-Display Mode (> 1 Displays Active)**:
       * Mix Archive Manager window is positioned onto the **Primary Display** (Priority 1 screen in KDE Plasma 6 KWin / X11).
       * Strawberry Audio Player and Cover Art Viewer (Gwenview, feh, loupe, eog) are placed onto the **Secondary Display** (not primary).
@@ -50,7 +79,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
       * If Tracklist Viewer is also open, windows are arranged in a 3-column layout on the secondary screen.
     - **Single-Display Mode (<= 1 Display Active)**:
       * Only triggers multi-display placement if > 1 displays are active. On single-display setups, keeps windows on the active screen with the centered floating HUD layout.
-  - Enhanced [`Mix_Archive_Manager.sh`](file:///var/home/mplanetarian/MP_Mix_Manager_v0.2/Mix_Archive_Manager.sh) & [`bin/mix-archive-manager`](file:///var/home/mplanetarian/MP_Mix_Manager_v0.2/bin/mix-archive-manager):
+  - Enhanced [`Mix_Archive_Manager.sh`](file:///var/home/mplanetarian/MP_Mix_Manager_v0.3/Mix_Archive_Manager.sh) & [`bin/mix-archive-manager`](file:///var/home/mplanetarian/MP_Mix_Manager_v0.3/bin/mix-archive-manager):
     - Emits dynamic terminal window title escape sequences (`printf '\033]0;Mix Archive Manager\007'`) so Konsole and other terminals are immediately recognized.
     - Updated `align_mix_windows_on_screen()` to pass manager PID and parent terminal PID to `align_mix_windows.py`.
     - Automatically triggers window alignment on manager startup, during autoplay, on active audio detection, and when launching Strawberry.

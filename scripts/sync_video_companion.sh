@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# MP_Mix_Manager_v0.2 - Synchronized Video Companion & Multi-Player Launcher
+# MP_Mix_Manager_v0.3 - Synchronized Video Companion & Multi-Player Launcher
 # ==============================================================================
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PY_SCRIPT="$SCRIPT_DIR/sync_video_companion.py"

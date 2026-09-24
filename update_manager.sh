@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# MP_Mix_Manager_v0.2 - System Updater
+# MP_Mix_Manager_v0.3 - System Updater
 # Purpose: Check for and install latest version of Mix Archive Manager
 # Usage:
 #   mix-archive-manager update          (Checks and installs latest version)
@@ -42,7 +42,7 @@ get_current_version() {
     elif [ -f "$CODEBASE_DIR/CHANGELOG.md" ]; then
         grep -E '^## \[[0-9]+\.[0-9]+' "$CODEBASE_DIR/CHANGELOG.md" | head -1 | sed -E 's/.*\[([0-9]+\.[0-9]+\.[0-9]+)\].*/\1/'
     else
-        echo "0.2.1"
+        echo "0.3.0"
     fi
 }
 

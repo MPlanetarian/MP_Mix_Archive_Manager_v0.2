@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# MP_Mix_Manager_v0.2 - Live Planets Above Horizon Fetcher
+# MP_Mix_Manager_v0.3 - Live Planets Above Horizon Fetcher
 # Displays which major planets are currently above the horizon for the observer's location.
 # ==============================================================================
 

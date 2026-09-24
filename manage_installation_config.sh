@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# MP_Mix_Manager_v0.2 - Installation Migration & Configuration Management Suite
+# MP_Mix_Manager_v0.3 - Installation Migration & Configuration Management Suite
 # Handles:
 #   1. Migration of Mix Manager installation to a new directory path
 #   2. Timestamped configuration backups
@@ -77,8 +77,8 @@ migrate_installation_path() {
     echo ""
     echo -e "${BOLD}Choose Target Destination:${NC}"
     echo -e "  ${BOLD}${CYAN} 1)${NC} Home User Directory      ${DIM}($HOME/Mix_Archive_Manager)${NC}"
-    echo -e "  ${BOLD}${CYAN} 2)${NC} External Archive Drive   ${DIM}(/run/media/$USER/WD BLACK B/MP_Mix_Manager_v0.2)${NC}"
-    echo -e "  ${BOLD}${CYAN} 3)${NC} System Optional Directory ${DIM}(/opt/MP_Mix_Manager_v0.2)${NC}"
+    echo -e "  ${BOLD}${CYAN} 2)${NC} External Archive Drive   ${DIM}(/run/media/$USER/WD BLACK B/MP_Mix_Manager_v0.3)${NC}"
+    echo -e "  ${BOLD}${CYAN} 3)${NC} System Optional Directory ${DIM}(/opt/MP_Mix_Manager_v0.3)${NC}"
     echo -e "  ${BOLD}${CYAN} 4)${NC} Custom Directory Path..."
     echo -e "  ${BOLD}${CYAN} 0)${NC} Cancel & Return"
     echo ""
@@ -87,8 +87,8 @@ migrate_installation_path() {
     local target_dir=""
     case "$dest_opt" in
         1) target_dir="$HOME/Mix_Archive_Manager" ;;
-        2) target_dir="/run/media/$USER/WD BLACK B/MP_Mix_Manager_v0.2" ;;
-        3) target_dir="/opt/MP_Mix_Manager_v0.2" ;;
+        2) target_dir="/run/media/$USER/WD BLACK B/MP_Mix_Manager_v0.3" ;;
+        3) target_dir="/opt/MP_Mix_Manager_v0.3" ;;
         4)
             read -r -p "Enter custom absolute target directory path: " target_dir
             ;;
@@ -256,7 +256,7 @@ backup_current_config() {
     python3 -c "
 import json, sys, os, datetime
 data = {
-    'version': 'MP_Mix_Manager_v0.2',
+    'version': 'MP_Mix_Manager_v0.3',
     'backup_type': 'local_snapshot',
     'timestamp': '$timestamp',
     'iso_date': datetime.datetime.now().isoformat(),
@@ -333,7 +333,7 @@ export_config_bundle() {
 import json, os, datetime
 data = {
     'archive_type': 'mix_archive_manager_config_bundle',
-    'app_version': 'MP_Mix_Manager_v0.2',
+    'app_version': 'MP_Mix_Manager_v0.3',
     'export_timestamp': '$timestamp',
     'iso_date': datetime.datetime.now().isoformat(),
     'hostname': os.uname().nodename,

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# MP_Mix_Manager_v0.2 - Cross-Platform Automated Installer
+# MP_Mix_Manager_v0.3 - Cross-Platform Automated Installer
 # Supports Linux (Bazzite / SteamOS / Fedora / Ubuntu), macOS, and Windows
 # ==============================================================================
 set -euo pipefail
@@ -25,7 +25,7 @@ SCRIPT_DIR="$(cd -P "$(dirname "$_RESOLVED_SRC")" >/dev/null 2>&1 && pwd)"
 unset _RESOLVED_SRC _RESOLVED_DIR
 
 echo -e "${BOLD}${MAGENTA}======================================================================${NC}"
-echo -e "${BOLD}${MAGENTA}        Mix Archive Manager Installer (MP_Mix_Manager_v0.2)           ${NC}"
+echo -e "${BOLD}${MAGENTA}        Mix Archive Manager Installer (MP_Mix_Manager_v0.3)           ${NC}"
 echo -e "${BOLD}${MAGENTA}          Cross-Platform: Linux • macOS • Windows 10 & 11             ${NC}"
 echo -e "${BOLD}${MAGENTA}======================================================================${NC}"
 echo ""
@@ -85,8 +85,11 @@ echo ""
 
 # 3. Create Scaffold Working Directories
 echo -e "${BOLD}${BLUE}[3/7] Setting Up Archive Directory Structure...${NC}"
-mkdir -p "$SCRIPT_DIR"/{FLAC_CONVERTED_OUTPUTS,CONVERTED_WAV_FILES,SPEK_OUTPUTS,BACKUP_LOGS,VERIFY_LOGS,IMPORT_LOGS,COVERS,config_backups,exported_configs}
+mkdir -p "$SCRIPT_DIR"/{FLAC_CONVERTED_OUTPUTS,MP3_CONVERTED_OUTPUTS,WAV_CONVERTED_OUTPUTS,MP4_CONVERTED_OUTPUTS,CONVERTED_WAV_FILES,SPEK_OUTPUTS,BACKUP_LOGS,VERIFY_LOGS,IMPORT_LOGS,COVERS,config_backups,exported_configs}
 touch "$SCRIPT_DIR/FLAC_CONVERTED_OUTPUTS/.gitkeep"
+touch "$SCRIPT_DIR/MP3_CONVERTED_OUTPUTS/.gitkeep"
+touch "$SCRIPT_DIR/WAV_CONVERTED_OUTPUTS/.gitkeep"
+touch "$SCRIPT_DIR/MP4_CONVERTED_OUTPUTS/.gitkeep"
 touch "$SCRIPT_DIR/CONVERTED_WAV_FILES/.gitkeep"
 touch "$SCRIPT_DIR/SPEK_OUTPUTS/.gitkeep"
 touch "$SCRIPT_DIR/BACKUP_LOGS/.gitkeep"

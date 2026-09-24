@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-MP_Mix_Manager_v0.2 - Mix Publishing Calendar & Multi-Platform Scheduler
+MP_Mix_Manager_v0.3 - Mix Publishing Calendar & Multi-Platform Scheduler
 Allows artists & DJs to:
   - Schedule mix and podcast episode releases on an interactive ANSI monthly calendar
   - Target multiple distribution platforms:
@@ -67,7 +67,7 @@ def load_schedule_db():
         except Exception:
             pass
     return {
-        "version": "MP_Mix_Manager_v0.2",
+        "version": "MP_Mix_Manager_v0.3",
         "last_updated": datetime.datetime.now().isoformat(),
         "schedules": []
     }
@@ -86,7 +86,7 @@ def export_to_ical(data, output_path=None):
     lines = [
         "BEGIN:VCALENDAR",
         "VERSION:2.0",
-        "PRODID:-//MPlanetarian//Mix Archive Manager v0.2//EN",
+        "PRODID:-//MPlanetarian//Mix Archive Manager v0.3//EN",
         "CALSCALE:GREGORIAN",
         "METHOD:PUBLISH",
         "X-WR-CALNAME:Mix Publishing Schedule",

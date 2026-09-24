@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-MP_Mix_Manager_v0.2 - Synchronized Video Companion & Multi-Player Launcher
+MP_Mix_Manager_v0.3 - Synchronized Video Companion & Multi-Player Launcher
 Features:
   1. Open a specified video in popular video players (VLC, Haruna, MPV, Kodi)
   2. Configure default video player

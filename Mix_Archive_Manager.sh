@@ -134,8 +134,10 @@ done
 SCRIPT_DIR="$(cd -P "$(dirname "$_RESOLVED_SRC")" >/dev/null 2>&1 && pwd)"
 if [ ! -d "$SCRIPT_DIR/scripts" ]; then
     for _c in \
-        "/var/home/mplanetarian/MP_Mix_Manager_v0.2" \
-        "$HOME/MP_Mix_Manager_v0.2" \
+        "/var/home/mplanetarian/MP_Mix_Manager_v0.3" \
+        "$HOME/MP_Mix_Manager_v0.3" \
+        "/var/home/mplanetarian/MP_Mix_Manager_v0.3" \
+        "$HOME/MP_Mix_Manager_v0.3" \
         "/var/home/mplanetarian/MP_Mix_Manager_v0.1" \
         "$HOME/MP_Mix_Manager_v0.1"; do
         if [ -d "$_c/scripts" ]; then
@@ -310,8 +312,10 @@ get_connected_displays_count() {
 
 align_mix_windows_on_screen() {
     local align_sh="$SCRIPT_DIR/scripts/align_mix_windows.py"
-    [ ! -f "$align_sh" ] && align_sh="$HOME/MP_Mix_Manager_v0.2/scripts/align_mix_windows.py"
-    [ ! -f "$align_sh" ] && align_sh="/var/home/mplanetarian/MP_Mix_Manager_v0.2/scripts/align_mix_windows.py"
+    [ ! -f "$align_sh" ] && align_sh="$HOME/MP_Mix_Manager_v0.3/scripts/align_mix_windows.py"
+    [ ! -f "$align_sh" ] && align_sh="/var/home/mplanetarian/MP_Mix_Manager_v0.3/scripts/align_mix_windows.py"
+    [ ! -f "$align_sh" ] && align_sh="$HOME/MP_Mix_Manager_v0.3/scripts/align_mix_windows.py"
+    [ ! -f "$align_sh" ] && align_sh="/var/home/mplanetarian/MP_Mix_Manager_v0.3/scripts/align_mix_windows.py"
     [ ! -f "$align_sh" ] && align_sh="$HOME/Documents/BASH_SCRIPTS/scripts/align_mix_windows.py"
     [ ! -f "$align_sh" ] && align_sh="$PWD/scripts/align_mix_windows.py"
     if [ -f "$align_sh" ] && command -v python3 >/dev/null 2>&1; then
@@ -816,6 +820,10 @@ fi
 
 OUTPUT_DIR="${OUTPUT_DIR:-FLAC_CONVERTED_OUTPUTS}"
 ARCHIVE_DIR="${ARCHIVE_DIR:-CONVERTED_WAV_FILES}"
+MP3_OUTPUT_DIR="${MP3_OUTPUT_DIR:-MP3_CONVERTED_OUTPUTS}"
+WAV_OUTPUT_DIR="${WAV_OUTPUT_DIR:-WAV_CONVERTED_OUTPUTS}"
+MP4_OUTPUT_DIR="${MP4_OUTPUT_DIR:-MP4_CONVERTED_OUTPUTS}"
+export OUTPUT_DIR ARCHIVE_DIR MP3_OUTPUT_DIR WAV_OUTPUT_DIR MP4_OUTPUT_DIR
 
 is_mix_archive_configured() {
     if [ "${MIX_ARCHIVE_CONFIGURED:-false}" = "true" ] && [ -n "${MIX_ARCHIVE_DIR:-}" ]; then
@@ -830,8 +838,7 @@ if is_mix_archive_configured && [ -d "$MIX_ARCHIVE_DIR" ]; then
 else
     # Fallback to Application Root Folder 'MIX_ARCHIVE'
     MIX_ARCHIVE_DIR="${MIX_ARCHIVE_DIR:-$SCRIPT_DIR/MIX_ARCHIVE}"
-    mkdir -p "$SCRIPT_DIR/MIX_ARCHIVE/FLAC_CONVERTED_OUTPUTS" 2>/dev/null || true
-    mkdir -p "$SCRIPT_DIR/MIX_ARCHIVE/CONVERTED_WAV_FILES" 2>/dev/null || true
+    mkdir -p "$SCRIPT_DIR/MIX_ARCHIVE"/{FLAC_CONVERTED_OUTPUTS,CONVERTED_WAV_FILES,MP3_CONVERTED_OUTPUTS,WAV_CONVERTED_OUTPUTS,MP4_CONVERTED_OUTPUTS} 2>/dev/null || true
     if [ -d "$MIX_ARCHIVE_DIR" ]; then
         cd "$MIX_ARCHIVE_DIR" 2>/dev/null || cd "$SCRIPT_DIR/MIX_ARCHIVE" 2>/dev/null || cd "$SCRIPT_DIR" || exit 1
     else
@@ -841,18 +848,33 @@ fi
 
 # Resolve relative storage paths to active archive folder
 if [ -n "${MIX_ARCHIVE_DIR:-}" ] && [ -d "$MIX_ARCHIVE_DIR" ]; then
+    mkdir -p "$MIX_ARCHIVE_DIR"/{FLAC_CONVERTED_OUTPUTS,CONVERTED_WAV_FILES,MP3_CONVERTED_OUTPUTS,WAV_CONVERTED_OUTPUTS,MP4_CONVERTED_OUTPUTS} 2>/dev/null || true
     if [ ! -d "$OUTPUT_DIR" ] && [ -d "$MIX_ARCHIVE_DIR/$OUTPUT_DIR" ]; then
         OUTPUT_DIR="$MIX_ARCHIVE_DIR/$OUTPUT_DIR"
     elif [ ! -d "$OUTPUT_DIR" ]; then
-        mkdir -p "$MIX_ARCHIVE_DIR/FLAC_CONVERTED_OUTPUTS" 2>/dev/null || true
         OUTPUT_DIR="$MIX_ARCHIVE_DIR/FLAC_CONVERTED_OUTPUTS"
     fi
     if [ ! -d "$ARCHIVE_DIR" ] && [ -d "$MIX_ARCHIVE_DIR/$ARCHIVE_DIR" ]; then
         ARCHIVE_DIR="$MIX_ARCHIVE_DIR/$ARCHIVE_DIR"
     elif [ ! -d "$ARCHIVE_DIR" ]; then
-        mkdir -p "$MIX_ARCHIVE_DIR/CONVERTED_WAV_FILES" 2>/dev/null || true
         ARCHIVE_DIR="$MIX_ARCHIVE_DIR/CONVERTED_WAV_FILES"
     fi
+    if [ ! -d "$MP3_OUTPUT_DIR" ] && [ -d "$MIX_ARCHIVE_DIR/$MP3_OUTPUT_DIR" ]; then
+        MP3_OUTPUT_DIR="$MIX_ARCHIVE_DIR/$MP3_OUTPUT_DIR"
+    elif [ ! -d "$MP3_OUTPUT_DIR" ]; then
+        MP3_OUTPUT_DIR="$MIX_ARCHIVE_DIR/MP3_CONVERTED_OUTPUTS"
+    fi
+    if [ ! -d "$WAV_OUTPUT_DIR" ] && [ -d "$MIX_ARCHIVE_DIR/$WAV_OUTPUT_DIR" ]; then
+        WAV_OUTPUT_DIR="$MIX_ARCHIVE_DIR/$WAV_OUTPUT_DIR"
+    elif [ ! -d "$WAV_OUTPUT_DIR" ]; then
+        WAV_OUTPUT_DIR="$MIX_ARCHIVE_DIR/WAV_CONVERTED_OUTPUTS"
+    fi
+    if [ ! -d "$MP4_OUTPUT_DIR" ] && [ -d "$MIX_ARCHIVE_DIR/$MP4_OUTPUT_DIR" ]; then
+        MP4_OUTPUT_DIR="$MIX_ARCHIVE_DIR/$MP4_OUTPUT_DIR"
+    elif [ ! -d "$MP4_OUTPUT_DIR" ]; then
+        MP4_OUTPUT_DIR="$MIX_ARCHIVE_DIR/MP4_CONVERTED_OUTPUTS"
+    fi
+    export OUTPUT_DIR ARCHIVE_DIR MP3_OUTPUT_DIR WAV_OUTPUT_DIR MP4_OUTPUT_DIR
 fi
 
 # Default Audio Player and Startup Autoplay Preferences
@@ -1405,9 +1427,19 @@ show_stats() {
         fi
     done
 
+    local mp3_files=()
+    [ -d "${MP3_OUTPUT_DIR}" ] && mp3_files=("${MP3_OUTPUT_DIR}"/*.mp3)
+    local wav_out_files=()
+    [ -d "${WAV_OUTPUT_DIR}" ] && wav_out_files=("${WAV_OUTPUT_DIR}"/*.wav)
+    local mp4_files=()
+    [ -d "${MP4_OUTPUT_DIR}" ] && mp4_files=("${MP4_OUTPUT_DIR}"/*.mp4)
+
     echo -e "  Root Directory WAVs (Pending Conversion):  ${BOLD}${YELLOW}${root_wav_count}${NC} files (${root_wav_size_mb} MB)"
     echo -e "  Archive Directory WAVs (Converted):       ${BOLD}${GREEN}${archive_wav_count}${NC} files (${archive_wav_size_gb} GB)"
     echo -e "  Total FLAC Files Generated:               ${BOLD}${CYAN}${flac_count}${NC} files"
+    [ ${#mp3_files[@]} -gt 0 ] && echo -e "  Total MP3 Files Generated:                ${BOLD}${CYAN}${#mp3_files[@]}${NC} files"
+    [ ${#wav_out_files[@]} -gt 0 ] && echo -e "  Total WAV Converted Outputs:              ${BOLD}${CYAN}${#wav_out_files[@]}${NC} files"
+    [ ${#mp4_files[@]} -gt 0 ] && echo -e "  Total MP4 Videos Generated:               ${BOLD}${CYAN}${#mp4_files[@]}${NC} videos"
     if [ "$missing_tl_count" -gt 0 ]; then
         echo -e "  FLAC Files Missing Tracklists:            ${BOLD}${RED}${missing_tl_count}${NC} files"
     else
@@ -1729,8 +1761,8 @@ ${BOLD}${MAGENTA}===============================================================
             read -r -p "Enter Audio file path (.wav / .flac): " mp4_audio
             read -r -p "Enter Input Video file path (.mp4 / .mkv): " mp4_video
             read -r -p "Enter Intro/Outro Thumbnail image (optional, leave blank for auto): " mp4_thumb
-            read -r -p "Enter Output directory or target file path (default: $HOME/Documents): " mp4_out
-            [ -z "$mp4_out" ] && mp4_out="$HOME/Documents"
+            read -r -p "Enter Output directory or target file path (default: $MP4_OUTPUT_DIR): " mp4_out
+            [ -z "$mp4_out" ] && mp4_out="$MP4_OUTPUT_DIR"
             run_sub_script "Make_SOF_Episode_From_MP4_Audio_Output_MP4_1080p_Video.sh" "$mp4_audio" "$mp4_video" "$mp4_thumb" "$mp4_out" "1080p"
             press_enter
             return 0
@@ -1752,7 +1784,11 @@ ${BOLD}${MAGENTA}===============================================================
     local flac_list=()
     local search_dirs=()
     [ -d "$OUTPUT_DIR" ] && search_dirs+=("$OUTPUT_DIR")
+    [ -d "$WAV_OUTPUT_DIR" ] && search_dirs+=("$WAV_OUTPUT_DIR")
+    [ -d "$ARCHIVE_DIR" ] && search_dirs+=("$ARCHIVE_DIR")
     [ -n "${MIX_ARCHIVE_DIR:-}" ] && [ -d "$MIX_ARCHIVE_DIR/FLAC_CONVERTED_OUTPUTS" ] && search_dirs+=("$MIX_ARCHIVE_DIR/FLAC_CONVERTED_OUTPUTS")
+    [ -n "${MIX_ARCHIVE_DIR:-}" ] && [ -d "$MIX_ARCHIVE_DIR/WAV_CONVERTED_OUTPUTS" ] && search_dirs+=("$MIX_ARCHIVE_DIR/WAV_CONVERTED_OUTPUTS")
+    [ -n "${MIX_ARCHIVE_DIR:-}" ] && [ -d "$MIX_ARCHIVE_DIR/CONVERTED_WAV_FILES" ] && search_dirs+=("$MIX_ARCHIVE_DIR/CONVERTED_WAV_FILES")
     [ -d "$SCRIPT_DIR/FLAC_CONVERTED_OUTPUTS" ] && search_dirs+=("$SCRIPT_DIR/FLAC_CONVERTED_OUTPUTS")
     search_dirs+=("$PWD")
 
@@ -1811,13 +1847,13 @@ ${BOLD}${MAGENTA}===============================================================
 
     case "$res" in
         4k)
-            run_sub_script "Make_SOF_Episode_From_PNG_FLAC_Output_MP4_4K_Video.sh" "$flac_input" "$cover_input" "$OUTPUT_DIR"
+            run_sub_script "Make_SOF_Episode_From_PNG_FLAC_Output_MP4_4K_Video.sh" "$flac_input" "$cover_input" "$MP4_OUTPUT_DIR"
             ;;
         720p)
-            run_sub_script "Make_SOF_Episode_From_PNG_FLAC_Output_MP4_720p_Video.sh" "$flac_input" "$cover_input" "$OUTPUT_DIR"
+            run_sub_script "Make_SOF_Episode_From_PNG_FLAC_Output_MP4_720p_Video.sh" "$flac_input" "$cover_input" "$MP4_OUTPUT_DIR"
             ;;
         *)
-            run_sub_script "Make_SOF_Episode_From_PNG_FLAC_Output_MP4_1080p_Video.sh" "$flac_input" "$cover_input" "$OUTPUT_DIR"
+            run_sub_script "Make_SOF_Episode_From_PNG_FLAC_Output_MP4_1080p_Video.sh" "$flac_input" "$cover_input" "$MP4_OUTPUT_DIR"
             ;;
     esac
 }
@@ -6439,13 +6475,16 @@ configure_mix_archive_folder() {
                 fi
                 
                 # Setup subdirectories
-                mkdir -p "$new_dir/FLAC_CONVERTED_OUTPUTS" "$new_dir/CONVERTED_WAV_FILES" 2>/dev/null || true
+                mkdir -p "$new_dir"/{FLAC_CONVERTED_OUTPUTS,CONVERTED_WAV_FILES,MP3_CONVERTED_OUTPUTS,WAV_CONVERTED_OUTPUTS,MP4_CONVERTED_OUTPUTS} 2>/dev/null || true
                 
                 MIX_ARCHIVE_DIR="$new_dir"
                 MIX_ARCHIVE_CONFIGURED="true"
                 OUTPUT_DIR="$new_dir/FLAC_CONVERTED_OUTPUTS"
                 ARCHIVE_DIR="$new_dir/CONVERTED_WAV_FILES"
-                export MIX_ARCHIVE_DIR MIX_ARCHIVE_CONFIGURED OUTPUT_DIR ARCHIVE_DIR
+                MP3_OUTPUT_DIR="$new_dir/MP3_CONVERTED_OUTPUTS"
+                WAV_OUTPUT_DIR="$new_dir/WAV_CONVERTED_OUTPUTS"
+                MP4_OUTPUT_DIR="$new_dir/MP4_CONVERTED_OUTPUTS"
+                export MIX_ARCHIVE_DIR MIX_ARCHIVE_CONFIGURED OUTPUT_DIR ARCHIVE_DIR MP3_OUTPUT_DIR WAV_OUTPUT_DIR MP4_OUTPUT_DIR
                 
                 save_config_setting "MIX_ARCHIVE_DIR" "$new_dir"
                 save_config_setting "MIX_ARCHIVE_CONFIGURED" "true"
@@ -6500,12 +6539,15 @@ configure_mix_archive_folder() {
                 read -r -p "Select a location [1-${#unique_dirs[@]}, 0]: " sel_idx
                 if [[ "$sel_idx" =~ ^[0-9]+$ ]] && [ "$sel_idx" -ge 1 ] && [ "$sel_idx" -le "${#unique_dirs[@]}" ]; then
                     local chosen_dir="${unique_dirs[$((sel_idx - 1))]}"
-                    mkdir -p "$chosen_dir/FLAC_CONVERTED_OUTPUTS" "$chosen_dir/CONVERTED_WAV_FILES" 2>/dev/null || true
+                    mkdir -p "$chosen_dir"/{FLAC_CONVERTED_OUTPUTS,CONVERTED_WAV_FILES,MP3_CONVERTED_OUTPUTS,WAV_CONVERTED_OUTPUTS,MP4_CONVERTED_OUTPUTS} 2>/dev/null || true
                     MIX_ARCHIVE_DIR="$chosen_dir"
                     MIX_ARCHIVE_CONFIGURED="true"
                     OUTPUT_DIR="$chosen_dir/FLAC_CONVERTED_OUTPUTS"
                     ARCHIVE_DIR="$chosen_dir/CONVERTED_WAV_FILES"
-                    export MIX_ARCHIVE_DIR MIX_ARCHIVE_CONFIGURED OUTPUT_DIR ARCHIVE_DIR
+                    MP3_OUTPUT_DIR="$chosen_dir/MP3_CONVERTED_OUTPUTS"
+                    WAV_OUTPUT_DIR="$chosen_dir/WAV_CONVERTED_OUTPUTS"
+                    MP4_OUTPUT_DIR="$chosen_dir/MP4_CONVERTED_OUTPUTS"
+                    export MIX_ARCHIVE_DIR MIX_ARCHIVE_CONFIGURED OUTPUT_DIR ARCHIVE_DIR MP3_OUTPUT_DIR WAV_OUTPUT_DIR MP4_OUTPUT_DIR
                     save_config_setting "MIX_ARCHIVE_DIR" "$chosen_dir"
                     save_config_setting "MIX_ARCHIVE_CONFIGURED" "true"
                     cd "$chosen_dir" 2>/dev/null || true
@@ -6516,12 +6558,15 @@ configure_mix_archive_folder() {
                 ;;
             3)
                 local root_archive="$SCRIPT_DIR/MIX_ARCHIVE"
-                mkdir -p "$root_archive/FLAC_CONVERTED_OUTPUTS" "$root_archive/CONVERTED_WAV_FILES" 2>/dev/null || true
+                mkdir -p "$root_archive"/{FLAC_CONVERTED_OUTPUTS,CONVERTED_WAV_FILES,MP3_CONVERTED_OUTPUTS,WAV_CONVERTED_OUTPUTS,MP4_CONVERTED_OUTPUTS} 2>/dev/null || true
                 MIX_ARCHIVE_DIR="$root_archive"
                 MIX_ARCHIVE_CONFIGURED="true"
                 OUTPUT_DIR="$root_archive/FLAC_CONVERTED_OUTPUTS"
                 ARCHIVE_DIR="$root_archive/CONVERTED_WAV_FILES"
-                export MIX_ARCHIVE_DIR MIX_ARCHIVE_CONFIGURED OUTPUT_DIR ARCHIVE_DIR
+                MP3_OUTPUT_DIR="$root_archive/MP3_CONVERTED_OUTPUTS"
+                WAV_OUTPUT_DIR="$root_archive/WAV_CONVERTED_OUTPUTS"
+                MP4_OUTPUT_DIR="$root_archive/MP4_CONVERTED_OUTPUTS"
+                export MIX_ARCHIVE_DIR MIX_ARCHIVE_CONFIGURED OUTPUT_DIR ARCHIVE_DIR MP3_OUTPUT_DIR WAV_OUTPUT_DIR MP4_OUTPUT_DIR
                 save_config_setting "MIX_ARCHIVE_DIR" "$root_archive"
                 save_config_setting "MIX_ARCHIVE_CONFIGURED" "true"
                 cd "$root_archive" 2>/dev/null || true
@@ -8875,7 +8920,7 @@ while true; do
     fi
     clear
     echo -e "${BOLD}${MAGENTA}===================================================================================${NC}"
-    echo -e "${BOLD}${MAGENTA}                     Mix Archive Manager (MP_Mix_Manager_v0.2)                     ${NC}"
+    echo -e "${BOLD}${MAGENTA}                     Mix Archive Manager (MP_Mix_Manager_v0.3)                     ${NC}"
     echo -e "${BOLD}${MAGENTA}===================================================================================${NC}"
     os_badge=$(get_os_badge)
     os_updates=$(get_os_update_status)

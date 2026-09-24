@@ -1,4 +1,4 @@
-# Mix Archive Manager (`MP_Mix_Archive_Manager_v0.2`)
+# Mix Archive Manager (`MP_Mix_Manager_v0.3`)
 
 [![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20macOS%20%7C%20Windows%20%7C%20FreeBSD-blue.svg)](README.md)
 [![macOS](https://img.shields.io/badge/macOS-Sonoma%20%7C%20Sequoia%20%7C%20Apple%20Silicon%20%26%20Intel-silver.svg)]()
@@ -81,7 +81,7 @@ The **Stream of Frequency Mix Archive Manager** provides an interactive, termina
 For a fresh, step-by-step guide from a clean Bazzite installation, see **[INSTALL_BAZZITE.md](INSTALL_BAZZITE.md)**.
 
 ```bash
-cd ~/MP_Mix_Manager_v0.2
+cd ~/MP_Mix_Manager_v0.3
 chmod +x install.sh
 ./install.sh
 ```
@@ -116,7 +116,7 @@ brew install --cask vlc audacity strawberry musicbrainz-picard gimp reaper fooba
 #### Running on macOS
 1. Run the installer to configure directory structure and desktop launcher:
    ```bash
-   cd ~/MP_Mix_Manager_v0.2
+   cd ~/MP_Mix_Manager_v0.3
    chmod +x install.sh
    ./install.sh
    ```
@@ -167,7 +167,7 @@ pkg install -y audacity vlc strawberry-music-player gimp reaper
 
 #### Running on FreeBSD
 ```bash
-cd ~/MP_Mix_Manager_v0.2
+cd ~/MP_Mix_Manager_v0.3
 chmod +x manager_freebsd.sh install.sh
 ./manager_freebsd.sh
 # or:
@@ -179,7 +179,7 @@ chmod +x manager_freebsd.sh install.sh
 ## 📂 Repository & Codebase Layout
 
 ```
-MP_Mix_Manager_v0.2/
+MP_Mix_Manager_v0.3/
 ├── Mix_Archive_Manager.sh       # Authoritative master interactive console (71 operations)
 ├── manager.sh                   # Linux bash wrapper
 ├── manager_macos.command        # macOS double-clickable Finder launcher

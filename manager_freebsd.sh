@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# MP_Mix_Manager_v0.2 - FreeBSD Launcher
+# MP_Mix_Manager_v0.3 - FreeBSD Launcher
 # Sets up FreeBSD environment, paths, and launches Mix Archive Manager
 # ==============================================================================
 _RESOLVED_SRC="${BASH_SOURCE[0]}"

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# MP_Mix_Manager_v0.2 - Traktor Pro History Playlist Generator
+# MP_Mix_Manager_v0.3 - Traktor Pro History Playlist Generator
 # Exclusively supported on macOS.
 # ==============================================================================
 

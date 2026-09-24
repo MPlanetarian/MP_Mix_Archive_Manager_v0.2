@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-MP_Mix_Manager_v0.2 - Custom Playlists Creator & Multi-Player Launcher
+MP_Mix_Manager_v0.3 - Custom Playlists Creator & Multi-Player Launcher
 Allows users to:
   - Create and edit custom playlists (.m3u, .m3u8, .xspf) from mixes in the archive
   - Search, filter, and add audio mixes by title, episode number, or date

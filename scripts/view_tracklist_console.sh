@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# MP_Mix_Manager_v0.2 - Dedicated Console Tracklist Viewer
+# MP_Mix_Manager_v0.3 - Dedicated Console Tracklist Viewer
 # Purpose: Display mix tracklists in the operating system's default console/terminal
 #          with an entirely borderless presentation on Bazzite Linux / KDE Plasma.
 # ==============================================================================

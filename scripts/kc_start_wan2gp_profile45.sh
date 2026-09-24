@@ -10,10 +10,10 @@ export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
 export PATH="$HOME/.local/bin:$PATH"
 
 # Resolve codebase directory
-CODEBASE_DIR="/var/home/mplanetarian/MP_Mix_Manager_v0.2"
+CODEBASE_DIR="/var/home/mplanetarian/MP_Mix_Manager_v0.3"
 if [ ! -f "$CODEBASE_DIR/wan2gp.sh" ]; then
     for _c in \
-        "$HOME/MP_Mix_Manager_v0.2" \
+        "$HOME/MP_Mix_Manager_v0.3" \
         "/var/home/mplanetarian/MP_Mix_Manager_v0.1" \
         "$HOME/MP_Mix_Manager_v0.1" \
         "$HOME/Documents/BASH_SCRIPTS"; do

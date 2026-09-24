@@ -12,8 +12,8 @@ DSH_DIR="/var/home/mplanetarian/beszel-hub/deepseek-harness"
 _KCSCRIPT_DIR="$(cd -P "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
 if [ -f "$_KCSCRIPT_DIR/dsh_mobile.sh" ]; then
     exec bash "$_KCSCRIPT_DIR/dsh_mobile.sh" start
-elif [ -f "/var/home/mplanetarian/MP_Mix_Manager_v0.2/scripts/dsh_mobile.sh" ]; then
-    exec bash "/var/home/mplanetarian/MP_Mix_Manager_v0.2/scripts/dsh_mobile.sh" start
+elif [ -f "/var/home/mplanetarian/MP_Mix_Manager_v0.3/scripts/dsh_mobile.sh" ]; then
+    exec bash "/var/home/mplanetarian/MP_Mix_Manager_v0.3/scripts/dsh_mobile.sh" start
 fi
 
 # Check if DeepSeek Harness is already listening on port 3080 or process active
