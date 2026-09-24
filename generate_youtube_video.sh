@@ -148,13 +148,41 @@ if [ -z "$AUDIO_FILE" ] && [ -z "$VIDEO_FILE" ]; then
         read -r -p "Enter output directory or file (default: Documents or FLAC_CONVERTED_OUTPUTS): " user_out
         [ -n "$user_out" ] && OUTPUT_DIR="$user_out"
     else
-        # Search for available FLACs in FLAC_CONVERTED_OUTPUTS or current directory
-        shopt -s nullglob nocaseglob
-        flac_list=("$OUTPUT_DIR"/*.flac ./*.flac)
-        shopt -u nullglob nocaseglob
+        # Search for available FLACs/WAVs (newest/latest first)
+        local flac_list=()
+        local search_dirs=()
+        [ -d "$OUTPUT_DIR" ] && search_dirs+=("$OUTPUT_DIR")
+        [ -n "${MIX_ARCHIVE_DIR:-}" ] && [ -d "$MIX_ARCHIVE_DIR/FLAC_CONVERTED_OUTPUTS" ] && search_dirs+=("$MIX_ARCHIVE_DIR/FLAC_CONVERTED_OUTPUTS")
+        [ -d "$SCRIPT_DIR/FLAC_CONVERTED_OUTPUTS" ] && search_dirs+=("$SCRIPT_DIR/FLAC_CONVERTED_OUTPUTS")
+        search_dirs+=("$PWD")
+
+        local patterns=()
+        for sdir in "${search_dirs[@]}"; do
+            patterns+=("$sdir"/*.flac "$sdir"/*.wav)
+        done
+
+        local seen_stems="|"
+        local f
+        while IFS= read -r f; do
+            if [ -n "$f" ] && [ -f "$f" ]; then
+                local bname stem stem_lower preferred_f
+                bname=$(basename "$f")
+                stem="${bname%.*}"
+                stem_lower=$(echo "$stem" | tr '[:upper:]' '[:lower:]')
+                if [[ "$seen_stems" != *"|$stem_lower|"* ]]; then
+                    seen_stems="${seen_stems}${stem_lower}|"
+                    preferred_f="$f"
+                    if [[ "$f" == *.wav ]] || [[ "$f" == *.WAV ]]; then
+                        local flac_companion="${f%.*}.flac"
+                        [ -f "$flac_companion" ] && preferred_f="$flac_companion"
+                    fi
+                    flac_list+=("$preferred_f")
+                fi
+            fi
+        done < <(ls -td "${patterns[@]}" 2>/dev/null)
 
         if [ ${#flac_list[@]} -gt 0 ]; then
-            echo -e "\n${BOLD}${CYAN}Available Audio Mixes (${#flac_list[@]} found):${NC}"
+            echo -e "\n${BOLD}${CYAN}Available Audio Mixes (Showing Latest Mixes, ${#flac_list[@]} total):${NC}"
             limit=15
             [ ${#flac_list[@]} -lt $limit ] && limit=${#flac_list[@]}
             for ((i=0; i<limit; i++)); do
