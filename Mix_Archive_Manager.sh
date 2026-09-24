@@ -5803,9 +5803,10 @@ manage_live_monitors() {
         echo -e "  ${BOLD}${CYAN}2)${NC} Launch Traktor Live Monitor & Audio Recorder (${GREEN}New Window - CPU, Tracks, Audio I/O${NC})"
         echo -e "  ${BOLD}${CYAN}3)${NC} Launch Live File Transfer Monitor (${GREEN}transfer-monitor${NC})"
         echo -e "  ${BOLD}${CYAN}4)${NC} Launch Chrome Upload Monitor (${GREEN}Podcast Connect / Web Uploads${NC})"
+        echo -e "  ${BOLD}${CYAN}5)${NC} View Running Background Tasks (${GREEN}Track and inspect background jobs${NC})"
         echo -e "  ${BOLD}${CYAN}0)${NC} Return to Main Menu"
         echo ""
-        read -r -p "Enter choice [0-4]: " lm_choice
+        read -r -p "Enter choice [0-5]: " lm_choice
         case "$lm_choice" in
             1)
                 echo -e "\n${BOLD}${YELLOW}Launching Live Tracklist Monitor (Press Ctrl+C to return)...${NC}\n"
@@ -5852,6 +5853,10 @@ manage_live_monitors() {
                     echo -e "${RED}Error: chrome-upload-monitor command not found in PATH or ~/.local/bin!${NC}"
                 fi
                 trap - INT
+                press_enter
+                ;;
+            5)
+                view_tasks
                 press_enter
                 ;;
             0|[qQ])
@@ -8297,6 +8302,528 @@ elif [ "$1" = "--dsh-menu" ] || { [ "$1" = "59" ] && [ -z "$2" ]; }; then
     exit 0
 fi
 
+manage_integrity_and_verification() {
+    while true; do
+        clear
+        echo -e "${BOLD}${MAGENTA}====================================================${NC}"
+        echo -e "${BOLD}${MAGENTA}    AUDIO INTEGRITY & FLAC VERIFICATION SUITE       ${NC}"
+        echo -e "${BOLD}${MAGENTA}====================================================${NC}"
+        echo ""
+        echo -e "${BOLD}Select an operation:${NC}"
+        echo -e "  ${BOLD}${CYAN}1)${NC} Manage Audio Integrity Checksums (${GREEN}SHA-256 Manifest & Verification${NC})"
+        echo -e "  ${BOLD}${CYAN}2)${NC} Verify FLAC Files for Integrity & Corruption (${GREEN}Verify_FLAC_Files.sh${NC})"
+        echo -e "  ${BOLD}${CYAN}0)${NC} Return to Main Menu"
+        echo ""
+        read -r -p "Enter choice [0-2]: " aiv_choice
+        case "$aiv_choice" in
+            1)
+                manage_audio_checksums
+                ;;
+            2)
+                echo -e "\n${BOLD}${YELLOW}Starting FLAC File Integrity Scan...${NC}\n"
+                run_sub_script "Verify_FLAC_Files.sh"
+                press_enter
+                ;;
+            0|[qQ]|[eE][xX][iI][tT])
+                return 0
+                ;;
+            *)
+                echo -e "\n${RED}Invalid option!${NC}"
+                sleep 1
+                ;;
+        esac
+    done
+}
+
+manage_storage_and_archive_config() {
+    while true; do
+        clear
+        echo -e "${BOLD}${MAGENTA}====================================================${NC}"
+        echo -e "${BOLD}${MAGENTA}     STORAGE MANAGEMENT & ARCHIVE CONFIGURATION     ${NC}"
+        echo -e "${BOLD}${MAGENTA}====================================================${NC}"
+        local archive_disp=""
+        if is_mix_archive_configured; then
+            archive_disp="${GREEN}${MIX_ARCHIVE_DIR}${NC}"
+        else
+            archive_disp="${RED}Not Configured${NC} ${DIM}(Root: ${SCRIPT_DIR}/MIX_ARCHIVE)${NC}"
+        fi
+        echo -e "  Current Archive: ${archive_disp}"
+        echo ""
+        echo -e "${BOLD}Select an operation:${NC}"
+        echo -e "  ${BOLD}${CYAN}1)${NC} Show Mix Storage Drive Space Remaining (${GREEN}Mix Drive Only${NC})"
+        echo -e "  ${BOLD}${CYAN}2)${NC} Show All Attached Drives Space Remaining (${GREEN}Get_All_Drive_Space.sh${NC})"
+        echo -e "  ${BOLD}${CYAN}3)${NC} Refresh Archive Status & File Counts (${GREEN}Rescan WAVs, FLACs & Tracklists${NC})"
+        echo -e "  ${BOLD}${CYAN}4)${NC} Configure Default Mix Archive Storage Folder"
+        echo -e "  ${BOLD}${CYAN}0)${NC} Return to Main Menu"
+        echo ""
+        read -r -p "Enter choice [0-4]: " stg_choice
+        case "$stg_choice" in
+            1)
+                show_mix_drive_space
+                ;;
+            2)
+                echo -e "\n${BOLD}${YELLOW}Scanning Drive Space Across Attached Storage...${NC}\n"
+                run_sub_script "Get_All_Drive_Space.sh"
+                press_enter
+                ;;
+            3)
+                _LAST_OS_UPDATE_CHECK=0
+                return 0
+                ;;
+            4)
+                configure_mix_archive_folder
+                ;;
+            0|[qQ]|[eE][xX][iI][tT])
+                return 0
+                ;;
+            *)
+                echo -e "\n${RED}Invalid option!${NC}"
+                sleep 1
+                ;;
+        esac
+    done
+}
+
+manage_tracklist_suite() {
+    while true; do
+        clear
+        echo -e "${BOLD}${MAGENTA}====================================================${NC}"
+        echo -e "${BOLD}${MAGENTA}   TRACKLIST MANAGEMENT, SCANNING & METADATA SUITE  ${NC}"
+        echo -e "${BOLD}${MAGENTA}====================================================${NC}"
+        echo ""
+        echo -e "${BOLD}Select an operation:${NC}"
+        echo -e "  ${BOLD}${CYAN}1)${NC} Tracklist Management Suite (${GREEN}Browse, Search, View, Export HTML & PDF${NC})"
+        echo -e "  ${BOLD}${CYAN}2)${NC} Search for Mix & Auto-Play with Live Tracklist View (${GREEN}cliamp Window${NC})"
+        echo -e "  ${BOLD}${CYAN}3)${NC} Scan & Generate Missing Tracklists (${GREEN}Check_Find_Tracklists.sh${NC})"
+        echo -e "  ${BOLD}${CYAN}4)${NC} Generate Master Tracklist HTML Index (${GREEN}Generate_Master_Tracklist.sh${NC})"
+        echo -e "  ${BOLD}${CYAN}5)${NC} Launch MusicBrainz Picard Meta Tag Editor (${GREEN}Auto-install if missing${NC})"
+        echo -e "  ${BOLD}${CYAN}0)${NC} Return to Main Menu"
+        echo ""
+        read -r -p "Enter choice [0-5]: " tl_choice
+        case "$tl_choice" in
+            1)
+                manage_tracklists
+                ;;
+            2)
+                search_and_play_mix
+                ;;
+            3)
+                echo -e "\n${BOLD}${YELLOW}Scanning & Generating Missing Tracklists...${NC}\n"
+                run_sub_script "Check_Find_Tracklists.sh"
+                press_enter
+                ;;
+            4)
+                echo -e "\n${BOLD}${YELLOW}Starting Master Tracklist HTML Generation...${NC}\n"
+                run_sub_script "Generate_Master_Tracklist.sh"
+                press_enter
+                ;;
+            5)
+                launch_or_install_picard
+                ;;
+            0|[qQ]|[eE][xX][iI][tT])
+                return 0
+                ;;
+            *)
+                echo -e "\n${RED}Invalid option!${NC}"
+                sleep 1
+                ;;
+        esac
+    done
+}
+
+manage_playlists_and_history() {
+    while true; do
+        clear
+        echo -e "${BOLD}${MAGENTA}====================================================${NC}"
+        echo -e "${BOLD}${MAGENTA}      CUSTOM PLAYLISTS & TRAKTOR HISTORY SUITE      ${NC}"
+        echo -e "${BOLD}${MAGENTA}====================================================${NC}"
+        echo ""
+        echo -e "${BOLD}Select an operation:${NC}"
+        echo -e "  ${BOLD}${CYAN}1)${NC} Custom Mix Playlists Suite (${GREEN}.m3u8 / .xspf - Create, Edit & Launch${NC})"
+        local t_ver
+        t_ver="$(get_traktor_version_mac 2>/dev/null || echo "3")"
+        if [ -n "$t_ver" ] && [ "$t_ver" != "3" ]; then
+            echo -e "  ${BOLD}${CYAN}2)${NC} Generate Playlist from History Files on Traktor 3 (${GREEN}v${t_ver} Key Sorted / Decks Ready${NC})"
+        else
+            echo -e "  ${BOLD}${CYAN}2)${NC} Generate Playlist from History Files on Traktor 3 (${GREEN}Key Sorted / Decks Ready${NC})"
+        fi
+        echo -e "  ${BOLD}${CYAN}0)${NC} Return to Main Menu"
+        echo ""
+        read -r -p "Enter choice [0-2]: " ph_choice
+        case "$ph_choice" in
+            1)
+                manage_playlists_menu
+                ;;
+            2)
+                generate_traktor_playlist_from_history
+                ;;
+            0|[qQ]|[eE][xX][iI][tT])
+                return 0
+                ;;
+            *)
+                echo -e "\n${RED}Invalid option!${NC}"
+                sleep 1
+                ;;
+        esac
+    done
+}
+
+manage_daws_suite() {
+    while true; do
+        clear
+        echo -e "${BOLD}${MAGENTA}====================================================${NC}"
+        echo -e "${BOLD}${MAGENTA}       DIGITAL AUDIO WORKSTATIONS (DAWS) SUITE      ${NC}"
+        echo -e "${BOLD}${MAGENTA}====================================================${NC}"
+        echo ""
+        echo -e "${BOLD}Select an operation:${NC}"
+        echo -e "  ${BOLD}${CYAN}1)${NC} Digital Audio Workstations (DAWs) Menu (${GREEN}Reaper, Logic Pro, FL Studio, Traktor, Ardour, Bitwig...${NC})"
+        echo -e "  ${BOLD}${CYAN}2)${NC} Open Mix WAV/FLAC Audio File in DAW (${GREEN}Direct Mix Search/Select & Dispatch${NC})"
+        echo -e "  ${BOLD}${CYAN}0)${NC} Return to Main Menu"
+        echo ""
+        read -r -p "Enter choice [0-2]: " daw_choice
+        case "$daw_choice" in
+            1)
+                manage_daws
+                ;;
+            2)
+                open_mix_in_daw
+                ;;
+            0|[qQ]|[eE][xX][iI][tT])
+                return 0
+                ;;
+            *)
+                echo -e "\n${RED}Invalid option!${NC}"
+                sleep 1
+                ;;
+        esac
+    done
+}
+
+manage_studio_hardware_and_volume() {
+    while true; do
+        clear
+        echo -e "${BOLD}${MAGENTA}====================================================${NC}"
+        echo -e "${BOLD}${MAGENTA}   STUDIO HARDWARE, INTERFACES & VOLUME CONTROL     ${NC}"
+        echo -e "${BOLD}${MAGENTA}====================================================${NC}"
+        echo ""
+        echo -e "${BOLD}Select an operation:${NC}"
+        echo -e "  ${BOLD}${CYAN}1)${NC} Studio Hardware & Software Inspector (${GREEN}PipeWire, ALSA, DAWs, MIDI Controllers & Surfaces${NC})"
+        echo -e "  ${BOLD}${CYAN}2)${NC} Toggle Audio Mute / Unmute & Master Volume Control (${GREEN}Instant PipeWire/ALSA Mute${NC})"
+        echo -e "  ${BOLD}${CYAN}0)${NC} Return to Main Menu"
+        echo ""
+        read -r -p "Enter choice [0-2]: " shv_choice
+        case "$shv_choice" in
+            1)
+                inspect_audio_studio_menu
+                ;;
+            2)
+                toggle_audio_mute
+                ;;
+            0|[qQ]|[eE][xX][iI][tT])
+                return 0
+                ;;
+            *)
+                echo -e "\n${RED}Invalid option!${NC}"
+                sleep 1
+                ;;
+        esac
+    done
+}
+
+manage_visual_media_suite() {
+    while true; do
+        clear
+        echo -e "${BOLD}${MAGENTA}====================================================${NC}"
+        echo -e "${BOLD}${MAGENTA}   VISUAL MEDIA, COVER ART & COMPANION VIDEO SUITE  ${NC}"
+        echo -e "${BOLD}${MAGENTA}====================================================${NC}"
+        echo ""
+        echo -e "${BOLD}Select an operation:${NC}"
+        echo -e "  ${BOLD}${CYAN}1)${NC} Visual, Video & Art Launchers Suite (${GREEN}NFT Videos, Video Player, GIMP, Electric Sheep, GeeXLab${NC})"
+        echo -e "  ${BOLD}${CYAN}2)${NC} Cut or Split Video File (.mp4 / .mkv) (${GREEN}Cut_Video.sh / Split_Video_File.sh${NC})"
+        echo -e "  ${BOLD}${CYAN}3)${NC} Convert Cover Art & Resize / Byte Target (${GREEN}1MB Podcast, WebP/JPG/PNG, Sizes${NC})"
+        echo -e "  ${BOLD}${CYAN}4)${NC} View Cover Art by Mix Number (${GREEN}External Viewer${NC})"
+        echo -e "  ${BOLD}${CYAN}5)${NC} Procedural Gradient .PPM Cover Art Generator (${GREEN}Netpbm P6 Binary, Palettes${NC})"
+        echo -e "  ${BOLD}${CYAN}6)${NC} Synchronized Mix-Video Companion Player Daemon (${GREEN}Auto-play Video on Mix Start, Close on Stop${NC})"
+        echo -e "  ${BOLD}${CYAN}0)${NC} Return to Main Menu"
+        echo ""
+        read -r -p "Enter choice [0-6]: " vm_choice
+        case "$vm_choice" in
+            1)
+                manage_visual_media_launchers
+                ;;
+            2)
+                manage_video_cut_and_split
+                ;;
+            3)
+                manage_cover_converter
+                ;;
+            4)
+                view_cover
+                press_enter
+                ;;
+            5)
+                generate_ppm_cover_menu
+                ;;
+            6)
+                manage_sync_video_companion_menu
+                ;;
+            0|[qQ]|[eE][xX][iI][tT])
+                return 0
+                ;;
+            *)
+                echo -e "\n${RED}Invalid option!${NC}"
+                sleep 1
+                ;;
+        esac
+    done
+}
+
+manage_promo_and_syndication() {
+    while true; do
+        clear
+        echo -e "${BOLD}${MAGENTA}====================================================${NC}"
+        echo -e "${BOLD}${MAGENTA}    PROMOTIONAL OUTREACH, SYNDICATION & SHOPPING    ${NC}"
+        echo -e "${BOLD}${MAGENTA}====================================================${NC}"
+        echo ""
+        echo -e "${BOLD}Select an operation:${NC}"
+        echo -e "  ${BOLD}${CYAN}1)${NC} Promotional & Publisher Outreach Emails (${GREEN}Promoters, Publishers, Radio, Labels${NC})"
+        echo -e "  ${BOLD}${CYAN}2)${NC} Mix Publishing Schedule & Multi-Platform Syndication (${GREEN}Apple Podcasts, Spotify, YouTube, SoundCloud, RSS, iCal${NC})"
+        echo -e "  ${BOLD}${CYAN}3)${NC} Go Shopping for New Music (${GREEN}Beatport, Apple Music & Bandcamp Tabs${NC})"
+        echo -e "  ${BOLD}${CYAN}0)${NC} Return to Main Menu"
+        echo ""
+        read -r -p "Enter choice [0-3]: " ps_choice
+        case "$ps_choice" in
+            1)
+                manage_promo_outreach
+                ;;
+            2)
+                manage_publishing_schedule
+                ;;
+            3)
+                shop_for_new_music_menu
+                ;;
+            0|[qQ]|[eE][xX][iI][tT])
+                return 0
+                ;;
+            *)
+                echo -e "\n${RED}Invalid option!${NC}"
+                sleep 1
+                ;;
+        esac
+    done
+}
+
+manage_network_and_internet() {
+    while true; do
+        clear
+        echo -e "${BOLD}${MAGENTA}====================================================${NC}"
+        echo -e "${BOLD}${MAGENTA}     NETWORK SERVICES & INTERNET ACCESS CONTROL     ${NC}"
+        echo -e "${BOLD}${MAGENTA}====================================================${NC}"
+        echo ""
+        echo -e "${BOLD}Select an operation:${NC}"
+        echo -e "  ${BOLD}${CYAN}1)${NC} Manage Network Services (${GREEN}SSH, Samba, FTP - Start, Stop, Restart All${NC})"
+        echo -e "  ${BOLD}${CYAN}2)${NC} Block Internet Access (${GREEN}LAN Only - block-internet${NC})"
+        echo -e "  ${BOLD}${CYAN}3)${NC} Restore / Unblock Internet Access (${GREEN}unblock-internet${NC})"
+        echo -e "  ${BOLD}${CYAN}0)${NC} Return to Main Menu"
+        echo ""
+        read -r -p "Enter choice [0-3]: " net_choice
+        case "$net_choice" in
+            1)
+                manage_network_services
+                ;;
+            2)
+                block_internet
+                ;;
+            3)
+                unblock_internet
+                ;;
+            0|[qQ]|[eE][xX][iI][tT])
+                return 0
+                ;;
+            *)
+                echo -e "\n${RED}Invalid option!${NC}"
+                sleep 1
+                ;;
+        esac
+    done
+}
+
+manage_desktop_and_display() {
+    while true; do
+        clear
+        echo -e "${BOLD}${MAGENTA}====================================================${NC}"
+        echo -e "${BOLD}${MAGENTA}    DESKTOP DISPLAY SETTINGS & APP CONTROL          ${NC}"
+        echo -e "${BOLD}${MAGENTA}====================================================${NC}"
+        echo ""
+        echo -e "${BOLD}Select an operation:${NC}"
+        if [ "$OS_TYPE" = "macos" ]; then
+            echo -e "  ${BOLD}${CYAN}1)${NC} Open macOS Display Settings (${GREEN}Displays, Arrangement & HDR${NC})"
+            echo -e "  ${BOLD}${CYAN}2)${NC} Open macOS Audio MIDI Setup (${GREEN}Sample Rates & Output Devices${NC})"
+        elif [ "$OS_TYPE" = "windows" ] || [ "$OS_TYPE" = "wsl" ]; then
+            echo -e "  ${BOLD}${CYAN}1)${NC} Open Windows Display Settings (${GREEN}ms-settings:display - HDR & Scale${NC})"
+            echo -e "  ${BOLD}${CYAN}2)${NC} Open Windows Sound Settings (${GREEN}control.exe mmsys.cpl${NC})"
+        else
+            echo -e "  ${BOLD}${CYAN}1)${NC} Switch Desktop to Plasma Wayland (${GREEN}HDR Gaming on Hisense & Steam BPM${NC})"
+            echo -e "  ${BOLD}${CYAN}2)${NC} Switch Desktop to Plasma X11 (${GREEN}Standard Workstation${NC})"
+        fi
+        echo -e "  ${BOLD}${CYAN}3)${NC} Close All Desktop Applications (${GREEN}Keep Manager Open${NC})"
+        echo -e "  ${BOLD}${CYAN}0)${NC} Return to Main Menu"
+        echo ""
+        read -r -p "Enter choice [0-3]: " dsk_choice
+        case "$dsk_choice" in
+            1)
+                if [ "$OS_TYPE" = "macos" ]; then
+                    open /System/Library/PreferencePanes/Displays.prefPane 2>/dev/null || open "x-apple.systempreferences:com.apple.Displays-Settings.extension" 2>/dev/null || true
+                elif [ "$OS_TYPE" = "windows" ] || [ "$OS_TYPE" = "wsl" ]; then
+                    cmd.exe /c start ms-settings:display 2>/dev/null || true
+                else
+                    switch_to_wayland
+                fi
+                ;;
+            2)
+                if [ "$OS_TYPE" = "macos" ]; then
+                    open -a "Audio MIDI Setup" 2>/dev/null || true
+                elif [ "$OS_TYPE" = "windows" ] || [ "$OS_TYPE" = "wsl" ]; then
+                    cmd.exe /c start control.exe mmsys.cpl 2>/dev/null || true
+                else
+                    switch_to_x11
+                fi
+                ;;
+            3)
+                close_all_desktop_apps
+                ;;
+            0|[qQ]|[eE][xX][iI][tT])
+                return 0
+                ;;
+            *)
+                echo -e "\n${RED}Invalid option!${NC}"
+                sleep 1
+                ;;
+        esac
+    done
+}
+
+manage_ai_and_servers() {
+    while true; do
+        clear
+        echo -e "${BOLD}${MAGENTA}====================================================${NC}"
+        echo -e "${BOLD}${MAGENTA}      AI ASSISTANT & LOCAL LLM SERVERS SUITE        ${NC}"
+        echo -e "${BOLD}${MAGENTA}====================================================${NC}"
+        echo ""
+        echo -e "${BOLD}Select an operation:${NC}"
+        echo -e "  ${BOLD}${CYAN}1)${NC} Launch AI Assistant / Models (${GREEN}Claude Opus, Claude Sonnet, GPT-OSS, Gemini, Ollama, DeepSeek${NC})"
+        echo -e "  ${BOLD}${CYAN}2)${NC} Manage Ollama Server (${GREEN}ollama serve in distrobox, Chat, Models, Logs :11434${NC})"
+        echo -e "  ${BOLD}${CYAN}3)${NC} Manage DeepSeek Harness Server (${GREEN}dsh-mobile - Start, Stop, Mobile Web UI :3080${NC})"
+        echo -e "  ${BOLD}${CYAN}4)${NC} Manage WAN2GP Server (${GREEN}Start, Stop, Restart in Profile 2 or 4.5${NC})"
+        echo -e "  ${BOLD}${CYAN}5)${NC} Manage Beszel Server & Monitoring Agent (${GREEN}Start Hub & Agent, Status, Dashboard :8090${NC})"
+        echo -e "  ${BOLD}${CYAN}0)${NC} Return to Main Menu"
+        echo ""
+        read -r -p "Enter choice [0-5]: " ai_choice
+        case "$ai_choice" in
+            1)
+                manage_ai_models
+                ;;
+            2)
+                manage_ollama
+                ;;
+            3)
+                manage_dsh_mobile
+                ;;
+            4)
+                manage_wan2gp
+                ;;
+            5)
+                manage_beszel
+                ;;
+            0|[qQ]|[eE][xX][iI][tT])
+                return 0
+                ;;
+            *)
+                echo -e "\n${RED}Invalid option!${NC}"
+                sleep 1
+                ;;
+        esac
+    done
+}
+
+manage_motd_and_tools() {
+    while true; do
+        clear
+        echo -e "${BOLD}${MAGENTA}====================================================${NC}"
+        echo -e "${BOLD}${MAGENTA}        MOTD BANNER MANAGER & SYSTEM UTILITIES      ${NC}"
+        echo -e "${BOLD}${MAGENTA}====================================================${NC}"
+        echo ""
+        echo -e "${BOLD}Select an operation:${NC}"
+        echo -e "  ${BOLD}${CYAN}1)${NC} Dynamic System MOTD Banner Manager (${GREEN}Last 3 Mixes, Date/Time, Size, Format & Specs${NC})"
+        echo -e "  ${BOLD}${CYAN}2)${NC} Burn ISO Image to USB Drive (${GREEN}dd / diskutil with safety checks${NC})"
+        echo -e "  ${BOLD}${CYAN}0)${NC} Return to Main Menu"
+        echo ""
+        read -r -p "Enter choice [0-2]: " mt_choice
+        case "$mt_choice" in
+            1)
+                manage_system_motd_menu
+                ;;
+            2)
+                burn_iso_to_usb
+                ;;
+            0|[qQ]|[eE][xX][iI][tT])
+                return 0
+                ;;
+            *)
+                echo -e "\n${RED}Invalid option!${NC}"
+                sleep 1
+                ;;
+        esac
+    done
+}
+
+manage_settings_and_system() {
+    while true; do
+        clear
+        echo -e "${BOLD}${MAGENTA}====================================================${NC}"
+        echo -e "${BOLD}${MAGENTA}       MANAGER SETTINGS, THEMES & SYSTEM SHELL      ${NC}"
+        echo -e "${BOLD}${MAGENTA}====================================================${NC}"
+        echo ""
+        echo -e "${BOLD}Select an operation:${NC}"
+        echo -e "  ${BOLD}${CYAN}1)${NC} Manager Themes & Color Palette Switcher (${GREEN}8 Themes + Classic${NC})"
+        echo -e "  ${BOLD}${CYAN}2)${NC} Manage Installation & Configuration (${GREEN}Migrate Path, Backup, Export & Import Config${NC})"
+        echo -e "  ${BOLD}${CYAN}3)${NC} Run Bash CLI Commands (${GREEN}Interactive Shell & Direct Runner${NC})"
+        if [ "$OS_TYPE" = "macos" ]; then
+            echo -e "  ${BOLD}${CYAN}4)${NC} Reboot System (${RED}macOS restart with confirmation${NC})"
+        elif [ "$OS_TYPE" = "windows" ] || [ "$OS_TYPE" = "wsl" ]; then
+            echo -e "  ${BOLD}${CYAN}4)${NC} Reboot System (${RED}Windows restart with confirmation${NC})"
+        elif [ "$OS_TYPE" = "freebsd" ]; then
+            echo -e "  ${BOLD}${CYAN}4)${NC} Reboot System (${RED}FreeBSD restart with confirmation${NC})"
+        else
+            echo -e "  ${BOLD}${CYAN}4)${NC} Reboot System (${RED}systemctl reboot with confirmation${NC})"
+        fi
+        echo -e "  ${BOLD}${CYAN}0)${NC} Return to Main Menu"
+        echo ""
+        read -r -p "Enter choice [0-4]: " set_choice
+        case "$set_choice" in
+            1)
+                manage_themes
+                ;;
+            2)
+                manage_installation_and_config
+                ;;
+            3)
+                run_bash_cli
+                ;;
+            4)
+                reboot_system
+                ;;
+            0|[qQ]|[eE][xX][iI][tT])
+                return 0
+                ;;
+            *)
+                echo -e "\n${RED}Invalid option!${NC}"
+                sleep 1
+                ;;
+        esac
+    done
+}
+
 # ==============================================================================
 # MAIN APPLICATION LOOP
 # ==============================================================================
@@ -8344,7 +8871,7 @@ while true; do
     fi
     echo -e "${BOLD}${MAGENTA}-----------------------------------------------------------------------------------${NC}"
     if ! is_mix_archive_configured; then
-        echo -e "\n  ${BOLD}${RED}⚠️  Please be advised you have not configured your Mix Archive Folder, Please use option 13 to Configure this now.${NC}"
+        echo -e "\n  ${BOLD}${RED}⚠️  Please be advised you have not configured your Mix Archive Folder, Please use option 10 to Configure this now.${NC}"
         echo -e "  ${DIM}${YELLOW}(Currently using application root folder: ${SCRIPT_DIR}/MIX_ARCHIVE)${NC}"
     fi
     echo ""
@@ -8359,118 +8886,42 @@ while true; do
     echo -e "  ${BOLD}${CYAN} 2)${NC} Convert Audio Formats, Bit Depths & Split FLACs (${GREEN}WAV, MP3, AAC, FLAC Splitter${NC})"
     echo -e "  ${BOLD}${CYAN} 3)${NC} Retrieve Unconverted WAVs from Archive (${GREEN}MOVE_NOT_CONVERTED_WAVS.sh${NC})"
     echo -e "  ${BOLD}${CYAN} 4)${NC} Search & Import Mixes from Local Drives & SMB (${GREEN}search_and_import_mixes.sh / import_new_mixes.sh${NC})"
-    echo -e "  ${BOLD}${CYAN} 5)${NC} Rename a Mix and Associated Assets (FLAC, Tracklist, Spek)"
+    echo -e "  ${BOLD}${CYAN} 5)${NC} Rename a Mix and Associated Assets (${GREEN}FLAC, Tracklist, Spek${NC})"
     echo -e "  ${BOLD}${CYAN} 6)${NC} Find & Remove Duplicate Audio Files / Mixes (${GREEN}Exact Content & Episode Match${NC})"
     echo -e "  ${BOLD}${CYAN} 7)${NC} Export / Copy Mixes to Specified Path (${GREEN}Audio, Covers, Tracklists, Spek${NC})"
-    echo -e "  ${BOLD}${CYAN} 8)${NC} Manage Audio Integrity Checksums (${GREEN}SHA-256 Manifest & Verification${NC})"
-    echo -e "  ${BOLD}${CYAN} 9)${NC} Verify FLAC Files for Integrity & Corruption (${GREEN}Verify_FLAC_Files.sh${NC})"
-    echo -e "  ${BOLD}${CYAN}10)${NC} Back up FLAC Outputs to Google Drive (${GREEN}backup_to_gdrive.sh${NC})"
-    echo -e "  ${BOLD}${CYAN}11)${NC} Show Mix Storage Drive Space Remaining (${GREEN}Mix Drive Only${NC})"
-    echo -e "  ${BOLD}${CYAN}12)${NC} Refresh Archive Status & File Counts (Rescan WAVs, FLACs & Tracklists)"
-    archive_disp=""
-    if is_mix_archive_configured; then
-        archive_disp="${GREEN}${MIX_ARCHIVE_DIR}${NC}"
-    else
-        archive_disp="${RED}Not Configured${NC} ${DIM}(Root: ${SCRIPT_DIR}/MIX_ARCHIVE)${NC}"
-    fi
-    echo -e "  ${BOLD}${CYAN}13)${NC} Configure Default Mix Archive Storage Folder (${archive_disp})"
+    echo -e "  ${BOLD}${CYAN} 8)${NC} Audio Integrity Checksums & FLAC Verification Suite (${GREEN}SHA-256 Manifest & Verification${NC})"
+    echo -e "  ${BOLD}${CYAN} 9)${NC} Back up FLAC Outputs to Google Drive (${GREEN}backup_to_gdrive.sh${NC})"
+    echo -e "  ${BOLD}${CYAN}10)${NC} Storage Management & Archive Folder Setup (${GREEN}Drive Space, Rescan, Configure Folder${NC})"
     
-    echo -e "\n  ${BOLD}${BLUE}─── [ SECTION 2: TRACKLIST, METADATA & PROMOTION ] ──────────${NC}"
-    echo -e "  ${BOLD}${CYAN}14)${NC} Tracklist Management Suite (${GREEN}Browse, Search, View, Export HTML & PDF${NC})"
-    echo -e "  ${BOLD}${CYAN}15)${NC} Search for Mix & Auto-Play with Live Tracklist View (${GREEN}cliamp Window${NC})"
-    echo -e "  ${BOLD}${CYAN}16)${NC} Scan & Generate Missing Tracklists (${GREEN}Check_Find_Tracklists.sh${NC})"
-    echo -e "  ${BOLD}${CYAN}17)${NC} Generate Master Tracklist HTML Index (${GREEN}Generate_Master_Tracklist.sh${NC})"
-    echo -e "  ${BOLD}${CYAN}18)${NC} Launch MusicBrainz Picard Meta Tag Editor (${GREEN}Auto-install if missing${NC})"
-    echo -e "  ${BOLD}${CYAN}19)${NC} Promotional & Publisher Outreach Emails (${GREEN}Promoters, Publishers, Radio, Labels${NC})"
-    echo -e "  ${BOLD}${CYAN}20)${NC} Mix Publishing Schedule & Multi-Platform Syndication (${GREEN}Apple Podcasts, Spotify, YouTube, SoundCloud, RSS, iCal${NC})"
-    echo -e "  ${BOLD}${CYAN}21)${NC} Go Shopping for New Music (${GREEN}Beatport, Apple Music & Bandcamp Tabs${NC})"
+    echo -e "\n  ${BOLD}${BLUE}─── [ SECTION 2: STUDIO AUDIO, PLAYBACK, METADATA & VIDEO ] ──${NC}"
+    echo -e "  ${BOLD}${CYAN}11)${NC} Tracklist Management, Scanning & Metadata Suite (${GREEN}Browse, Search, Picard, HTML Index${NC})"
+    echo -e "  ${BOLD}${CYAN}12)${NC} Audio Players & Retro Playback Suite (${GREEN}cliamp, Strawberry, VLC, Audacity, Haruna, Winamp...${NC})"
+    echo -e "  ${BOLD}${CYAN}13)${NC} View Playing Mix Audio Specifications & Stream Metadata (${GREEN}Bit Depth, 48kHz, Codec, Title${NC})"
+    echo -e "  ${BOLD}${CYAN}14)${NC} Custom Mix Playlists & Traktor History Suite (${GREEN}.m3u8, .xspf, Traktor 3 Playlists${NC})"
+    echo -e "  ${BOLD}${CYAN}15)${NC} Digital Audio Workstations (DAWs) & Mix Dispatch (${GREEN}Reaper, Logic, FL Studio, Ardour, Traktor${NC})"
+    echo -e "  ${BOLD}${CYAN}16)${NC} Studio Hardware, Audio Interfaces & Master Volume Control (${GREEN}PipeWire, ALSA, MIDI, Mute${NC})"
+    echo -e "  ${BOLD}${CYAN}17)${NC} Spectrogram Generation & Audio Frequency Analysis (${GREEN}Single & Multiple Spek, SoX, Praat${NC})"
+    echo -e "  ${BOLD}${CYAN}18)${NC} Schedule DJ Mix Playback Suite (${GREEN}Timed Automated Mix Playback${NC})"
+    echo -e "  ${BOLD}${CYAN}19)${NC} YouTube Video Generation Suite (${GREEN}4K UHD, 1080p, 720p with NVENC/Hardware${NC})"
+    echo -e "  ${BOLD}${CYAN}20)${NC} Visual Media, Cover Art & Companion Video Suite (${GREEN}Cut/Split Video, Converters, PPM, Launchers${NC})"
     
-    echo -e "\n  ${BOLD}${BLUE}─── [ SECTION 3: AUDIO PLAYBACK, DAWS & SOUND SUITE ] ───────${NC}"
-    echo -e "  ${BOLD}${CYAN}22)${NC} Digital Audio Workstations (DAWs) Menu (${GREEN}Reaper, Logic Pro, FL Studio, Traktor, Ardour, Bitwig...${NC})"
-    echo -e "  ${BOLD}${CYAN}23)${NC} Open Mix WAV/FLAC Audio File in DAW (${GREEN}Direct Mix Search/Select & Dispatch${NC})"
-    echo -e "  ${BOLD}${CYAN}24)${NC} Generate Spectrograms using Spek & Analysis Suite (${GREEN}Single & Multiple In-Place, SoX, Praat${NC})"
-    echo -e "  ${BOLD}${CYAN}25)${NC} Audio Players & Playback Suite (${GREEN}cliamp, Strawberry, VLC, Audacity, Haruna, Kodi, foobar2000, Winamp...${NC})"
-    echo -e "  ${BOLD}${CYAN}26)${NC} View Playing Mix Audio Specifications & Stream Metadata (${GREEN}WAV/FLAC, Bit Depth, 48kHz, Codec, Duration, Size, Title${NC})"
-    echo -e "  ${BOLD}${CYAN}27)${NC} Custom Mix Playlists Suite (.m3u8 / .xspf) (${GREEN}Create, Edit & Launch in cliamp/Strawberry/VLC${NC})"
-    echo -e "  ${BOLD}${CYAN}28)${NC} Studio Hardware & Software Inspector (${GREEN}PipeWire, ALSA, DAWs, MIDI Controllers & Surfaces${NC})"
-    echo -e "  ${BOLD}${CYAN}29)${NC} Toggle Audio Mute / Unmute & Master Volume Control (${GREEN}Instant PipeWire/ALSA Mute${NC})"
-    echo -e "  ${BOLD}${CYAN}30)${NC} Schedule DJ Mix or Multiple DJ Mixes to Play Loudly (${GREEN}Uses Default Audio Player${NC})"
-    if [ "$OS_TYPE" = "macos" ]; then
-        local t_ver
-        t_ver="$(get_traktor_version_mac 2>/dev/null || echo "3")"
-        if [ -n "$t_ver" ] && [ "$t_ver" != "3" ]; then
-            echo -e "  ${BOLD}${CYAN}31)${NC} Generate Playlist from History Files on Traktor 3 (${GREEN}v${t_ver} Key Sorted / Decks Ready${NC})"
-        else
-            echo -e "  ${BOLD}${CYAN}31)${NC} Generate Playlist from History Files on Traktor 3 (${GREEN}Key Sorted / Decks Ready${NC})"
-        fi
-    fi
-    
-    echo -e "\n  ${BOLD}${BLUE}─── [ SECTION 4: VIDEO PRODUCTION, ART & VISUAL MEDIA ] ─────${NC}"
-    echo -e "  ${BOLD}${CYAN}32)${NC} Generate YouTube Video (4K UHD, 1080p, 720p with NVENC/Hardware)"
-    echo -e "  ${BOLD}${CYAN}33)${NC} Cut or Split Video File (.mp4 / .mkv) (${GREEN}Cut_Video.sh / Split_Video_File.sh${NC})"
-    echo -e "  ${BOLD}${CYAN}34)${NC} Visual, Video & Art Launchers Suite (${GREEN}NFT Videos, Video Player, GIMP, Electric Sheep, GeeXLab${NC})"
-    echo -e "  ${BOLD}${CYAN}35)${NC} Convert Cover Art & Resize / Byte Target (${GREEN}1MB Podcast, WebP/JPG/PNG, Sizes${NC})"
-    echo -e "  ${BOLD}${CYAN}36)${NC} View Cover Art by Mix Number (External Viewer)"
-    echo -e "  ${BOLD}${CYAN}37)${NC} Procedural Gradient .PPM Cover Art Generator (${GREEN}Netpbm P6 Binary, Palettes, Typography Overlays${NC})"
-    echo -e "  ${BOLD}${CYAN}38)${NC} Synchronized Mix-Video Companion Player Daemon (${GREEN}Auto-play Video on Mix Start, Close on Stop${NC})"
-    
-    echo -e "\n  ${BOLD}${BLUE}─── [ SECTION 5: LIVE MONITORS & SYSTEM DIAGNOSTICS ] ───────${NC}"
-    echo -e "  ${BOLD}${CYAN}39)${NC} Live Session & Stream Monitors Suite (${GREEN}Live Tracklist, Traktor Live Monitor, File Transfers, Uploads${NC})"
-    echo -e "  ${BOLD}${CYAN}40)${NC} System & Hardware Process Monitors Suite (${GREEN}btop, nvtop, top${NC})"
-    echo -e "  ${BOLD}${CYAN}41)${NC} View Advanced Archive Statistics (${GREEN}SOF_Archive_Stats.sh${NC})"
-    echo -e "  ${BOLD}${CYAN}42)${NC} View Running Background Tasks"
-    
-    echo -e "\n  ${BOLD}${BLUE}─── [ SECTION 6: SYSTEM, NETWORK & HARDWARE MANAGEMENT ] ────${NC}"
-    echo -e "  ${BOLD}${CYAN}43)${NC} Manage WAN2GP Server (Start, Stop, Restart in Profile 2 or 4.5)"
-    echo -e "  ${BOLD}${CYAN}44)${NC} Manage Beszel Server & Monitoring Agent (${GREEN}Start Hub & Agent, Status, Dashboard :8090${NC})"
-    echo -e "  ${BOLD}${CYAN}45)${NC} Manage Ollama Server (${GREEN}ollama serve in distrobox, Chat, Models, Logs :11434${NC})"
-    echo -e "  ${BOLD}${CYAN}46)${NC} Manage DeepSeek Harness Server (${GREEN}dsh-mobile - Start, Stop, Mobile Web UI :3080${NC})"
-    echo -e "  ${BOLD}${CYAN}47)${NC} Manage Network Services (SSH, Samba, FTP - Start, Stop, Restart All)"
-    echo -e "  ${BOLD}${CYAN}48)${NC} Block Internet Access (LAN Only) (${GREEN}block-internet${NC})"
-    echo -e "  ${BOLD}${CYAN}49)${NC} Restore / Unblock Internet Access (${GREEN}unblock-internet${NC})"
-    if [ "$OS_TYPE" = "macos" ]; then
-        echo -e "  ${BOLD}${CYAN}50)${NC} Open macOS Display Settings (${GREEN}Displays, Arrangement & HDR${NC})"
-        echo -e "  ${BOLD}${CYAN}51)${NC} Open macOS Audio MIDI Setup (${GREEN}Sample Rates & Output Devices${NC})"
-    elif [ "$OS_TYPE" = "windows" ] || [ "$OS_TYPE" = "wsl" ]; then
-        echo -e "  ${BOLD}${CYAN}50)${NC} Open Windows Display Settings (${GREEN}ms-settings:display - HDR & Scale${NC})"
-        echo -e "  ${BOLD}${CYAN}51)${NC} Open Windows Sound Settings (${GREEN}control.exe mmsys.cpl${NC})"
-    else
-        echo -e "  ${BOLD}${CYAN}50)${NC} Switch Desktop to Plasma Wayland (HDR Gaming on Hisense & Steam BPM)"
-        echo -e "  ${BOLD}${CYAN}51)${NC} Switch Desktop to Plasma X11 (Standard Workstation)"
-    fi
-    echo -e "  ${BOLD}${CYAN}52)${NC} Close All Desktop Applications (Keep Manager Open)"
-    if [ "$OS_TYPE" = "macos" ]; then
-        echo -e "  ${BOLD}${CYAN}53)${NC} macOS System Maintenance & Cleanup (${GREEN}drive space, Software Update window, brew, purge RAM${NC})"
-    elif [ "$OS_TYPE" = "windows" ] || [ "$OS_TYPE" = "wsl" ]; then
-        echo -e "  ${BOLD}${CYAN}53)${NC} Windows System Maintenance & Cleanup (${GREEN}drive space, Windows Update window, winget, TRIM${NC})"
-    elif [ "$OS_TYPE" = "freebsd" ]; then
-        echo -e "  ${BOLD}${CYAN}53)${NC} FreeBSD System Maintenance & Cleanup (${GREEN}drive space, pkg upgrade, clean, autoremove${NC})"
-    else
-        echo -e "  ${BOLD}${CYAN}53)${NC} System Maintenance & Cleanup (${GREEN}drive space, ujust clean-system, update, trim, logs${NC})"
-    fi
-    echo -e "  ${BOLD}${CYAN}54)${NC} Burn ISO Image to USB Drive (${GREEN}dd / diskutil with safety checks${NC})"
-    echo -e "  ${BOLD}${CYAN}55)${NC} Dynamic System MOTD Banner Manager (${GREEN}Last 3 Mixes, Date/Time, Size, Format & Specs${NC})"
-    
-    echo -e "\n  ${BOLD}${BLUE}─── [ SECTION 7: AI, SHELL CLI & SETTINGS ] ──────────────────${NC}"
-    echo -e "  ${BOLD}${CYAN}56)${NC} Launch AI Assistant / Models (${GREEN}Claude Opus, Claude Sonnet, GPT-OSS, Gemini, Ollama, DeepSeek${NC})"
-    echo -e "  ${BOLD}${CYAN}57)${NC} Run Bash CLI Commands (${GREEN}Interactive Shell & Direct Runner${NC})"
-    echo -e "  ${BOLD}${CYAN}58)${NC} Manager Themes & Color Palette Switcher (${GREEN}8 Themes + Classic${NC})"
-    echo -e "  ${BOLD}${CYAN}59)${NC} Manage Installation & Configuration (${GREEN}Migrate Path, Backup, Export & Import Config${NC})"
-    if [ "$OS_TYPE" = "macos" ]; then
-        echo -e "  ${BOLD}${CYAN}60)${NC} Reboot System (${RED}macOS restart with confirmation${NC})"
-    elif [ "$OS_TYPE" = "windows" ] || [ "$OS_TYPE" = "wsl" ]; then
-        echo -e "  ${BOLD}${CYAN}60)${NC} Reboot System (${RED}Windows restart with confirmation${NC})"
-    elif [ "$OS_TYPE" = "freebsd" ]; then
-        echo -e "  ${BOLD}${CYAN}60)${NC} Reboot System (${RED}FreeBSD restart with confirmation${NC})"
-    else
-        echo -e "  ${BOLD}${CYAN}60)${NC} Reboot System (${RED}systemctl reboot with confirmation${NC})"
-    fi
+    echo -e "\n  ${BOLD}${BLUE}─── [ SECTION 3: SYSTEM, NETWORK, AI & SETTINGS ] ────────────${NC}"
+    echo -e "  ${BOLD}${CYAN}21)${NC} Live Session, Stream & Transfer Monitors Suite (${GREEN}Tracklist, Traktor, Transfers, Uploads, Tasks${NC})"
+    echo -e "  ${BOLD}${CYAN}22)${NC} System & Hardware Process Monitors Suite (${GREEN}btop, nvtop, top${NC})"
+    echo -e "  ${BOLD}${CYAN}23)${NC} View Advanced Archive Statistics (${GREEN}SOF_Archive_Stats.sh${NC})"
+    echo -e "  ${BOLD}${CYAN}24)${NC} Promotional Outreach, Syndication & Music Shopping (${GREEN}Emails, RSS/Podcasts, Beatport/Bandcamp${NC})"
+    echo -e "  ${BOLD}${CYAN}25)${NC} Network Services & Internet Access Control (${GREEN}SSH, Samba, FTP, Block/Restore Internet${NC})"
+    echo -e "  ${BOLD}${CYAN}26)${NC} Desktop Display Settings, Audio Routing & App Control (${GREEN}Wayland/X11/macOS/Windows, Close Apps${NC})"
+    echo -e "  ${BOLD}${CYAN}27)${NC} Universal System Maintenance & Cleanup (${GREEN}Drive space, OS Updates, Package Clean, Logs${NC})"
+    echo -e "  ${BOLD}${CYAN}28)${NC} AI Assistant & Local LLM Servers Suite (${GREEN}Claude, GPT, Ollama, DeepSeek, WAN2GP, Beszel${NC})"
+    echo -e "  ${BOLD}${CYAN}29)${NC} Dynamic MOTD Banner Manager & Drive Burner (${GREEN}Last 3 Mixes, Netpbm, ISO USB Burner${NC})"
+    echo -e "  ${BOLD}${CYAN}30)${NC} Manager Settings, Themes, Shell CLI & Reboot (${GREEN}Themes, Migration, Bash CLI, Reboot${NC})"
     
     echo -e "\n  ${BOLD}${BLUE}──────────────────────────────────────────────────────────────${NC}"
     get_manager_uptime
-    echo -e "  ${BOLD}${CYAN}61)${NC} Exit Manager ${DIM}(or 0 / q)${NC}"
+    echo -e "  ${BOLD}${CYAN}31)${NC} Exit Manager ${DIM}(or 0 / q)${NC}"
     echo ""
-    read -r -p "Enter choice [1-61, or q to exit]: " choice
+    read -r -p "Enter choice [1-31, or q to exit]: " choice
     
     case $choice in
         1)
@@ -8500,183 +8951,80 @@ while true; do
             export_mixes_to_path
             ;;
         8)
-            manage_audio_checksums
+            manage_integrity_and_verification
             ;;
         9)
-            echo -e "\n${BOLD}${YELLOW}Starting FLAC File Integrity Scan...${NC}\n"
-            run_sub_script "Verify_FLAC_Files.sh"
-            press_enter
-            ;;
-        10)
             echo -e "\n${BOLD}${YELLOW}Starting Google Drive Backup...${NC}\n"
             run_sub_script "backup_to_gdrive.sh"
             press_enter
             ;;
+        10|config-archive|archive-dir|archive-folder)
+            manage_storage_and_archive_config
+            ;;
         11)
-            show_mix_drive_space
+            manage_tracklist_suite
             ;;
-        12)
-            _LAST_OS_UPDATE_CHECK=0
-            # Naturally clears screen and refreshes stats
-            ;;
-        13|config-archive|archive-dir|archive-folder)
-            configure_mix_archive_folder
-            ;;
-        14)
-            manage_tracklists
-            ;;
-        15)
-            search_and_play_mix
-            ;;
-        16)
-            echo -e "\n${BOLD}${YELLOW}Scanning & Generating Missing Tracklists...${NC}\n"
-            run_sub_script "Check_Find_Tracklists.sh"
-            press_enter
-            ;;
-        17)
-            echo -e "\n${BOLD}${YELLOW}Starting Master Tracklist HTML Generation...${NC}\n"
-            run_sub_script "Generate_Master_Tracklist.sh"
-            press_enter
-            ;;
-        18)
-            launch_or_install_picard
-            ;;
-        19)
-            manage_promo_outreach
-            ;;
-        20)
-            manage_publishing_schedule
-            ;;
-        21)
-            shop_for_new_music_menu
-            ;;
-        22)
-            manage_daws
-            ;;
-        23)
-            open_mix_in_daw
-            ;;
-        24)
-            manage_spek_generation
-            ;;
-        25|manage-audio-players|players)
+        12|manage-audio-players|players)
             manage_audio_players
             ;;
-        26)
+        13)
             inspect_playing_audio_file
             ;;
-        27)
-            manage_playlists_menu
+        14)
+            manage_playlists_and_history
             ;;
-        28)
-            inspect_audio_studio_menu
+        15)
+            manage_daws_suite
             ;;
-        29)
-            toggle_audio_mute
+        16)
+            manage_studio_hardware_and_volume
             ;;
-        30)
+        17)
+            manage_spek_generation
+            ;;
+        18)
             manage_mix_scheduler
             ;;
-        31)
-            if [ "$OS_TYPE" = "macos" ]; then
-                generate_traktor_playlist_from_history
-            else
-                launch_strawberry
-            fi
-            ;;
-        32)
+        19)
             generate_youtube_video
             ;;
-        33)
-            manage_video_cut_and_split
+        20|manage-visual-media|visual-launchers|video-launchers)
+            manage_visual_media_suite
             ;;
-        34|manage-visual-media|visual-launchers|video-launchers)
-            manage_visual_media_launchers
-            ;;
-        35)
-            manage_cover_converter
-            ;;
-        36)
-            view_cover
-            press_enter
-            ;;
-        37)
-            generate_ppm_cover_menu
-            ;;
-        38)
-            manage_sync_video_companion_menu
-            ;;
-        39|manage-live-monitors|live-monitors)
+        21|manage-live-monitors|live-monitors)
             manage_live_monitors
             ;;
-        40|manage-process-monitors|process-monitors)
+        22|manage-process-monitors|process-monitors)
             manage_system_process_monitors
             ;;
-        41)
+        23)
             echo -e "\n${BOLD}${YELLOW}Loading Advanced Archive Statistics...${NC}\n"
             sleep 0.5
             run_sub_script "SOF_Archive_Stats.sh"
             press_enter
             ;;
-        42)
-            view_tasks
-            press_enter
+        24)
+            manage_promo_and_syndication
             ;;
-        43)
-            manage_wan2gp
+        25)
+            manage_network_and_internet
             ;;
-        44)
-            manage_beszel
+        26)
+            manage_desktop_and_display
             ;;
-        45)
-            manage_ollama
-            ;;
-        46)
-            manage_dsh_mobile
-            ;;
-        47)
-            manage_network_services
-            ;;
-        48)
-            block_internet
-            ;;
-        49)
-            unblock_internet
-            ;;
-        50)
-            switch_to_wayland
-            ;;
-        51)
-            switch_to_x11
-            ;;
-        52)
-            close_all_desktop_apps
-            ;;
-        53)
+        27)
             manage_system_maintenance
             ;;
-        54)
-            burn_iso_to_usb
+        28)
+            manage_ai_and_servers
             ;;
-        55)
-            manage_system_motd_menu
+        29)
+            manage_motd_and_tools
             ;;
-        56)
-            manage_ai_models
+        30)
+            manage_settings_and_system
             ;;
-        57)
-            run_bash_cli
-            ;;
-        58)
-            manage_themes
-            ;;
-        59)
-            manage_installation_and_config
-            ;;
-        60)
-            reboot_system
-            ;;
-        61|77|0|[qQ]|[eE][xX][iI][tT])
+        31|77|0|[qQ]|[eE][xX][iI][tT])
             echo -e "\n${BOLD}${GREEN}Exiting Mix Archive Manager. Goodbye!${NC}\n"
             exit 0
             ;;
@@ -8753,7 +9101,7 @@ while true; do
             press_enter
             ;;
         *)
-            echo -e "\n${RED}Invalid option! Please enter a number between 1 and 61 (or 'q' to exit).${NC}"
+            echo -e "\n${RED}Invalid option! Please enter a number between 1 and 31 (or 'q' to exit).${NC}"
             sleep 2
             ;;
     esac
